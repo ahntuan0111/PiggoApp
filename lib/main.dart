@@ -1,0 +1,54 @@
+import 'package:appintern/domain/repositories/auth_repository.dart';
+import 'package:appintern/domain/repositories/category_repository.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'core/routes/app_pages.dart';
+import 'core/network/appwrite_service.dart';
+import 'core/network/storage_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  await Get.putAsync(() => StorageService().init());
+  await Get.putAsync(() => AppwriteService().init());
+
+  final appwriteService = Get.find<AppwriteService>();
+  Get.put(AuthRepository(appwriteService));
+  Get.put(CategoryRepository(appwriteService));
+
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Khởi tạo ScreenUtil để Responsive UI theo kích thước bản vẽ Figma
+    return ScreenUtilInit(
+      designSize: const Size(360, 800), // Kích thước chuẩn trên Figma
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        // Đổi từ MaterialApp sang GetMaterialApp để dùng GetX Router
+        return GetMaterialApp(
+          title: 'Personal Finance App',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF4285F4),
+            ),
+            useMaterial3: true,
+            fontFamily: 'Roboto',
+          ),
+          // CẤU HÌNH ROUTER BẰNG GETX THEO CHUẨN CLEAN ARCHITECTURE
+          initialRoute: AppPages.INITIAL,
+          getPages: AppPages.pages,
+        );
+      },
+    );
+  }
+}

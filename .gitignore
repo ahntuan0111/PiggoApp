@@ -1,0 +1,45 @@
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ / Android Studio / VS Code
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Flutter/Dart/Pub
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+web/main.dart.js
+web/main.dart.wasm
+
+# Environment & Sensitive files (QUAN TRỌNG)
+.env
+*.env
+test_key.py
+
+# Temporary & Media files trong project của bạn
+*.mp3
+*.tar.gz
+temp_extract_function/
+
+# Bỏ qua tất cả các file Markdown
+*.md
+
+# Nhưng bắt buộc giữ lại file README.md
+!README.md
