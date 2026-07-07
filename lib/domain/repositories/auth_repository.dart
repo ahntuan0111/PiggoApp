@@ -65,4 +65,20 @@ class AuthRepository with AppwriteErrorHandler {
       );
     });
   }
+
+  Future<void> logout() async {
+    return handleAppwriteError(() async {
+      try {
+        await _appwriteService.account.deleteSession(sessionId: 'current');
+      } catch (e) {
+        // Ignored
+      }
+      try {
+        final google.GoogleSignIn googleSignIn = google.GoogleSignIn.instance;
+        await googleSignIn.signOut();
+      } catch (e) {
+        // Ignored
+      }
+    });
+  }
 }

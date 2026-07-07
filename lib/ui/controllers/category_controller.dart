@@ -6,7 +6,6 @@ import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/network/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'package:appintern/ui/controllers/home_controller.dart';
 
 class CategoryController extends BaseController {
   final CategoryRepository categoryRepo = Get.find<CategoryRepository>();
@@ -40,7 +39,9 @@ class CategoryController extends BaseController {
         print("DEBUG: Fetched ${cats.length} categories from DB.");
         categories.assignAll(cats);
         for (var c in cats) {
-          print("DEBUG: Category ${c.name} has categoryTypeId = ${c.categoryTypeId}");
+          print(
+            "DEBUG: Category ${c.name} has categoryTypeId = ${c.categoryTypeId}",
+          );
         }
       }
     }, tag: "FETCH_CATEGORIES");
@@ -124,6 +125,86 @@ class CategoryController extends BaseController {
         Get.back(); // Đóng bottom sheet TRƯỚC
         await fetchData(); // Load lại data tự quản lý loading
         showSuccessMessage("Thành công", "Đã tạo danh mục mới");
+      },
+    );
+  }
+  Future<void> updateCategoryType(String typeId, String name) async {
+    if (name.trim().isEmpty) return;
+
+    showLoading();
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.updateCategoryType(typeId, name.trim());
+    }, tag: "UPDATE_CATEGORY_TYPE");
+    hideLoading();
+
+    await result.fold(
+      (failure) async {
+        showErrorMessage("Lỗi", "Không thể cập nhật nhóm danh mục: ${failure.message}");
+      },
+      (_) async {
+        Get.back(); // Đóng dialog
+        await fetchData();
+        showSuccessMessage("Thành công", "Đã cập nhật nhóm danh mục");
+      },
+    );
+  }
+
+  Future<void> deleteCategoryType(String typeId) async {
+    showLoading();
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.deleteCategoryType(typeId);
+    }, tag: "DELETE_CATEGORY_TYPE");
+    hideLoading();
+
+    await result.fold(
+      (failure) async {
+        showErrorMessage("Lỗi", "Không thể xóa nhóm danh mục: ${failure.message}");
+      },
+      (_) async {
+        await fetchData();
+        showSuccessMessage("Thành công", "Đã xóa nhóm danh mục");
+      },
+    );
+  }
+
+  Future<void> updateCategory(String categoryId, String name, String iconName, String color) async {
+    if (name.trim().isEmpty) {
+      showErrorMessage("Lỗi", "Vui lòng nhập tên danh mục");
+      return;
+    }
+
+    showLoading();
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.updateCategory(categoryId, name.trim(), iconName, color);
+    }, tag: "UPDATE_CATEGORY");
+    hideLoading();
+
+    await result.fold(
+      (failure) async {
+        showErrorMessage("Lỗi", "Không thể cập nhật danh mục: ${failure.message}");
+      },
+      (_) async {
+        Get.back(); // Đóng dialog
+        await fetchData();
+        showSuccessMessage("Thành công", "Đã cập nhật danh mục");
+      },
+    );
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    showLoading();
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.deleteCategory(categoryId);
+    }, tag: "DELETE_CATEGORY");
+    hideLoading();
+
+    await result.fold(
+      (failure) async {
+        showErrorMessage("Lỗi", "Không thể xóa danh mục: ${failure.message}");
+      },
+      (_) async {
+        await fetchData();
+        showSuccessMessage("Thành công", "Đã xóa danh mục");
       },
     );
   }

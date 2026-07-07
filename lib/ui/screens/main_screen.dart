@@ -1,9 +1,13 @@
+import "package:appintern/core/routes/app_routes.dart";
 import "package:appintern/ui/controllers/main_controller.dart";
 import "package:flutter/material.dart";
 import "package:flutter_screenutil/flutter_screenutil.dart";
 import "package:get/get.dart";
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:appintern/ui/screens/home_screen.dart';
+import 'package:appintern/ui/screens/profile_screen.dart';
+import 'package:appintern/ui/controllers/home_controller.dart';
+import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'dart:math' as math;
 
 class MainScreen extends GetView<MainController> {
@@ -13,7 +17,7 @@ class MainScreen extends GetView<MainController> {
     const HomeScreen(),
     const Text("Ví tiền"),
     const Text("Phân tích"),
-    const Text("Cá nhân"),
+    const ProfileScreen(),
   ];
 
   @override
@@ -37,6 +41,7 @@ class MainScreen extends GetView<MainController> {
                 width: 56.r, // Figma: 56px
                 height: 56.r,
                 child: FloatingActionButton(
+                  heroTag: null,
                   onPressed: controller.toggleFab,
                   backgroundColor: const Color.fromARGB(255, 235, 193, 79),
                   shape: const CircleBorder(),
@@ -148,9 +153,21 @@ class MainScreen extends GetView<MainController> {
               animValue: animValue,
               baseBottom: baseBottom,
               screenHalfWidth: screenHalfWidth,
-              onTap: () {
+              onTap: () async {
                 controller.toggleFab();
-                // TODO: Chuyển hướng
+                // Đợi hiệu ứng đóng FAB hoàn tất rồi mới Push Route
+                await Future.delayed(const Duration(milliseconds: 260));
+                
+                // Kiểm tra trước khi vào tạo giao dịch
+                if (Get.isRegistered<HomeController>()) {
+                  final homeCtrl = Get.find<HomeController>();
+                  if (homeCtrl.categories.isEmpty) {
+                    showCategoryRequiredDialog(context);
+                    return;
+                  }
+                }
+                
+                await Get.toNamed(Routes.TRANSACTION_CREATE);
               },
             ),
             _buildChildFab(
@@ -192,6 +209,7 @@ class MainScreen extends GetView<MainController> {
                     width: 56.r,
                     height: 56.r,
                     child: FloatingActionButton(
+                      heroTag: null, // TRÁNH LỖI DUPLICATE HERO TAG
                       onPressed: controller.toggleFab,
                       backgroundColor: ColorTween(
                         begin: const Color.fromARGB(255, 235, 193, 79),
@@ -251,7 +269,7 @@ class MainScreen extends GetView<MainController> {
                   width: 48.r,
                   height: 48.r,
                   child: FloatingActionButton(
-                    heroTag: label, // Tránh lỗi trùng hero tag
+                    heroTag: null, // TRÁNH LỖI DUPLICATE HERO TAG
                     onPressed: onTap,
                     backgroundColor: const Color.fromARGB(255, 235, 193, 79),
                     shape: const CircleBorder(),
@@ -273,7 +291,8 @@ class MainScreen extends GetView<MainController> {
                       color: Colors.white,
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
-                      decoration: TextDecoration.none, // Bắt buộc để xóa gạch dưới
+                      decoration:
+                          TextDecoration.none, // Bắt buộc để xóa gạch dưới
                     ),
                   ),
                 ),

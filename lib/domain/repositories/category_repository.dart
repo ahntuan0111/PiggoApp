@@ -49,49 +49,127 @@ class CategoryRepository with AppwriteErrorHandler {
     if (typeIds.isEmpty) return [];
     return handleAppwriteError(() async {
       List<CategoryModel> allCategories = [];
+      String currentMonthStr = "${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}";
+
       for (String typeId in typeIds) {
         final response = await _appwrite.tables.listRows(
           databaseId: _appwrite.databaseId,
           tableId: _appwrite.categoriesTableId,
-          queries: [Query.equal('categoryType', typeId)],
+          queries: [Query.equal('categoryTypes', typeId)],
         );
-        final cats = response.rows.map((row) => CategoryModel.fromMap(row.data)).toList();
-        allCategories.addAll(cats);
+        
+        for (var row in response.rows) {
+          CategoryModel cat = CategoryModel.fromMap(row.data);
+          
+          // Thử tìm budget của tháng hiện tại cho category này
+          final budgetResponse = await _appwrite.tables.listRows(
+            databaseId: _appwrite.databaseId,
+            tableId: _appwrite.monthlyBudgetsTableId,
+            queries: [
+              Query.equal('categories', cat.id),
+              Query.equal('monthYear', currentMonthStr),
+            ],
+          );
+
+          if (budgetResponse.rows.isNotEmpty) {
+            cat.spent = (budgetResponse.rows.first.data['spentAmount'] ?? 0).toDouble();
+          } else {
+            cat.spent = 0.0;
+          }
+
+          allCategories.add(cat);
+        }
       }
       return allCategories;
     });
   }
 
-  Future<CategoryTypeModel> createCategoryType(String userId, String name, int priority) async {
+  Future<CategoryTypeModel> createCategoryType(
+    String userId,
+    String name,
+    int priority,
+  ) async {
     return handleAppwriteError(() async {
       final response = await _appwrite.tables.createRow(
         databaseId: _appwrite.databaseId,
         tableId: _appwrite.categoriesTypeTableId,
         rowId: ID.unique(),
-        data: {
-          'ownerId': userId,
-          'name': name,
-          'priority': priority,
-        },
+        data: {'ownerId': userId, 'name': name, 'priority': priority},
       );
       return CategoryTypeModel.fromMap(response.data);
     });
   }
 
-  Future<CategoryModel> createCategory(String typeId, String name, String iconName, String color) async {
+  Future<CategoryModel> createCategory(
+    String typeId,
+    String name,
+    String iconName,
+    String color,
+  ) async {
     return handleAppwriteError(() async {
       final response = await _appwrite.tables.createRow(
         databaseId: _appwrite.databaseId,
         tableId: _appwrite.categoriesTableId,
         rowId: ID.unique(),
         data: {
-          'categoryType': typeId,
+          'categoryTypes': typeId,
           'name': name,
           'iconName': iconName,
           'color': color,
         },
       );
       return CategoryModel.fromMap(response.data);
+    });
+  }
+  Future<CategoryTypeModel> updateCategoryType(String typeId, String name) async {
+    return handleAppwriteError(() async {
+      final response = await _appwrite.tables.updateRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.categoriesTypeTableId,
+        rowId: typeId,
+        data: {'name': name},
+      );
+      return CategoryTypeModel.fromMap(response.data);
+    });
+  }
+
+  Future<void> deleteCategoryType(String typeId) async {
+    return handleAppwriteError(() async {
+      await _appwrite.tables.deleteRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.categoriesTypeTableId,
+        rowId: typeId,
+      );
+    });
+  }
+
+  Future<CategoryModel> updateCategory(String categoryId, String name, String iconName, String color, {double? defaultBudget}) async {
+    return handleAppwriteError(() async {
+      final data = <String, dynamic>{
+        'name': name,
+        'iconName': iconName,
+        'color': color,
+      };
+      if (defaultBudget != null) {
+        data['defaultBudget'] = defaultBudget;
+      }
+      final response = await _appwrite.tables.updateRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.categoriesTableId,
+        rowId: categoryId,
+        data: data,
+      );
+      return CategoryModel.fromMap(response.data);
+    });
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    return handleAppwriteError(() async {
+      await _appwrite.tables.deleteRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.categoriesTableId,
+        rowId: categoryId,
+      );
     });
   }
 }

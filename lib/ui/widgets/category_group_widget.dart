@@ -1,9 +1,14 @@
+import 'package:appintern/ui/controllers/category_controller.dart';
+import 'package:appintern/ui/widgets/dialogs/confirm_dialog_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/data/models/category_model.dart';
+import 'package:get/get.dart';
+import 'package:appintern/ui/widgets/add_category_bottom_sheet.dart';
+import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
-class CategoryGroupWidget extends StatelessWidget {
+class CategoryGroupWidget extends GetView<CategoryController> {
   final CategoryTypeModel type;
   final List<CategoryModel> categories;
   final VoidCallback? onAddCategoryTap;
@@ -23,10 +28,34 @@ class CategoryGroupWidget extends StatelessWidget {
         // Tiêu đề Nhóm (Mong muốn, Thiết yếu)
         Row(
           children: [
-            Icon(
-              Icons.remove_circle,
-              color: const Color(0xFFD64D4D),
-              size: 20.r,
+            GestureDetector(
+              onTap: () {
+                final isDefault = [
+                  'Cố định',
+                  'Thiết yếu',
+                  'Tiết kiệm',
+                ].contains(type.name);
+
+                final dialogContent = isDefault
+                    ? '⚠️ CẢNH BÁO: Đây là nhóm mặc định của hệ thống.\n\nBạn có chắc chắn muốn xóa nhóm "${type.name}"?\nTất cả các danh mục con bên trong cũng sẽ bị xóa vĩnh viễn.'
+                    : 'Bạn có chắc chắn muốn xóa nhóm "${type.name}"?\nTất cả các danh mục con bên trong cũng sẽ bị xóa.';
+
+                Get.dialog(
+                  ConfirmDialogWidget(
+                    title: 'Xóa nhóm danh mục',
+                    content: dialogContent,
+                    onConfirm: () {
+                      Get.back(); // Đóng dialog
+                      controller.deleteCategoryType(type.id);
+                    },
+                  ),
+                );
+              },
+              child: Icon(
+                Icons.remove_circle,
+                color: const Color(0xFFD64D4D),
+                size: 20.r,
+              ),
             ), // Nút trừ đỏ
             SizedBox(width: 8.w),
             Expanded(
@@ -98,10 +127,25 @@ class CategoryGroupWidget extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.remove_circle,
-                        color: const Color(0xFFD64D4D),
-                        size: 20.r,
+                      GestureDetector(
+                        onTap: () {
+                          Get.dialog(
+                            ConfirmDialogWidget(
+                              title: 'Xóa danh mục',
+                              content:
+                                  'Bạn có chắc chắn muốn xóa danh mục "${cat.name}" này không?',
+                              onConfirm: () {
+                                Get.back(); // Đóng dialog
+                                controller.deleteCategory(cat.id);
+                              },
+                            ),
+                          );
+                        },
+                        child: Icon(
+                          Icons.remove_circle,
+                          color: const Color(0xFFD64D4D),
+                          size: 20.r,
+                        ),
                       ),
                       SizedBox(width: 12.w),
                       Container(
@@ -110,10 +154,9 @@ class CategoryGroupWidget extends StatelessWidget {
                           color: const Color(0xFFFDEBB2),
                           borderRadius: BorderRadius.circular(8.r),
                         ),
-                        child: Text(
-                          cat.iconName,
-                          style: TextStyle(fontSize: 18.sp),
-                        ), // Tạm dùng Text cho icon
+                        child: Center(
+                          child: CustomIconWidget(iconName: cat.iconName, size: 24.sp),
+                        ),
                       ),
                       SizedBox(width: 12.w),
                       Expanded(
@@ -126,11 +169,19 @@ class CategoryGroupWidget extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Icon(
-                        Icons.menu,
-                        color: Colors.grey,
-                        size: 24.r,
-                      ), // Kéo thả
+                      GestureDetector(
+                        onTap: () {
+                          Get.bottomSheet(
+                            AddCategoryBottomSheet(
+                              type: type,
+                              existingCategory: cat,
+                            ),
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                          );
+                        },
+                        child: Icon(Icons.menu, color: Colors.grey, size: 24.r),
+                      ), // Sửa / Kéo thả
                     ],
                   ),
                 ),

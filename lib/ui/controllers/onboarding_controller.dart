@@ -40,9 +40,12 @@ class OnboardingController extends BaseController {
           final user = await authRepo.getUser();
 
           try {
-            // Tạo CategoryType mặc định theo đúng Schema mới
+            // Kiểm tra xem user đã có CategoryType nào chưa (tránh tạo trùng khi đăng nhập lại)
             final categoryRepo = Get.find<CategoryRepository>();
-            await categoryRepo.createDefaultCategoryTypes(user.$id);
+            final existingTypes = await categoryRepo.getCategoryTypes(user.$id);
+            if (existingTypes.isEmpty) {
+              await categoryRepo.createDefaultCategoryTypes(user.$id);
+            }
           } catch (createError) {
             print("Lỗi tạo mới user profile: $createError");
           }

@@ -1,3 +1,9 @@
+import 'package:appintern/ui/bindings/wallet_create_binding.dart';
+import 'package:appintern/ui/screens/wallet_create_screen.dart';
+import 'package:appintern/ui/bindings/budget_distribution_binding.dart';
+import 'package:appintern/ui/screens/transaction_create_screen.dart';
+import 'package:appintern/ui/bindings/transaction_create_binding.dart';
+import 'package:appintern/ui/screens/budget_distribution_screen.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/network/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
@@ -34,6 +40,24 @@ class AppPages {
       page: () => const CategoryScreen(),
       binding: CategoryBinding(),
       transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.WALLETCREATE,
+      page: () => const WalletCreateScreen(),
+      binding: WalletCreateBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.BUDGET_DISTRIBUTION,
+      page: () => const BudgetDistributionScreen(),
+      binding: BudgetDistributionBinding(),
+      transition: Transition.downToUp,
+    ),
+    GetPage(
+      name: Routes.TRANSACTION_CREATE,
+      page: () => const TransactionCreateScreen(),
+      binding: TransactionCreateBinding(),
+      transition: Transition.downToUp,
     ),
   ];
 }

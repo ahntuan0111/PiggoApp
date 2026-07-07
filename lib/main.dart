@@ -1,5 +1,8 @@
 import 'package:appintern/domain/repositories/auth_repository.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
+import 'package:appintern/domain/repositories/wallet_repository.dart';
+import 'package:appintern/domain/repositories/transaction_repository.dart';
+import 'package:appintern/domain/repositories/storage_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -18,6 +21,9 @@ void main() async {
   final appwriteService = Get.find<AppwriteService>();
   Get.put(AuthRepository(appwriteService));
   Get.put(CategoryRepository(appwriteService));
+  Get.put(WalletRepository(appwriteService));
+  Get.put(StorageRepository(appwriteService));
+  Get.put(TransactionRepository(appwriteService));
 
   runApp(const MyApp());
 }

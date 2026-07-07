@@ -38,6 +38,10 @@ test_key.py
 *.tar.gz
 temp_extract_function/
 
+# Các script và tài liệu ngoài lề không thuộc Flutter (như Python, Word)
+*.py
+*.docx
+
 # Bỏ qua tất cả các file Markdown
 *.md
 

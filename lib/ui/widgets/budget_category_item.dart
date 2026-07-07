@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:appintern/data/models/budget_category.dart';
+import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
 class BudgetCategoryItem extends StatelessWidget {
   final BudgetCategory category;
@@ -38,7 +39,7 @@ class BudgetCategoryItem extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Text(category.icon, style: TextStyle(fontSize: 20.sp)),
+                  child: CustomIconWidget(iconName: category.icon, size: 20.sp),
                 ),
               ),
               SizedBox(width: 12.w),
