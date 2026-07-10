@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:appintern/core/base/base_controller.dart';
-import 'package:appintern/core/network/storage_service.dart';
+import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
@@ -20,7 +20,8 @@ class TransactionCreateController extends BaseController {
   final storage = Get.find<StorageService>();
   final CategoryRepository categoryRepository = Get.find<CategoryRepository>();
   final WalletRepository walletRepository = Get.find<WalletRepository>();
-  final TransactionRepository transactionRepository = Get.find<TransactionRepository>();
+  final TransactionRepository transactionRepository =
+      Get.find<TransactionRepository>();
   final StorageRepository storageRepository = Get.find<StorageRepository>();
 
   var currentUserId = "".obs;
@@ -73,7 +74,9 @@ class TransactionCreateController extends BaseController {
   }
 
   bool isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year && date1.month == date2.month && date1.day == date2.day;
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
   }
 
   // Note
@@ -96,7 +99,11 @@ class TransactionCreateController extends BaseController {
   }
 
   void _onAmountChanged() {
-    String text = amountController.text.replaceAll('.', '').replaceAll(',', '').replaceAll('đ', '').trim();
+    String text = amountController.text
+        .replaceAll('.', '')
+        .replaceAll(',', '')
+        .replaceAll('đ', '')
+        .trim();
     if (text.isEmpty) {
       amountValue.value = 0.0;
       isValidAmount.value = true;
@@ -133,7 +140,8 @@ class TransactionCreateController extends BaseController {
 
     hideLoading();
     result.fold(
-      (failure) => showErrorMessage("Lỗi", "Không thể tải dữ liệu: ${failure.message}"),
+      (failure) =>
+          showErrorMessage("Lỗi", "Không thể tải dữ liệu: ${failure.message}"),
       (_) {},
     );
   }
@@ -147,7 +155,7 @@ class TransactionCreateController extends BaseController {
     try {
       // 1. Kiểm tra trạng thái quyền
       var status = await Permission.photos.status;
-      
+
       // 2. Nếu chưa cấp quyền, tiến hành xin quyền
       if (!status.isGranted) {
         status = await Permission.photos.request();
@@ -157,13 +165,18 @@ class TransactionCreateController extends BaseController {
       if (status.isGranted || status.isLimited) {
         // Nếu người dùng đồng ý -> mở thư viện ảnh
         final ImagePicker picker = ImagePicker();
-        final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+        final XFile? image = await picker.pickImage(
+          source: ImageSource.gallery,
+        );
         if (image != null) {
           imagePaths.add(image.path);
         }
       } else if (status.isPermanentlyDenied) {
         // Nếu người dùng từ chối vĩnh viễn -> yêu cầu vào Cài đặt
-        showErrorMessage('Quyền bị từ chối', 'Vui lòng vào Cài đặt để cấp quyền truy cập Ảnh cho ứng dụng.');
+        showErrorMessage(
+          'Quyền bị từ chối',
+          'Vui lòng vào Cài đặt để cấp quyền truy cập Ảnh cho ứng dụng.',
+        );
         await openAppSettings();
       } else {
         // Nếu người dùng bấm Từ chối (lần đầu)
@@ -210,7 +223,7 @@ class TransactionCreateController extends BaseController {
     if (selectedTab.value == 0) {
       spent += amountValue.value;
     } else {
-      spent -= amountValue.value; 
+      spent -= amountValue.value;
       if (spent < 0) spent = 0;
     }
 
@@ -225,21 +238,39 @@ class TransactionCreateController extends BaseController {
 
   Future<void> addTransaction() async {
     if (!isValidAmount.value || amountValue.value <= 0) {
-      Get.snackbar("Lỗi", "Vui lòng nhập số tiền hợp lệ", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        "Lỗi",
+        "Vui lòng nhập số tiền hợp lệ",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return;
     }
     if (selectedCategory.value == null) {
-      Get.snackbar("Lỗi", "Vui lòng chọn danh mục", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        "Lỗi",
+        "Vui lòng chọn danh mục",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return;
     }
     if (selectedWallet.value == null) {
-      Get.snackbar("Lỗi", "Vui lòng chọn ví", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        "Lỗi",
+        "Vui lòng chọn ví",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return;
     }
-    if (noteController.text.trim().isEmpty) {
-      Get.snackbar("Lỗi", "Vui lòng nhập ghi chú cho giao dịch", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
-      return;
-    }
+    // if (noteController.text.trim().isEmpty) {
+    //   Get.snackbar("Lỗi", "Vui lòng nhập ghi chú cho giao dịch", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+    //   return;
+    // }
 
     showLoading();
 
@@ -263,7 +294,7 @@ class TransactionCreateController extends BaseController {
       );
 
       final detail = TransactionDetailModel(
-        id: '', 
+        id: '',
         transactionId: '', // Repo sẽ gắn ID thực tế vào
         note: noteController.text.trim(),
         receiptFileIds: uploadedFileIds,

@@ -5,8 +5,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:get/get.dart';
-import 'package:appintern/ui/widgets/add_category_bottom_sheet.dart';
+import 'package:appintern/ui/widgets/bottom_sheet/add_category_bottom_sheet.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
+import 'package:appintern/core/routes/app_routes.dart';
 
 class CategoryGroupWidget extends GetView<CategoryController> {
   final CategoryTypeModel type;
@@ -155,17 +156,26 @@ class CategoryGroupWidget extends GetView<CategoryController> {
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Center(
-                          child: CustomIconWidget(iconName: cat.iconName, size: 24.sp),
+                          child: CustomIconWidget(
+                            iconName: cat.iconName,
+                            size: 24.sp,
+                          ),
                         ),
                       ),
                       SizedBox(width: 12.w),
                       Expanded(
-                        child: Text(
-                          cat.name,
-                          style: TextStyle(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF2E2E2E),
+                        child: GestureDetector(
+                          onTap: () {
+                            Get.toNamed(Routes.CATEGORY_DETAIL, arguments: cat);
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Text(
+                            cat.name,
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF2E2E2E),
+                            ),
                           ),
                         ),
                       ),
@@ -173,8 +183,19 @@ class CategoryGroupWidget extends GetView<CategoryController> {
                         onTap: () {
                           Get.bottomSheet(
                             AddCategoryBottomSheet(
-                              type: type,
-                              existingCategory: cat,
+                              isUpdate: true,
+                              initialName: cat.name,
+                              initialIcon: cat.iconName,
+                              title: 'Cập nhật danh mục',
+                              buttonText: 'CẬP NHẬT',
+                              onSave: (name, icon) {
+                                controller.updateCategory(
+                                  cat.id,
+                                  name,
+                                  icon,
+                                  cat.color,
+                                );
+                              },
                             ),
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,

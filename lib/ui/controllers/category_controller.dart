@@ -3,7 +3,7 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/core/network/storage_service.dart';
+import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 
@@ -94,7 +94,7 @@ class CategoryController extends BaseController {
       (_) async {
         Get.back(); // Đóng bottom sheet TRƯỚC khi gọi fetchData
         await fetchData(); // Load lại data (hàm này tự show/hide loading)
-        showSuccessMessage("Thành công", "Đã tạo nhóm danh mục mới");
+        // showSuccessMessage("Thành công", "Đã tạo nhóm danh mục mới");
       },
     );
   }
@@ -115,7 +115,7 @@ class CategoryController extends BaseController {
       await categoryRepo.createCategory(typeId, name.trim(), iconName, color);
     }, tag: "CREATE_CATEGORY");
 
-    hideLoading(); // Tắt Loading Dialog của quá trình Create
+    hideLoading();
 
     await result.fold(
       (failure) async {
@@ -124,10 +124,11 @@ class CategoryController extends BaseController {
       (_) async {
         Get.back(); // Đóng bottom sheet TRƯỚC
         await fetchData(); // Load lại data tự quản lý loading
-        showSuccessMessage("Thành công", "Đã tạo danh mục mới");
+        // showSuccessMessage("Thành công", "Đã tạo danh mục mới");
       },
     );
   }
+
   Future<void> updateCategoryType(String typeId, String name) async {
     if (name.trim().isEmpty) return;
 
@@ -139,7 +140,10 @@ class CategoryController extends BaseController {
 
     await result.fold(
       (failure) async {
-        showErrorMessage("Lỗi", "Không thể cập nhật nhóm danh mục: ${failure.message}");
+        showErrorMessage(
+          "Lỗi",
+          "Không thể cập nhật nhóm danh mục: ${failure.message}",
+        );
       },
       (_) async {
         Get.back(); // Đóng dialog
@@ -158,7 +162,10 @@ class CategoryController extends BaseController {
 
     await result.fold(
       (failure) async {
-        showErrorMessage("Lỗi", "Không thể xóa nhóm danh mục: ${failure.message}");
+        showErrorMessage(
+          "Lỗi",
+          "Không thể xóa nhóm danh mục: ${failure.message}",
+        );
       },
       (_) async {
         await fetchData();
@@ -167,7 +174,12 @@ class CategoryController extends BaseController {
     );
   }
 
-  Future<void> updateCategory(String categoryId, String name, String iconName, String color) async {
+  Future<void> updateCategory(
+    String categoryId,
+    String name,
+    String iconName,
+    String color,
+  ) async {
     if (name.trim().isEmpty) {
       showErrorMessage("Lỗi", "Vui lòng nhập tên danh mục");
       return;
@@ -175,13 +187,21 @@ class CategoryController extends BaseController {
 
     showLoading();
     final result = await ErrorHandler.execute(() async {
-      await categoryRepo.updateCategory(categoryId, name.trim(), iconName, color);
+      await categoryRepo.updateCategory(
+        categoryId,
+        name.trim(),
+        iconName,
+        color,
+      );
     }, tag: "UPDATE_CATEGORY");
     hideLoading();
 
     await result.fold(
       (failure) async {
-        showErrorMessage("Lỗi", "Không thể cập nhật danh mục: ${failure.message}");
+        showErrorMessage(
+          "Lỗi",
+          "Không thể cập nhật danh mục: ${failure.message}",
+        );
       },
       (_) async {
         Get.back(); // Đóng dialog

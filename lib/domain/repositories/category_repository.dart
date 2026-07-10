@@ -1,8 +1,8 @@
-import 'package:appintern/core/network/appwrite_service.dart';
+import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appwrite/appwrite.dart';
-import 'package:appintern/domain/repositories/appwrite_error_mixin.dart';
+import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 
 class CategoryRepository with AppwriteErrorHandler {
   final AppwriteService _appwrite;
@@ -49,7 +49,8 @@ class CategoryRepository with AppwriteErrorHandler {
     if (typeIds.isEmpty) return [];
     return handleAppwriteError(() async {
       List<CategoryModel> allCategories = [];
-      String currentMonthStr = "${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}";
+      String currentMonthStr =
+          "${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}";
 
       for (String typeId in typeIds) {
         final response = await _appwrite.tables.listRows(
@@ -57,10 +58,10 @@ class CategoryRepository with AppwriteErrorHandler {
           tableId: _appwrite.categoriesTableId,
           queries: [Query.equal('categoryTypes', typeId)],
         );
-        
+
         for (var row in response.rows) {
           CategoryModel cat = CategoryModel.fromMap(row.data);
-          
+
           // Thử tìm budget của tháng hiện tại cho category này
           final budgetResponse = await _appwrite.tables.listRows(
             databaseId: _appwrite.databaseId,
@@ -72,7 +73,8 @@ class CategoryRepository with AppwriteErrorHandler {
           );
 
           if (budgetResponse.rows.isNotEmpty) {
-            cat.spent = (budgetResponse.rows.first.data['spentAmount'] ?? 0).toDouble();
+            cat.spent = (budgetResponse.rows.first.data['spentAmount'] ?? 0)
+                .toDouble();
           } else {
             cat.spent = 0.0;
           }
@@ -121,7 +123,11 @@ class CategoryRepository with AppwriteErrorHandler {
       return CategoryModel.fromMap(response.data);
     });
   }
-  Future<CategoryTypeModel> updateCategoryType(String typeId, String name) async {
+
+  Future<CategoryTypeModel> updateCategoryType(
+    String typeId,
+    String name,
+  ) async {
     return handleAppwriteError(() async {
       final response = await _appwrite.tables.updateRow(
         databaseId: _appwrite.databaseId,
@@ -143,7 +149,13 @@ class CategoryRepository with AppwriteErrorHandler {
     });
   }
 
-  Future<CategoryModel> updateCategory(String categoryId, String name, String iconName, String color, {double? defaultBudget}) async {
+  Future<CategoryModel> updateCategory(
+    String categoryId,
+    String name,
+    String iconName,
+    String color, {
+    double? defaultBudget,
+  }) async {
     return handleAppwriteError(() async {
       final data = <String, dynamic>{
         'name': name,

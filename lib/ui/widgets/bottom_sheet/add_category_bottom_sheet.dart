@@ -7,24 +7,54 @@ import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
-class AddCategoryBottomSheet extends GetView<CategoryController> {
-  final CategoryTypeModel type;
-  final CategoryModel? existingCategory;
+class AddCategoryBottomSheet extends StatefulWidget {
+  final bool isUpdate;
+  final String initialName;
+  final String initialIcon;
+  final String title;
+  final String buttonText;
+  final Function(String name, String icon) onSave;
 
-  const AddCategoryBottomSheet({super.key, required this.type, this.existingCategory});
+  const AddCategoryBottomSheet({
+    super.key, 
+    required this.isUpdate,
+    required this.initialName,
+    required this.initialIcon,
+    required this.title,
+    required this.buttonText,
+    required this.onSave,
+  });
+
+  @override
+  State<AddCategoryBottomSheet> createState() => _AddCategoryBottomSheetState();
+}
+
+class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
+  late final TextEditingController nameController;
+  late final RxString selectedIcon;
+
+  @override
+  void initState() {
+    super.initState();
+    nameController = TextEditingController(text: widget.initialName);
+    selectedIcon = widget.initialIcon.obs;
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bool isUpdate = existingCategory != null;
-    final TextEditingController nameController = TextEditingController(text: isUpdate ? existingCategory!.name : '');
-    final RxString selectedIcon = (isUpdate ? existingCategory!.iconName : '📦').obs; 
 
     return Container(
       padding: EdgeInsets.only(
         left: 16.w,
         right: 16.w,
         top: 12.h,
-        bottom: Get.mediaQuery.viewInsets.bottom + 24.h,
+        bottom: 24.h,
       ),
       decoration: BoxDecoration(
         color: const Color(0xFFF9F7F1), // Nền màu kem nhạt giống ảnh
@@ -49,7 +79,7 @@ class AddCategoryBottomSheet extends GetView<CategoryController> {
           ),
           SizedBox(height: 24.h),
           Text(
-            isUpdate ? "Cập nhật danh mục" : "Thêm danh mục mới",
+            widget.title,
             style: TextStyle(
               fontSize: 20.sp,
               fontWeight: FontWeight.w500,
@@ -140,20 +170,7 @@ class AddCategoryBottomSheet extends GetView<CategoryController> {
             height: 48.h,
             child: ElevatedButton(
               onPressed: () {
-                if (isUpdate) {
-                  controller.updateCategory(
-                    existingCategory!.id,
-                    nameController.text,
-                    selectedIcon.value,
-                    existingCategory!.color, // Giữ màu cũ
-                  );
-                } else {
-                  controller.createCategory(
-                    type.id,
-                    nameController.text,
-                    selectedIcon.value,
-                  );
-                }
+                widget.onSave(nameController.text, selectedIcon.value);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF9C03C), // Màu vàng
@@ -163,7 +180,7 @@ class AddCategoryBottomSheet extends GetView<CategoryController> {
                 elevation: 0,
               ),
               child: Text(
-                isUpdate ? "CẬP NHẬT" : "LƯU",
+                widget.buttonText,
                 style: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,

@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:appintern/core/network/appwrite_service.dart';
-import 'package:appintern/domain/repositories/appwrite_error_mixin.dart';
+import 'package:appintern/core/services/appwrite_service.dart';
+import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart';
 import 'package:appwrite/models.dart';

@@ -47,3 +47,5 @@ temp_extract_function/
 
 # Nhưng bắt buộc giữ lại file README.md
 !README.md
+
+anti/

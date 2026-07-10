@@ -1,6 +1,6 @@
 import 'package:appwrite/appwrite.dart';
-import 'package:appintern/core/network/appwrite_service.dart';
-import 'package:appintern/domain/repositories/appwrite_error_mixin.dart';
+import 'package:appintern/core/services/appwrite_service.dart';
+import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/wallet_model.dart';
@@ -9,9 +9,10 @@ import 'dart:async';
 
 class TransactionRepository with AppwriteErrorHandler {
   final AppwriteService _appwrite;
-  
+
   // Rule 2C: Sử dụng Stream từ Repository để báo hiệu thay đổi dữ liệu
-  final StreamController<void> _transactionUpdatedController = StreamController<void>.broadcast();
+  final StreamController<void> _transactionUpdatedController =
+      StreamController<void>.broadcast();
   Stream<void> get onTransactionUpdated => _transactionUpdatedController.stream;
 
   TransactionRepository(this._appwrite);
@@ -35,7 +36,8 @@ class TransactionRepository with AppwriteErrorHandler {
 
       // 2. Tạo bản ghi TransactionDetail
       final detailData = transactionDetail.toMap();
-      detailData['transactions'] = newTxId; // Sử dụng đúng tên Relationship là 'transactions'
+      detailData['transactions'] =
+          newTxId; // Sử dụng đúng tên Relationship là 'transactions'
 
       await _appwrite.tables.createRow(
         databaseId: _appwrite.databaseId,
@@ -60,10 +62,13 @@ class TransactionRepository with AppwriteErrorHandler {
       );
 
       // 4. Cập nhật số tiền đã tiêu (MonthlyBudgets spentAmount)
-      double amountChange = transaction.type == 'EXPENSE' ? transaction.amount : -transaction.amount;
-      
+      double amountChange = transaction.type == 'EXPENSE'
+          ? transaction.amount
+          : -transaction.amount;
+
       // Định dạng tháng hiện tại (vd: "07-2026")
-      String monthYearStr = "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
+      String monthYearStr =
+          "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
 
       // Thử tìm MonthlyBudget của category này trong tháng
       final budgetResponse = await _appwrite.tables.listRows(
@@ -78,7 +83,8 @@ class TransactionRepository with AppwriteErrorHandler {
       if (budgetResponse.rows.isNotEmpty) {
         // Đã có budget -> Cập nhật spentAmount
         final existingBudget = budgetResponse.rows.first;
-        double currentSpent = (existingBudget.data['spentAmount'] ?? 0).toDouble();
+        double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
+            .toDouble();
         double newSpent = currentSpent + amountChange;
         if (newSpent < 0) newSpent = 0;
 
@@ -109,6 +115,58 @@ class TransactionRepository with AppwriteErrorHandler {
 
       // Thông báo cho các Controller đang lắng nghe (HomeController) cập nhật lại UI
       _transactionUpdatedController.add(null);
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getHistoryByCategory(
+    String categoryId, {
+    int limit = 5,
+  }) async {
+    return handleAppwriteError(() async {
+      // 1. Fetch transactions by categoryId
+      final response = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.transactionsTableId,
+        queries: [
+          Query.equal('categories', categoryId),
+          Query.orderDesc('transactionDate'),
+          Query.limit(limit),
+        ],
+      );
+
+      List<Map<String, dynamic>> results = [];
+
+      // 2. Fetch details cho từng transaction
+      // Do limit = 5 nên việc query trong vòng lặp (hoặc Future.wait) là chấp nhận được.
+      final futures = response.rows.map((row) async {
+        final tx = TransactionModel.fromMap(row.data);
+
+        final detailResponse = await _appwrite.tables.listRows(
+          databaseId: _appwrite.databaseId,
+          tableId: _appwrite.transactionDetailsTableId,
+          queries: [Query.equal('transactions', tx.id), Query.limit(1)],
+        );
+
+        TransactionDetailModel? detail;
+        if (detailResponse.rows.isNotEmpty) {
+          detail = TransactionDetailModel.fromMap(
+            detailResponse.rows.first.data,
+          );
+        }
+
+        return {'transaction': tx, 'detail': detail};
+      });
+
+      results = await Future.wait(futures);
+
+      // Sắp xếp lại vì Future.wait có thể làm mất thứ tự
+      results.sort((a, b) {
+        final txA = a['transaction'] as TransactionModel;
+        final txB = b['transaction'] as TransactionModel;
+        return txB.transactionDate.compareTo(txA.transactionDate);
+      });
+
+      return results;
     });
   }
 }

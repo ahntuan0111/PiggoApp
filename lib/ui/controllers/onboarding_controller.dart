@@ -4,7 +4,7 @@ import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'package:appintern/core/network/storage_service.dart';
+import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 
 class OnboardingController extends BaseController {

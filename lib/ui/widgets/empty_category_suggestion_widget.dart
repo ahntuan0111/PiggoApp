@@ -1,11 +1,13 @@
-import 'package:appintern/core/routes/app_routes.dart';
-import 'package:appintern/ui/controllers/home_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
 
 class EmptyCategorySuggestionWidget extends StatelessWidget {
-  const EmptyCategorySuggestionWidget({super.key});
+  final VoidCallback onSuggestionTap;
+
+  const EmptyCategorySuggestionWidget({
+    super.key,
+    required this.onSuggestionTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,13 +43,7 @@ class EmptyCategorySuggestionWidget extends StatelessWidget {
             width: double.infinity,
             height: 48.h,
             child: ElevatedButton(
-              onPressed: () async {
-                await Get.toNamed(Routes.CATEGORY);
-                // Tìm HomeController đang sống trên HomeScreen để báo tải lại data
-                if (Get.isRegistered<HomeController>()) {
-                  Get.find<HomeController>().fetchData();
-                }
-              },
+              onPressed: onSuggestionTap,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF9C03C), // Màu cam vàng
                 shape: RoundedRectangleBorder(

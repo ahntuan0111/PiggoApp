@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:appintern/domain/repositories/auth_repository.dart';
-import 'package:appintern/core/network/storage_service.dart';
+import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 
 class ProfileController extends BaseController {

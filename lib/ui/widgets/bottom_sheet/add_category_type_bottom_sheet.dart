@@ -15,7 +15,7 @@ class AddCategoryTypeBottomSheet extends GetView<CategoryController> {
         left: 16.w,
         right: 16.w,
         top: 12.h,
-        bottom: Get.mediaQuery.viewInsets.bottom + 24.h,
+        bottom: 24.h,
       ),
       decoration: BoxDecoration(
         color: Colors.white,

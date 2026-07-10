@@ -103,7 +103,7 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
               ),
             ),
           ),
-          
+
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.all(16.w),
@@ -119,7 +119,8 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             SizedBox(
-                              width: 220.w, // Tăng chiều dài để nhập được 9-10 số (100.000.000)
+                              width: 220
+                                  .w, // Tăng chiều dài để nhập được 9-10 số (100.000.000)
                               child: TextField(
                                 controller: controller.amountController,
                                 keyboardType: TextInputType.number,
@@ -128,14 +129,17 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                                   CurrencyFormatter(),
                                 ],
                                 style: TextStyle(
-                                  color: const Color(0xFF4ADE80), 
-                                  fontSize: 28.sp, // Giảm từ 32 xuống 28 để dễ nhìn và đủ chỗ
+                                  color: const Color(0xFF4ADE80),
+                                  fontSize: 28
+                                      .sp, // Giảm từ 32 xuống 28 để dễ nhìn và đủ chỗ
                                   fontWeight: FontWeight.bold,
                                 ),
                                 decoration: InputDecoration(
                                   hintText: '0',
                                   hintStyle: TextStyle(
-                                    color: const Color(0xFF4ADE80).withValues(alpha: 0.5),
+                                    color: const Color(
+                                      0xFF4ADE80,
+                                    ).withValues(alpha: 0.5),
                                   ),
                                   border: InputBorder.none,
                                   isDense: true,
@@ -161,7 +165,9 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                         Container(
                           width: 220.w,
                           height: 1,
-                          color: const Color(0xFFE57373), // Red underline like image
+                          color: const Color(
+                            0xFFE57373,
+                          ), // Red underline like image
                         ),
                         SizedBox(height: 8.h),
                         Obx(
@@ -183,7 +189,10 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                   // Wallet Selection
                   Text(
                     'Tài khoản',
-                    style: TextStyle(color: const Color(0xFF757575), fontSize: 14.sp),
+                    style: TextStyle(
+                      color: const Color(0xFF757575),
+                      fontSize: 14.sp,
+                    ),
                   ),
                   SizedBox(height: 4.h),
                   Obx(
@@ -192,7 +201,8 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                         // TODO: Open Wallet Picker BottomSheet
                       },
                       child: Text(
-                        controller.selectedWallet.value?.name ?? 'Chọn tài khoản',
+                        controller.selectedWallet.value?.name ??
+                            'Chọn tài khoản',
                         style: TextStyle(
                           color: const Color(0xFF1E1E1E),
                           fontSize: 16.sp,
@@ -206,14 +216,21 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                   // Category Selection
                   Text(
                     'Danh mục',
-                    style: TextStyle(color: const Color(0xFF757575), fontSize: 14.sp),
+                    style: TextStyle(
+                      color: const Color(0xFF757575),
+                      fontSize: 14.sp,
+                    ),
                   ),
                   SizedBox(height: 16.h),
                   Obx(() {
-                    final selectedCat = controller.selectedCategory.value; // Khai báo ngoài builder để Obx track sự thay đổi
+                    final selectedCat = controller
+                        .selectedCategory
+                        .value; // Khai báo ngoài builder để Obx track sự thay đổi
                     if (controller.categories.isEmpty) {
                       return const Center(
-                        child: CircularProgressIndicator(color: Color(0xFF4ADE80)),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF4ADE80),
+                        ),
                       );
                     }
                     return GridView.builder(
@@ -228,10 +245,13 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                       itemCount: controller.categories.length,
                       itemBuilder: (context, index) {
                         final cat = controller.categories[index];
-                        final isSelected = selectedCat?.id == cat.id; // Sử dụng biến đã lấy ở trên
+                        final isSelected =
+                            selectedCat?.id ==
+                            cat.id; // Sử dụng biến đã lấy ở trên
 
                         return GestureDetector(
-                          behavior: HitTestBehavior.opaque, // Đảm bảo bắt được mọi tap
+                          behavior: HitTestBehavior
+                              .opaque, // Đảm bảo bắt được mọi tap
                           onTap: () {
                             controller.selectedCategory.value = cat;
                           },
@@ -242,31 +262,45 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                                 children: [
                                   AnimatedContainer(
                                     duration: const Duration(milliseconds: 200),
-                                    width: 48.w, // Cố định kích thước để không bị lỗi Overflow
+                                    width: 48
+                                        .w, // Cố định kích thước để không bị lỗi Overflow
                                     height: 48.w,
                                     decoration: BoxDecoration(
-                                      color: isSelected 
-                                          ? const Color(0xFFFF9800).withValues(alpha: 0.15) // Nền cam nhạt hơn
-                                          : Color(int.parse('0xFF${cat.color.replaceAll('#', '')}')).withValues(alpha: 0.15),
+                                      color: isSelected
+                                          ? const Color(0xFFFF9800).withValues(
+                                              alpha: 0.15,
+                                            ) // Nền cam nhạt hơn
+                                          : Color(
+                                              int.parse(
+                                                '0xFF${cat.color.replaceAll('#', '')}',
+                                              ),
+                                            ).withValues(alpha: 0.15),
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: isSelected ? const Color(0xFFFF9800) : Colors.transparent, // Viền cam nhạt
+                                        color: isSelected
+                                            ? const Color(0xFFFF9800)
+                                            : Colors
+                                                  .transparent, // Viền cam nhạt
                                         width: isSelected ? 2.w : 0,
                                       ),
                                       boxShadow: isSelected
                                           ? [
                                               BoxShadow(
-                                                color: const Color(0xFFFF9800).withValues(alpha: 0.3),
+                                                color: const Color(
+                                                  0xFFFF9800,
+                                                ).withValues(alpha: 0.3),
                                                 blurRadius: 8,
                                                 spreadRadius: 1,
-                                              )
+                                              ),
                                             ]
                                           : null,
                                     ),
                                     child: Center(
                                       child: CustomIconWidget(
-                                        iconName: cat.iconName, 
-                                        size: isSelected ? 24.sp : 20.sp, // Phóng to nhẹ icon bên trong
+                                        iconName: cat.iconName,
+                                        size: isSelected
+                                            ? 24.sp
+                                            : 20.sp, // Phóng to nhẹ icon bên trong
                                       ),
                                     ),
                                   ),
@@ -280,22 +314,32 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                                           color: Color(0xFFFF9800),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(Icons.check, color: Colors.white, size: 10.sp),
+                                        child: Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 10.sp,
+                                        ),
                                       ),
                                     ),
                                 ],
                               ),
                               SizedBox(height: 8.h),
-                                  Text(
-                                    cat.name,
-                                    style: TextStyle(
-                                      color: isSelected ? const Color(0xFF1E1E1E) : const Color(0xFF616161),
-                                      fontSize: 12.sp,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                    ),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                              Expanded(
+                                child: Text(
+                                  cat.name,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? const Color(0xFF1E1E1E)
+                                        : const Color(0xFF616161),
+                                    fontSize: 12.sp,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -308,15 +352,22 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                   Obx(() {
                     if (controller.selectedCategory.value != null) {
                       final isOver = controller.isOverBudget;
-                      final progressColor = isOver ? Colors.red : const Color(0xFF4CAF50); // Màu xanh đậm hơn chút cho dễ nhìn
-                      
+                      final progressColor = isOver
+                          ? Colors.red
+                          : const Color(
+                              0xFF4CAF50,
+                            ); // Màu xanh đậm hơn chút cho dễ nhìn
+
                       return Container(
                         margin: EdgeInsets.only(top: 16.h, bottom: 24.h),
                         padding: EdgeInsets.all(16.w),
                         decoration: BoxDecoration(
-                          color: Colors.white, // Thay màu nền đậm thành màu trắng
+                          color:
+                              Colors.white, // Thay màu nền đậm thành màu trắng
                           borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(color: const Color(0xFFE0E0E0)), // Viền nhẹ
+                          border: Border.all(
+                            color: const Color(0xFFE0E0E0),
+                          ), // Viền nhẹ
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,20 +378,44 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Đã tiêu', style: TextStyle(fontSize: 12.sp, color: const Color(0xFF757575))),
                                     Text(
-                                      controller.formatCurrency(controller.currentSpent),
-                                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: const Color(0xFF1E1E1E)),
+                                      'Đã tiêu',
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        color: const Color(0xFF757575),
+                                      ),
+                                    ),
+                                    Text(
+                                      controller.formatCurrency(
+                                        controller.currentSpent,
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF1E1E1E),
+                                      ),
                                     ),
                                   ],
                                 ),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text('Còn lại', style: TextStyle(fontSize: 12.sp, color: const Color(0xFF757575))),
                                     Text(
-                                      controller.formatCurrency(controller.currentRemaining),
-                                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: progressColor),
+                                      'Còn lại',
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        color: const Color(0xFF757575),
+                                      ),
+                                    ),
+                                    Text(
+                                      controller.formatCurrency(
+                                        controller.currentRemaining,
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: progressColor,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -349,8 +424,12 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                             SizedBox(height: 12.h),
                             LinearProgressIndicator(
                               value: controller.currentProgress,
-                              backgroundColor: Colors.black.withValues(alpha: 0.1),
-                              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.1,
+                              ),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                progressColor,
+                              ),
                               minHeight: 6.h,
                               borderRadius: BorderRadius.circular(4.r),
                             ),
@@ -370,14 +449,22 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                     final twoDaysAgo = today.subtract(const Duration(days: 2));
 
                     Widget buildDateOption(DateTime date, String label) {
-                      final isSelected = controller.isSameDay(controller.selectedDate.value, date);
+                      final isSelected = controller.isSameDay(
+                        controller.selectedDate.value,
+                        date,
+                      );
                       return GestureDetector(
                         onTap: () => controller.setDate(date),
                         child: Container(
                           margin: EdgeInsets.only(right: 8.w),
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 6.h,
+                          ),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF4CAF50) : Colors.transparent,
+                            color: isSelected
+                                ? const Color(0xFF4CAF50)
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(4.r),
                           ),
                           child: Column(
@@ -385,7 +472,9 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                               Text(
                                 DateFormat('dd/M').format(date),
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : const Color(0xFF757575),
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF757575),
                                   fontSize: 14.sp,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -393,7 +482,9 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                               Text(
                                 label,
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : const Color(0xFF757575),
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF757575),
                                   fontSize: 12.sp,
                                 ),
                               ),
@@ -404,9 +495,19 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                     }
 
                     // Kiểm tra xem ngày hiện tại có nằm trong 3 ngày gợi ý không
-                    bool isCustomDate = !controller.isSameDay(controller.selectedDate.value, today) &&
-                                        !controller.isSameDay(controller.selectedDate.value, yesterday) &&
-                                        !controller.isSameDay(controller.selectedDate.value, twoDaysAgo);
+                    bool isCustomDate =
+                        !controller.isSameDay(
+                          controller.selectedDate.value,
+                          today,
+                        ) &&
+                        !controller.isSameDay(
+                          controller.selectedDate.value,
+                          yesterday,
+                        ) &&
+                        !controller.isSameDay(
+                          controller.selectedDate.value,
+                          twoDaysAgo,
+                        );
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -417,7 +518,10 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                             child: Row(
                               children: [
                                 if (isCustomDate)
-                                  buildDateOption(controller.selectedDate.value, 'đã chọn'),
+                                  buildDateOption(
+                                    controller.selectedDate.value,
+                                    'đã chọn',
+                                  ),
                                 buildDateOption(today, 'hôm nay'),
                                 buildDateOption(yesterday, 'hôm qua'),
                                 buildDateOption(twoDaysAgo, 'hai ngày trư..'),
@@ -428,7 +532,11 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                         SizedBox(width: 16.w),
                         GestureDetector(
                           onTap: () => controller.pickDate(context),
-                          child: Icon(Icons.calendar_month, color: const Color(0xFF4CAF50), size: 28.sp),
+                          child: Icon(
+                            Icons.calendar_month,
+                            color: const Color(0xFF4CAF50),
+                            size: 28.sp,
+                          ),
                         ),
                       ],
                     );
@@ -438,14 +546,22 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                   // Note
                   Text(
                     'Ghi chú',
-                    style: TextStyle(color: const Color(0xFF757575), fontSize: 14.sp),
+                    style: TextStyle(
+                      color: const Color(0xFF757575),
+                      fontSize: 14.sp,
+                    ),
                   ),
                   TextField(
                     controller: controller.noteController,
-                    style: TextStyle(color: const Color(0xFF1E1E1E), fontSize: 14.sp),
+                    style: TextStyle(
+                      color: const Color(0xFF1E1E1E),
+                      fontSize: 14.sp,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Ghi chú',
-                      hintStyle: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
+                      hintStyle: TextStyle(
+                        color: Colors.grey.withValues(alpha: 0.5),
+                      ),
                       enabledBorder: const UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey),
                       ),
@@ -459,7 +575,10 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                   // Images
                   Text(
                     'Ảnh',
-                    style: TextStyle(color: const Color(0xFF757575), fontSize: 14.sp),
+                    style: TextStyle(
+                      color: const Color(0xFF757575),
+                      fontSize: 14.sp,
+                    ),
                   ),
                   SizedBox(height: 8.h),
                   Obx(
@@ -473,7 +592,9 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8.r),
                               image: DecorationImage(
-                                image: FileImage(File(controller.imagePaths[index])),
+                                image: FileImage(
+                                  File(controller.imagePaths[index]),
+                                ),
                                 fit: BoxFit.cover,
                               ),
                             ),
@@ -488,7 +609,11 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                                     color: Colors.black54,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: Icon(Icons.close, color: Colors.white, size: 16.sp),
+                                  child: Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 16.sp,
+                                  ),
                                 ),
                               ),
                             ),
@@ -501,11 +626,17 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                               width: 80.w,
                               height: 80.w,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE0E0E0), // Nền xám nhạt cho nút thêm ảnh
+                                color: const Color(
+                                  0xFFE0E0E0,
+                                ), // Nền xám nhạt cho nút thêm ảnh
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Center(
-                                child: Icon(Icons.add, color: const Color(0xFF616161), size: 32.sp), // Icon màu xám đậm
+                                child: Icon(
+                                  Icons.add,
+                                  color: const Color(0xFF616161),
+                                  size: 32.sp,
+                                ), // Icon màu xám đậm
                               ),
                             ),
                           );

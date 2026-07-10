@@ -3,14 +3,15 @@ import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/domain/repositories/storage_repository.dart';
+import 'package:appintern/core/services/budget_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/routes/app_pages.dart';
-import 'core/network/appwrite_service.dart';
-import 'core/network/storage_service.dart';
+import 'core/services/appwrite_service.dart';
+import 'core/services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,9 @@ void main() async {
   Get.put(WalletRepository(appwriteService));
   Get.put(StorageRepository(appwriteService));
   Get.put(TransactionRepository(appwriteService));
+
+  // Services
+  Get.put(BudgetService());
 
   runApp(const MyApp());
 }

@@ -1,0 +1,331 @@
+import 'package:appintern/ui/widgets/bottom_sheet/add_category_bottom_sheet.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:appintern/ui/controllers/category_detail_controller.dart';
+import 'package:appintern/ui/widgets/history_transaction_item.dart';
+import 'package:appintern/ui/widgets/custom_icon_widget.dart';
+import 'package:appintern/ui/widgets/bottom_sheet/edit_money_distribution.dart';
+import 'package:appintern/core/services/budget_service.dart';
+import 'package:intl/intl.dart';
+
+class CategoryDetailScreen extends GetView<CategoryDetailController> {
+  const CategoryDetailScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final formatter = NumberFormat('#,###', 'vi_VN');
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFDFBF4),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(4.r),
+            decoration: const BoxDecoration(
+              color: Color(0xFFBDBDBD),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.close, color: Colors.white, size: 16),
+          ),
+          onPressed: () => Get.back(),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit, color: Color(0xFF8D6E63)),
+            onPressed: () {
+              Get.bottomSheet(
+                AddCategoryBottomSheet(
+                  isUpdate: true,
+                  initialName: controller.category.name,
+                  initialIcon: controller.category.iconName,
+                  title: 'Cập nhật danh mục',
+                  buttonText: 'CẬP NHẬT',
+                  onSave: (name, icon) {
+                    controller.updateCategory(name, icon);
+                  },
+                ),
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+              );
+            },
+          ),
+        ],
+      ),
+      body: GetBuilder<CategoryDetailController>(
+        builder: (controller) => SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Tiêu đề: Icon + Tên + Tag
+            Row(
+              children: [
+                CustomIconWidget(
+                  iconName: controller.category.iconName,
+                  size: 24.sp,
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    controller.category.name,
+                    maxLines: 1, // Giới hạn 1 dòng
+                    overflow:
+                        TextOverflow.ellipsis, // Thêm "..." nếu text quá dài
+                    style: TextStyle(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1E1E1E),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF9C4), // Vàng nhạt
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
+                  child: Text(
+                    // Giả định loại là chi tiêu, nếu có categoryType thì map đúng tên
+                    'Chi tiêu',
+                    style: TextStyle(
+                      fontSize: 10.sp,
+                      color: const Color(0xFFF57F17),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 24.h),
+
+            // Card 1: Số tiền phân bổ
+            Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              child: Column(
+                children: [
+                  _buildMoneyRow(
+                    'Số tiền đã phân bổ',
+                    '${formatter.format(controller.category.defaultBudget.toInt())}đ',
+                    const Color(0xFF1E1E1E),
+                    FontWeight.w500,
+                  ),
+                  SizedBox(height: 12.h),
+                  _buildMoneyRow(
+                    'Số tiền đã tiêu',
+                    '${formatter.format(controller.category.spent.toInt())}đ',
+                    const Color(0xFF1E1E1E),
+                    FontWeight.w500,
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    child: Divider(color: const Color(0xFFEEEEEE), height: 1.h),
+                  ),
+                  _buildMoneyRow(
+                    'Còn lại',
+                    '${formatter.format(controller.category.remaining.toInt())}đ',
+                    const Color(0xFF43A047), // Màu xanh
+                    FontWeight.bold,
+                  ),
+                  SizedBox(height: 24.h),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48.h,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFB74D), // Vàng cam
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Get.bottomSheet(
+                          EditMoneyDistributionBottomSheet(
+                            initialAllocated: controller.category.defaultBudget,
+                            unallocatedAmount: Get.find<BudgetService>().unallocatedAmount.value,
+                            categoryGroups: Get.find<BudgetService>().categoryGroups,
+                            currentCategoryId: controller.category.id,
+                            onSave: (newBudget, {sourceCategoryId, sourceCategoryNewBudget}) {
+                              Get.back(); // close bottom sheet
+                              controller.updateBudget(
+                                newBudget,
+                                sourceCategoryId: sourceCategoryId,
+                                sourceCategoryNewBudget: sourceCategoryNewBudget,
+                              );
+                            },
+                          ),
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                        );
+                      },
+                      child: Text(
+                        'SỬA SỐ TIỀN PHÂN BỔ',
+                        style: TextStyle(
+                          color: const Color(0xFF1E1E1E),
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 24.h),
+
+            // Card 2: Lịch sử
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Lịch sử',
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF1E1E1E),
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  Obx(() {
+                    if (controller.isLoadingHistory.value) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (controller.historyList.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20.h),
+                          child: Text(
+                            'Chưa có giao dịch nào',
+                            style: TextStyle(
+                              color: const Color(0xFF757575),
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: List.generate(controller.historyList.length, (
+                        index,
+                      ) {
+                        final item = controller.historyList[index];
+                        return HistoryTransactionItem(
+                          categoryName: item['categoryName'],
+                          note: item['note'],
+                          walletName: item['walletName'],
+                          amount: item['amount'],
+                          type: item['type'],
+                          date: item['date'],
+                        );
+                      }),
+                    );
+                  }),
+                  SizedBox(height: 16.h),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        Get.snackbar("Lịch sử", "Xem tất cả đang phát triển");
+                      },
+                      child: Text(
+                        'Xem tất cả',
+                        style: TextStyle(
+                          color: const Color(0xFF9E9E9E),
+                          fontSize: 14.sp,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 32.h),
+
+            // Nút xóa
+            Container(
+              width: double.infinity,
+              height: 48.h,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: TextButton.icon(
+                onPressed: controller.deleteCategory,
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFE53935),
+                  size: 20,
+                ),
+                label: Text(
+                  'XÓA DANH MỤC',
+                  style: TextStyle(
+                    color: const Color(0xFFE53935),
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 24.h),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _buildMoneyRow(
+    String label,
+    String value,
+    Color valueColor,
+    FontWeight valueWeight,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 14.sp, color: const Color(0xFF424242)),
+        ),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: value.substring(0, value.length - 1),
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  color: valueColor,
+                  fontWeight: valueWeight,
+                ),
+              ),
+              TextSpan(
+                text: 'đ',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  color: valueColor,
+                  fontWeight: valueWeight,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -39,7 +39,10 @@ class MoneyDistributionCategoryItem extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: CustomIconWidget(iconName: category.iconName, size: 20.sp),
+                  child: CustomIconWidget(
+                    iconName: category.iconName,
+                    size: 20.sp,
+                  ),
                 ),
               ),
               SizedBox(width: 12.w),
@@ -57,11 +60,6 @@ class MoneyDistributionCategoryItem extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-              Icon(
-                Icons.arrow_drop_down,
-                color: const Color(0xFF1E1E1E),
-                size: 24.sp,
               ),
             ],
           ),

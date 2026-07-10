@@ -15,7 +15,9 @@ class HomeScreen extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1), // Nền kem sáng nhạt giống ảnh
-      body: CustomScrollView(
+      body: RefreshIndicator(
+        onRefresh: controller.fetchData,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Stack(
@@ -260,7 +262,12 @@ class HomeScreen extends GetView<HomeController> {
               }
 
               if (controller.categories.isEmpty) {
-                return const EmptyCategorySuggestionWidget();
+                return EmptyCategorySuggestionWidget(
+                  onSuggestionTap: () async {
+                    await Get.toNamed(Routes.CATEGORY);
+                    controller.fetchData();
+                  },
+                );
               }
 
               return Column(
@@ -296,6 +303,15 @@ class HomeScreen extends GetView<HomeController> {
                                   formattedRemaining: controller.formatCurrency(
                                     cat.remaining,
                                   ),
+                                  onTap: () {
+                                    Get.toNamed(
+                                      Routes.CATEGORY_DETAIL,
+                                      arguments: cat.categoryModel,
+                                    );
+                                  },
+                                  onEdit: () {
+                                    Get.snackbar('Thông báo', 'Tính năng đang phát triển. Bạn sẽ thay bằng màn hình mới ở đây.');
+                                  },
                                 );
                               }).toList(),
                             ),
@@ -311,6 +327,7 @@ class HomeScreen extends GetView<HomeController> {
           ),
           SliverToBoxAdapter(child: SizedBox(height: 80.h)),
         ],
+      ),
       ),
     );
   }

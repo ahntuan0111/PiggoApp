@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
-import 'package:appintern/core/network/storage_service.dart';
+import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 

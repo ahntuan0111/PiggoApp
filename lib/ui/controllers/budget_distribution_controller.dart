@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
-import 'package:appintern/core/network/storage_service.dart';
+import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
@@ -175,7 +175,8 @@ class BudgetDistributionController extends BaseController {
     }
 
     allocatedAmount.value = currentAllocated;
-    unallocatedAmount.value = totalWalletBalance.value - currentRemainingBudgets;
+    unallocatedAmount.value =
+        totalWalletBalance.value - currentRemainingBudgets;
   }
 
   Future<void> saveBudgets() async {

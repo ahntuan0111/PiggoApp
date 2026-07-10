@@ -1,10 +1,14 @@
+import 'package:appintern/data/models/category_model.dart';
+
 class BudgetCategory {
+  final CategoryModel categoryModel;
   final String icon;
   final String name;
   final double allocated;
   final double spent;
 
   BudgetCategory({
+    required this.categoryModel,
     required this.icon,
     required this.name,
     required this.allocated,

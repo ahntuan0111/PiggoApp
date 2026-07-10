@@ -4,8 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/category_controller.dart';
 import 'package:appintern/ui/widgets/category_group_widget.dart';
-import 'package:appintern/ui/widgets/add_category_type_bottom_sheet.dart';
-import 'package:appintern/ui/widgets/add_category_bottom_sheet.dart';
+import 'package:appintern/ui/widgets/bottom_sheet/add_category_type_bottom_sheet.dart';
+import 'package:appintern/ui/widgets/bottom_sheet/add_category_bottom_sheet.dart';
 
 class CategoryScreen extends GetView<CategoryController> {
   const CategoryScreen({super.key});
@@ -38,21 +38,21 @@ class CategoryScreen extends GetView<CategoryController> {
                   ),
 
                   // Chữ LƯU màu vàng
-                  TextButton(
-                    onPressed: () {
-                      // TODO: Save logic
-                      Get.back();
-                    },
-                    child: Text(
-                      "LƯU",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFC49A45), // Màu vàng đồng
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
+                  // TextButton(
+                  //   onPressed: () {
+                  //     // TODO: Save logic
+                  //     Get.back();
+                  //   },
+                  //   child: Text(
+                  //     "LƯU",
+                  //     style: TextStyle(
+                  //       fontSize: 16.sp,
+                  //       fontWeight: FontWeight.bold,
+                  //       color: const Color(0xFFC49A45), // Màu vàng đồng
+                  //       letterSpacing: 1.2,
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -113,9 +113,6 @@ class CategoryScreen extends GetView<CategoryController> {
             // 4. Danh sách các nhóm
             Expanded(
               child: Obx(() {
-                // LƯU Ý QUAN TRỌNG: Phải đọc categories ở ngoài itemBuilder
-                // để GetX Obx có thể track được sự thay đổi của danh sách categories.
-                // Nếu chỉ đọc trong itemBuilder, Obx sẽ không rebuild khi categories thay đổi!
                 final currentCategories = controller.categories.toList();
 
                 if (controller.categoryTypes.isEmpty) {
@@ -153,6 +150,7 @@ class CategoryScreen extends GetView<CategoryController> {
       ),
     );
   }
+
   void _showAddCategoryTypeBottomSheet() {
     Get.bottomSheet(
       const AddCategoryTypeBottomSheet(),
@@ -163,10 +161,18 @@ class CategoryScreen extends GetView<CategoryController> {
 
   void _showAddCategoryBottomSheet(CategoryTypeModel type) {
     Get.bottomSheet(
-      AddCategoryBottomSheet(type: type),
+      AddCategoryBottomSheet(
+        isUpdate: false,
+        initialName: '',
+        initialIcon: '',
+        title: 'Thêm danh mục mới',
+        buttonText: 'LƯU',
+        onSave: (name, icon) {
+          controller.createCategory(type.id, name, icon);
+        },
+      ),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
     );
   }
 }
-
