@@ -3,6 +3,7 @@ import "package:get/get.dart";
 import "dart:math" as math;
 import "package:flutter_screenutil/flutter_screenutil.dart";
 import '../controllers/onboarding_controller.dart';
+import 'package:appintern/core/constants/app_assets.dart';
 
 class OnboardingScreen extends GetView<OnboardingController> {
   const OnboardingScreen({super.key});
@@ -26,10 +27,12 @@ class OnboardingScreen extends GetView<OnboardingController> {
                       top: 26.h,
                       left: 33.w,
                       child: Image.asset(
-                        'assets/images/image_onboarding.png',
+                        AppAssets.imageOnboarding,
                         width: 296.w,
                         height: 321.h,
                         fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Icon(Icons.broken_image, size: 100.w, color: Colors.grey),
                       ),
                     ),
                   ],

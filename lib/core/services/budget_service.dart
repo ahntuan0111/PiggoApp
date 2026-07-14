@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'dart:math' as math;
 import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/data/models/budget_category.dart';
+import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
@@ -24,6 +25,7 @@ class BudgetService extends GetxService {
 
   final categories = <BudgetCategory>[].obs;
   final categoryGroups = <BudgetCategoryGroup>[].obs;
+  final wallets = <WalletModel>[].obs;
 
   var isDataLoaded = false.obs;
   var isError = false.obs;
@@ -93,8 +95,9 @@ class BudgetService extends GetxService {
         categoryGroups.clear();
       }
 
-      final wallets = await walletRepository.getWallets(userId);
-      totalWalletBalance.value = wallets.fold(0.0, (sum, w) => sum + w.balance);
+      final fetchedWallets = await walletRepository.getWallets(userId);
+      wallets.value = fetchedWallets;
+      totalWalletBalance.value = fetchedWallets.fold(0.0, (sum, w) => sum + w.balance);
 
       double totalRemainingBudgets = categories.fold(
         0.0,

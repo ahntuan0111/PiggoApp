@@ -9,6 +9,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
   final double unallocatedAmount;
   final List<BudgetCategoryGroup> categoryGroups;
   final String currentCategoryId;
+  final List<String> excludeCategoryIds;
   final Function(String sourceId, String sourceName, double availableAmount, String iconName) onSelected;
 
   const SelectSourceBottomSheet({
@@ -16,6 +17,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
     required this.unallocatedAmount,
     required this.categoryGroups,
     required this.currentCategoryId,
+    this.excludeCategoryIds = const [],
     required this.onSelected,
   });
 
@@ -123,7 +125,8 @@ class SelectSourceBottomSheet extends StatelessWidget {
             child: ListView(
               children: [
                 // Unallocated money option
-                GestureDetector(
+                if (!excludeCategoryIds.contains('unallocated'))
+                  GestureDetector(
                   onTap: () {
                     onSelected('unallocated', 'Tiền chưa có việc', unallocatedAmount, '💰');
                     Get.back();
@@ -192,7 +195,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
                       ),
                       SizedBox(height: 12.h),
                       ...group.categories
-                          .where((c) => c.categoryModel.id != currentCategoryId)
+                          .where((c) => c.categoryModel.id != currentCategoryId && !excludeCategoryIds.contains(c.categoryModel.id))
                           .map((category) {
                         return GestureDetector(
                           onTap: () {

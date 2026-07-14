@@ -177,6 +177,38 @@ class CategoryRepository with AppwriteErrorHandler {
 
   Future<void> deleteCategory(String categoryId) async {
     return handleAppwriteError(() async {
+      // 1. Tìm tất cả các giao dịch liên kết với danh mục này và ngắt liên kết (categories = null)
+      final txResponse = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.transactionsTableId,
+        queries: [Query.equal('categories', categoryId)],
+      );
+      
+      for (var row in txResponse.rows) {
+        await _appwrite.tables.updateRow(
+          databaseId: _appwrite.databaseId,
+          tableId: _appwrite.transactionsTableId,
+          rowId: row.$id,
+          data: {'categories': null},
+        );
+      }
+
+      // 2. Tìm tất cả MonthlyBudget liên kết với danh mục này và xóa chúng
+      final budgetResponse = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.monthlyBudgetsTableId,
+        queries: [Query.equal('categories', categoryId)],
+      );
+
+      for (var row in budgetResponse.rows) {
+        await _appwrite.tables.deleteRow(
+          databaseId: _appwrite.databaseId,
+          tableId: _appwrite.monthlyBudgetsTableId,
+          rowId: row.$id,
+        );
+      }
+
+      // 3. Xóa danh mục
       await _appwrite.tables.deleteRow(
         databaseId: _appwrite.databaseId,
         tableId: _appwrite.categoriesTableId,

@@ -1,7 +1,9 @@
 import 'dart:async';
-
+import 'package:flutter/material.dart';
+import 'package:appintern/core/routes/app_routes.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/core/services/storage_service.dart';
+import 'package:appintern/ui/widgets/dialogs/budget_warning_dialog.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/constants/app_keys.dart';
@@ -21,6 +23,10 @@ class HomeController extends BaseController with BudgetAware {
   RxList<BudgetCategory> get categories => budgetService.categories;
   RxList<BudgetCategoryGroup> get categoryGroups =>
       budgetService.categoryGroups;
+
+  int get overspentCategoriesCount {
+    return categories.where((cat) => cat.remaining < 0).length;
+  }
 
   final currentMonth = 'Tháng 7 2026'.obs;
 
@@ -66,5 +72,9 @@ class HomeController extends BaseController with BudgetAware {
           (Match m) => '${m[1]}.',
         ) +
         'đ';
+  }
+
+  void showWarningDialog() {
+    Get.dialog(BudgetWarningDialog(unallocatedAmount: unallocatedAmount.value));
   }
 }

@@ -174,7 +174,7 @@ class BudgetDistributionController extends BaseController {
       currentAllocated += groupAllocated;
     }
 
-    allocatedAmount.value = currentAllocated;
+    allocatedAmount.value = currentRemainingBudgets;
     unallocatedAmount.value =
         totalWalletBalance.value - currentRemainingBudgets;
   }

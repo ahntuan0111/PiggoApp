@@ -10,6 +10,7 @@ import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/services/budget_service.dart';
+import 'package:appwrite/appwrite.dart';
 
 class CategoryDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
@@ -170,5 +171,22 @@ class CategoryDetailController extends BaseController with BudgetAware {
     });
   }
 
-  void deleteCategory() {}
+  Future<void> deleteCategory() async {
+    showLoading();
+    final result = await ErrorHandler.execute(() async {
+      await _categoryRepo.deleteCategory(category.id);
+    }, tag: "DELETE_CATEGORY");
+    hideLoading();
+
+    await result.fold(
+      (failure) async {
+        showErrorMessage("Lỗi", "Không thể xóa danh mục: ${failure.message}");
+      },
+      (_) async {
+        refreshBudget(); // Đồng bộ lại Service
+        Get.back(result: true); // Quay lại trang trước và báo refresh
+        showSuccessMessage("Thành công", "Đã xóa danh mục");
+      },
+    );
+  }
 }

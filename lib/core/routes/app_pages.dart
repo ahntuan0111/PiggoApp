@@ -16,6 +16,18 @@ import '../../ui/bindings/main_binding.dart';
 import '../../ui/bindings/category_binding.dart';
 import '../../ui/screens/category_detail_screen.dart';
 import '../../ui/bindings/category_detail_binding.dart';
+import '../../ui/screens/overspent_compensation_screen.dart';
+import '../../ui/bindings/overspent_compensation_binding.dart';
+import '../../ui/screens/overspent_list_screen.dart';
+import '../../ui/bindings/overspent_list_binding.dart';
+import '../../ui/screens/transaction_history_screen.dart';
+import '../../ui/bindings/transaction_history_binding.dart';
+import '../../ui/screens/goal_screen.dart';
+import '../../ui/bindings/goal_binding.dart';
+import '../../ui/screens/goal_create_screen.dart';
+import '../../ui/bindings/goal_create_binding.dart';
+import '../../ui/screens/goal_detail_screen.dart';
+import '../../ui/bindings/goal_detail_binding.dart';
 
 class AppPages {
   static String get INITIAL {
@@ -65,6 +77,42 @@ class AppPages {
       name: Routes.CATEGORY_DETAIL,
       page: () => const CategoryDetailScreen(),
       binding: CategoryDetailBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.OVERSPENT_COMPENSATION,
+      page: () => const OverspentCompensationScreen(),
+      binding: OverspentCompensationBinding(),
+      transition: Transition.rightToLeft, // maybe downToUp?
+    ),
+    GetPage(
+      name: Routes.OVERSPENT_LIST,
+      page: () => const OverspentListScreen(),
+      binding: OverspentListBinding(),
+      transition: Transition.downToUp,
+    ),
+    GetPage(
+      name: Routes.TRANSACTION_HISTORY,
+      page: () => const TransactionHistoryScreen(),
+      binding: TransactionHistoryBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.GOAL,
+      page: () => const GoalScreen(),
+      binding: GoalBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.GOAL_CREATE,
+      page: () => const GoalCreateScreen(),
+      binding: GoalCreateBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.GOAL_DETAIL,
+      page: () => const GoalDetailScreen(),
+      binding: GoalDetailBinding(),
       transition: Transition.rightToLeft,
     ),
   ];

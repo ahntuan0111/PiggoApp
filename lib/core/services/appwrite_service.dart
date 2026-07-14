@@ -33,6 +33,7 @@ class AppwriteService extends GetxService {
   final String transactionsTableId = 'transactions_';
   final String transactionDetailsTableId = 'transactiondetails';
   final String budgetshiStoryTableId = 'budgetshistory';
+  final String goalsTableId = 'goals';
 
   Future<AppwriteService> init() async {
     _client = Client();

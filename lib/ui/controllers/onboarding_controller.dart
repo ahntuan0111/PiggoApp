@@ -35,32 +35,46 @@ class OnboardingController extends BaseController {
         }
       },
       (_) async {
-        try {
-          // Lấy thông tin user hiện tại
-          final user = await authRepo.getUser();
+        final userResult = await ErrorHandler.execute(
+          () => authRepo.getUser(),
+          tag: 'GET_USER',
+        );
 
-          try {
-            // Kiểm tra xem user đã có CategoryType nào chưa (tránh tạo trùng khi đăng nhập lại)
+        await userResult.fold(
+          (failure) async {
+            hideLoading();
+            showErrorMessage("Lỗi", "Không thể lấy thông tin user: ${failure.message}");
+          },
+          (user) async {
             final categoryRepo = Get.find<CategoryRepository>();
-            final existingTypes = await categoryRepo.getCategoryTypes(user.$id);
-            if (existingTypes.isEmpty) {
-              await categoryRepo.createDefaultCategoryTypes(user.$id);
-            }
-          } catch (createError) {
-            print("Lỗi tạo mới user profile: $createError");
-          }
+            final typeResult = await ErrorHandler.execute(
+              () => categoryRepo.getCategoryTypes(user.$id),
+              tag: 'GET_CATEGORY_TYPES',
+            );
 
-          final storage = Get.find<StorageService>();
-          storage.write(AppKeys.isLoggedIn, true);
-          storage.write(AppKeys.userId, user.$id);
-          storage.write(AppKeys.userName, user.name);
+            await typeResult.fold(
+              (failure) async {
+                print("Lỗi lấy category types: ${failure.message}");
+              },
+              (existingTypes) async {
+                if (existingTypes.isEmpty) {
+                  await ErrorHandler.execute(
+                    () => categoryRepo.createDefaultCategoryTypes(user.$id),
+                    tag: 'CREATE_DEFAULT_TYPES',
+                  );
+                }
+              },
+            );
 
-          hideLoading();
-          Get.offAllNamed(Routes.MAIN);
-        } catch (e) {
-          hideLoading();
-          showErrorMessage("Lỗi", "Không thể lưu phiên đăng nhập: $e");
-        }
+            final storage = Get.find<StorageService>();
+            storage.write(AppKeys.isLoggedIn, true);
+            storage.write(AppKeys.userId, user.$id);
+            storage.write(AppKeys.userName, user.name);
+
+            hideLoading();
+            Get.offAllNamed(Routes.MAIN);
+          },
+        );
       },
     );
   }

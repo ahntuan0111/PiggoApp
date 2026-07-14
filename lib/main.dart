@@ -3,6 +3,7 @@ import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/domain/repositories/storage_repository.dart';
+import 'package:appintern/domain/repositories/goal_repository.dart';
 import 'package:appintern/core/services/budget_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/routes/app_pages.dart';
 import 'core/services/appwrite_service.dart';
 import 'core/services/storage_service.dart';
+import 'core/services/network_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,8 +27,10 @@ void main() async {
   Get.put(WalletRepository(appwriteService));
   Get.put(StorageRepository(appwriteService));
   Get.put(TransactionRepository(appwriteService));
+  Get.put(GoalRepository(appwriteService));
 
   // Services
+  Get.put(NetworkService());
   Get.put(BudgetService());
 
   runApp(const MyApp());

@@ -291,6 +291,7 @@ class TransactionCreateController extends BaseController {
         type: selectedTab.value == 0 ? 'EXPENSE' : 'INCOME',
         transactionDate: selectedDate.value,
         status: 'COMPLETED',
+        note: noteController.text.trim(), // Thêm trường note (Denormalized)
       );
 
       final detail = TransactionDetailModel(

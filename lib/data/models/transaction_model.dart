@@ -6,6 +6,7 @@ class TransactionModel {
   final String type; // 'EXPENSE' or 'INCOME'
   final DateTime transactionDate;
   final String status;
+  final String? note; // Denormalized field for search
 
   TransactionModel({
     required this.id,
@@ -15,6 +16,7 @@ class TransactionModel {
     required this.type,
     required this.transactionDate,
     required this.status,
+    this.note,
   });
 
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
@@ -28,17 +30,24 @@ class TransactionModel {
           ? DateTime.parse(map['transactionDate'])
           : DateTime.now(),
       status: map['status'] ?? 'COMPLETED',
+      note: map['note'],
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'wallets': walletId, // Sửa theo tên Relationship trên Appwrite
-      'categories': categoryId, // Sửa theo tên Relationship trên Appwrite
       'amount': amount,
       'type': type,
       'transactionDate': transactionDate.toIso8601String(),
       'status': status,
     };
+    if (categoryId.isNotEmpty) {
+      map['categories'] = categoryId;
+    }
+    if (note != null && note!.isNotEmpty) {
+      map['note'] = note;
+    }
+    return map;
   }
 }

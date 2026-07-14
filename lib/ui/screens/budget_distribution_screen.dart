@@ -186,7 +186,7 @@ class BudgetDistributionScreen extends GetView<BudgetDistributionController> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Tiền đã phân bổ',
+                                'Đã phân bổ (Còn lại)',
                                 style: TextStyle(
                                   color: const Color(0xFF1E1E1E),
                                   fontSize: 10.sp,

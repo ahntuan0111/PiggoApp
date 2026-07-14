@@ -118,6 +118,55 @@ class TransactionRepository with AppwriteErrorHandler {
     });
   }
 
+  Future<void> createWalletAdjustmentTransaction({
+    required TransactionModel transaction,
+    required TransactionDetailModel transactionDetail,
+    required WalletModel currentWallet,
+  }) async {
+    return handleAppwriteError(() async {
+      // 1. Tạo bản ghi Transaction (Không liên kết category)
+      final txResponse = await _appwrite.tables.createRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.transactionsTableId,
+        rowId: ID.unique(),
+        data: transaction.toMap(),
+      );
+
+      final newTxId = txResponse.$id;
+
+      // 2. Tạo bản ghi TransactionDetail
+      final detailData = transactionDetail.toMap();
+      detailData['transactions'] = newTxId;
+
+      await _appwrite.tables.createRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.transactionDetailsTableId,
+        rowId: ID.unique(),
+        data: detailData,
+      );
+
+      // 3. Cập nhật số dư Ví (Wallet Balance)
+      double newBalance = currentWallet.balance;
+      if (transaction.type == 'INCOME') {
+        newBalance += transaction.amount;
+      } else {
+        newBalance -= transaction.amount;
+      }
+
+      await _appwrite.tables.updateRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.walletsTableId,
+        rowId: currentWallet.id,
+        data: {'balance': newBalance},
+      );
+
+      // 4. Bỏ qua MonthlyBudgets vì đây là dòng tiền Unallocated
+
+      // Thông báo cập nhật
+      _transactionUpdatedController.add(null);
+    });
+  }
+
   Future<List<Map<String, dynamic>>> getHistoryByCategory(
     String categoryId, {
     int limit = 5,
@@ -166,6 +215,139 @@ class TransactionRepository with AppwriteErrorHandler {
         return txB.transactionDate.compareTo(txA.transactionDate);
       });
 
+      return results;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getHistoryByWallets(
+    List<String> walletIds, {
+    int limit = 10,
+  }) async {
+    return handleAppwriteError(() async {
+      if (walletIds.isEmpty) return [];
+
+      final response = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.transactionsTableId,
+        queries: [
+          Query.equal('wallets', walletIds),
+          Query.orderDesc('transactionDate'),
+          Query.limit(limit),
+        ],
+      );
+
+      List<Map<String, dynamic>> results = [];
+
+      final futures = response.rows.map((row) async {
+        final tx = TransactionModel.fromMap(row.data);
+
+        final detailResponse = await _appwrite.tables.listRows(
+          databaseId: _appwrite.databaseId,
+          tableId: _appwrite.transactionDetailsTableId,
+          queries: [Query.equal('transactions', tx.id), Query.limit(1)],
+        );
+
+        TransactionDetailModel? detail;
+        if (detailResponse.rows.isNotEmpty) {
+          detail = TransactionDetailModel.fromMap(
+            detailResponse.rows.first.data,
+          );
+        }
+
+        return {'transaction': tx, 'detail': detail};
+      });
+
+      results = await Future.wait(futures);
+
+      results.sort((a, b) {
+        final txA = a['transaction'] as TransactionModel;
+        final txB = b['transaction'] as TransactionModel;
+        return txB.transactionDate.compareTo(txA.transactionDate);
+      });
+
+      return results;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactionsByWalletsAndFilters({
+    required List<String> walletIds,
+    DateTime? start,
+    DateTime? end,
+    String? categoryId,
+    String? type,
+    String? searchQuery,
+    int limit = 20,
+    String? cursorAfter,
+    bool ascending = false,
+  }) async {
+    return handleAppwriteError(() async {
+      if (walletIds.isEmpty) return [];
+
+      List<String> queries = [
+        Query.equal('wallets', walletIds),
+      ];
+
+      if (start != null) {
+        queries.add(Query.greaterThanEqual('transactionDate', start.toIso8601String()));
+      }
+      if (end != null) {
+        queries.add(Query.lessThanEqual('transactionDate', end.toIso8601String()));
+      }
+      if (categoryId != null && categoryId.isNotEmpty) {
+        queries.add(Query.equal('categories', categoryId));
+      }
+      if (type != null && type.isNotEmpty) {
+        queries.add(Query.equal('type', type));
+      }
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        queries.add(Query.search('note', searchQuery.trim()));
+      }
+
+      if (ascending) {
+        queries.add(Query.orderAsc('transactionDate'));
+      } else {
+        queries.add(Query.orderDesc('transactionDate'));
+      }
+
+      queries.add(Query.limit(limit));
+      
+      if (cursorAfter != null && cursorAfter.isNotEmpty) {
+        queries.add(Query.cursorAfter(cursorAfter));
+      }
+
+      final response = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.transactionsTableId,
+        queries: queries,
+      );
+
+      List<Map<String, dynamic>> results = [];
+
+      final futures = response.rows.map((row) async {
+        final tx = TransactionModel.fromMap(row.data);
+
+        // Fetch detail if needed, or if we denormalized note, we might not even need detail for the list!
+        // But let's fetch it anyway for completeness (or receipts)
+        final detailResponse = await _appwrite.tables.listRows(
+          databaseId: _appwrite.databaseId,
+          tableId: _appwrite.transactionDetailsTableId,
+          queries: [Query.equal('transactions', tx.id), Query.limit(1)],
+        );
+
+        TransactionDetailModel? detail;
+        if (detailResponse.rows.isNotEmpty) {
+          detail = TransactionDetailModel.fromMap(
+            detailResponse.rows.first.data,
+          );
+        }
+
+        return {'transaction': tx, 'detail': detail};
+      });
+
+      results = await Future.wait(futures);
+      
+      // Do not re-sort locally because it breaks pagination across pages.
+      // Appwrite already returned them sorted by transactionDate!
       return results;
     });
   }

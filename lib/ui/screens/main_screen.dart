@@ -6,6 +6,7 @@ import "package:get/get.dart";
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:appintern/ui/screens/home_screen.dart';
 import 'package:appintern/ui/screens/profile_screen.dart';
+import 'package:appintern/ui/screens/wallet_screen.dart';
 import 'package:appintern/ui/controllers/home_controller.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'dart:math' as math;
@@ -15,7 +16,7 @@ class MainScreen extends GetView<MainController> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const Text("Ví tiền"),
+    const WalletScreen(),
     const Text("Phân tích"),
     const ProfileScreen(),
   ];
@@ -325,6 +326,8 @@ class MainScreen extends GetView<MainController> {
                 isSelected ? activeIconPath : inactiveIconPath,
                 width: 24.r, // Figma: 24px
                 height: 24.r,
+                errorBuilder: (context, error, stackTrace) =>
+                    Icon(Icons.broken_image, size: 24.r, color: Colors.grey),
               ),
 
               SizedBox(height: 2.h), // Figma: gap 2px
