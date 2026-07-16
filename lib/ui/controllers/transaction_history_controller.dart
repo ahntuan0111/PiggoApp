@@ -52,12 +52,21 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     ever(selectedWallet, (_) => _refreshData());
     ever(selectedCategory, (_) => _refreshData());
     ever(selectedType, (_) => _refreshData());
+
+    // Lắng nghe BudgetService để nạp lại dữ liệu khi ví đã được load xong
+    ever(budgetService.isDataLoaded, (loaded) {
+      if (loaded) {
+        _refreshData();
+      }
+    });
   }
 
   @override
   void onReady() {
     super.onReady();
-    _refreshData();
+    if (budgetService.isDataLoaded.value) {
+      _refreshData();
+    }
   }
 
   void _refreshData() {

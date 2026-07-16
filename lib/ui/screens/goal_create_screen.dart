@@ -78,7 +78,7 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
               decoration: InputDecoration(
                 hintText: "Ví dụ: Căn hộ mơ ước",
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: Colors.white, 
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: Colors.grey[200]!),

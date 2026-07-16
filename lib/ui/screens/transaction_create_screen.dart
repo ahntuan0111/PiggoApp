@@ -272,7 +272,7 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                                             ) // Nền cam nhạt hơn
                                           : Color(
                                               int.parse(
-                                                '0xFF${cat.color.replaceAll('#', '')}',
+                                                '0xFF${cat.color.toUpperCase().replaceAll('0XFF', '').replaceAll('#', '')}',
                                               ),
                                             ).withValues(alpha: 0.15),
                                       shape: BoxShape.circle,

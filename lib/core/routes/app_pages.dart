@@ -28,6 +28,10 @@ import '../../ui/screens/goal_create_screen.dart';
 import '../../ui/bindings/goal_create_binding.dart';
 import '../../ui/screens/goal_detail_screen.dart';
 import '../../ui/bindings/goal_detail_binding.dart';
+import '../../ui/screens/smart_input_screen.dart';
+import '../../ui/bindings/smart_input_binding.dart';
+import '../../ui/screens/voice_input_screen.dart';
+import '../../ui/bindings/voice_input_binding.dart';
 
 class AppPages {
   static String get INITIAL {
@@ -114,6 +118,18 @@ class AppPages {
       page: () => const GoalDetailScreen(),
       binding: GoalDetailBinding(),
       transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.SMART_INPUT,
+      page: () => const SmartInputScreen(),
+      binding: SmartInputBinding(),
+      transition: Transition.downToUp,
+    ),
+    GetPage(
+      name: Routes.VOICE_INPUT,
+      page: () => const VoiceInputScreen(),
+      binding: VoiceInputBinding(),
+      transition: Transition.downToUp,
     ),
   ];
 }

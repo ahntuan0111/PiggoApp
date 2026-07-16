@@ -12,4 +12,6 @@ abstract class Routes {
   static const GOAL = '/goal';
   static const GOAL_CREATE = '/goal-create';
   static const GOAL_DETAIL = '/goal-detail';
+  static const SMART_INPUT = '/smart-input';
+  static const VOICE_INPUT = '/voice-input';
 }

@@ -2,7 +2,10 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:appintern/core/base/base_controller.dart';
 
-class MainController extends BaseController with GetSingleTickerProviderStateMixin {
+import 'package:appintern/core/mixins/budget_aware_mixin.dart';
+import 'package:appintern/core/routes/app_pages.dart';
+
+class MainController extends BaseController with GetSingleTickerProviderStateMixin, BudgetAware {
   var selectedIndex = 0.obs;
   var isFabOpen = false.obs;
   late AnimationController animationController;
@@ -31,6 +34,11 @@ class MainController extends BaseController with GetSingleTickerProviderStateMix
       isFabOpen.value = true;
       animationController.forward();
     }
+  }
+
+  bool canCreateTransaction() {
+    // Kiem tra truc tiep tu BudgetService
+    return budgetService.categories.isNotEmpty;
   }
 
   @override

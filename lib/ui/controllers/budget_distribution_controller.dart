@@ -86,7 +86,7 @@ class BudgetDistributionController extends BaseController {
         for (var category in categories) {
           // Format số tiền (vd: 500000 -> "500.000") để nhét vào TextField
           String currentAmount = formatCurrency(
-            category.defaultBudget,
+            category.remaining,
           ).replaceAll('đ', '').trim();
 
           bool hasInputController = textControllers.containsKey(category.id);
@@ -164,9 +164,24 @@ class BudgetDistributionController extends BaseController {
               .replaceAll(',', '')
               .trim();
           if (text.isNotEmpty) {
-            double newAllocated = double.tryParse(text) ?? 0.0;
+            // Hỗ trợ số âm (khi còn lại bị âm)
+            bool isNegative = text.startsWith('-');
+            if (isNegative) text = text.substring(1);
+            
+            double parsedVal = double.tryParse(text) ?? 0.0;
+            double newRemaining = isNegative ? -parsedVal : parsedVal;
+            
+            // Tiền phân bổ = Còn lại + Đã tiêu
+            double newAllocated = newRemaining + cat.spent;
+            
+            // Không cho phép tiền phân bổ < 0 (nếu muốn)
+            if (newAllocated < 0) {
+              newAllocated = 0.0;
+              newRemaining = -cat.spent; // Ép lại số dư nếu phân bổ = 0
+            }
+
             groupAllocated += newAllocated;
-            currentRemainingBudgets += math.max(0, newAllocated - cat.spent);
+            currentRemainingBudgets += math.max(0, newRemaining);
           }
         }
       }
@@ -192,7 +207,14 @@ class BudgetDistributionController extends BaseController {
                 .replaceAll('đ', '')
                 .replaceAll(',', '')
                 .trim();
-            double newBudget = double.tryParse(text) ?? 0.0;
+            bool isNegative = text.startsWith('-');
+            if (isNegative) text = text.substring(1);
+            
+            double parsedVal = double.tryParse(text) ?? 0.0;
+            double newRemaining = isNegative ? -parsedVal : parsedVal;
+            
+            double newBudget = newRemaining + cat.spent;
+            if (newBudget < 0) newBudget = 0.0;
 
             // Nếu có thay đổi, cập nhật lên DB
             if (newBudget != cat.defaultBudget) {

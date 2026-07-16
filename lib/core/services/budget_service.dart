@@ -59,17 +59,19 @@ class BudgetService extends GetxService {
 
     final result = await ErrorHandler.execute(() async {
       final types = await categoryRepository.getCategoryTypes(userId);
+      List<BudgetCategoryGroup> tempGroups = [];
+      List<BudgetCategory> tempCategories = [];
+
       if (types.isNotEmpty) {
         final typeIds = types.map((e) => e.id).toList();
         final cats = await categoryRepository.getCategories(typeIds);
 
-        final List<BudgetCategoryGroup> groups = [];
         for (var type in types) {
           final typeCats = cats
               .where((c) => c.categoryTypeId == type.id)
               .toList();
           if (typeCats.isNotEmpty) {
-            groups.add(
+            tempGroups.add(
               BudgetCategoryGroup(
                 type.id,
                 type.name,
@@ -88,18 +90,18 @@ class BudgetService extends GetxService {
             );
           }
         }
-        categoryGroups.value = groups;
-        categories.value = groups.expand((g) => g.categories).toList();
-      } else {
-        categories.clear();
-        categoryGroups.clear();
+        tempCategories = tempGroups.expand((g) => g.categories).toList();
       }
 
       final fetchedWallets = await walletRepository.getWallets(userId);
+      
+      // Update values all at once to prevent UI flashing intermediate state
+      categoryGroups.value = tempGroups;
+      categories.value = tempCategories;
       wallets.value = fetchedWallets;
       totalWalletBalance.value = fetchedWallets.fold(0.0, (sum, w) => sum + w.balance);
 
-      double totalRemainingBudgets = categories.fold(
+      double totalRemainingBudgets = tempCategories.fold(
         0.0,
         (sum, c) => sum + math.max(0, c.allocated - c.spent),
       );

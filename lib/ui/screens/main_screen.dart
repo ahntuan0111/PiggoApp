@@ -1,13 +1,12 @@
+import 'package:appintern/core/constants/app_assets.dart';
 import "package:appintern/core/routes/app_routes.dart";
 import "package:appintern/ui/controllers/main_controller.dart";
 import "package:flutter/material.dart";
 import "package:flutter_screenutil/flutter_screenutil.dart";
 import "package:get/get.dart";
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:appintern/ui/screens/home_screen.dart';
 import 'package:appintern/ui/screens/profile_screen.dart';
 import 'package:appintern/ui/screens/wallet_screen.dart';
-import 'package:appintern/ui/controllers/home_controller.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'dart:math' as math;
 
@@ -73,14 +72,14 @@ class MainScreen extends GetView<MainController> {
                         _buildNavItem(
                           label: "Ngân sách",
                           index: 0,
-                          activeIconPath: 'assets/icons/icon_vi_0.png',
-                          inactiveIconPath: 'assets/icons/icon_vi_1.png',
+                          activeIconPath: AppAssets.iconNavBudgetActive,
+                          inactiveIconPath: AppAssets.iconNavBudgetInactive,
                         ),
                         _buildNavItem(
                           label: "Ví tiền",
                           index: 1,
-                          activeIconPath: 'assets/icons/icon_bank_0.png',
-                          inactiveIconPath: 'assets/icons/icon_bank_1.png',
+                          activeIconPath: AppAssets.iconNavWalletActive,
+                          inactiveIconPath: AppAssets.iconNavWalletInactive,
                         ),
                       ],
                     ),
@@ -96,14 +95,14 @@ class MainScreen extends GetView<MainController> {
                         _buildNavItem(
                           label: "Phân tích",
                           index: 2,
-                          activeIconPath: 'assets/icons/icon_chart_0.png',
-                          inactiveIconPath: 'assets/icons/icon_chart_1.png',
+                          activeIconPath: AppAssets.iconNavChartActive,
+                          inactiveIconPath: AppAssets.iconNavChartInactive,
                         ),
                         _buildNavItem(
                           label: "Cá nhân",
                           index: 3,
-                          activeIconPath: 'assets/icons/icon_profile_0.png',
-                          inactiveIconPath: 'assets/icons/icon_profile_1.png',
+                          activeIconPath: AppAssets.iconNavProfileActive,
+                          inactiveIconPath: AppAssets.iconNavProfileInactive,
                         ),
                       ],
                     ),
@@ -150,7 +149,7 @@ class MainScreen extends GetView<MainController> {
               context: context,
               label: "Nhập thường",
               icon: Icons.assignment_outlined,
-              angle: 5 * math.pi / 6, // Trái (150 độ)
+              angle: math.pi, // Trái (180 độ)
               animValue: animValue,
               baseBottom: baseBottom,
               screenHalfWidth: screenHalfWidth,
@@ -158,16 +157,13 @@ class MainScreen extends GetView<MainController> {
                 controller.toggleFab();
                 // Đợi hiệu ứng đóng FAB hoàn tất rồi mới Push Route
                 await Future.delayed(const Duration(milliseconds: 260));
-                
+
                 // Kiểm tra trước khi vào tạo giao dịch
-                if (Get.isRegistered<HomeController>()) {
-                  final homeCtrl = Get.find<HomeController>();
-                  if (homeCtrl.categories.isEmpty) {
-                    showCategoryRequiredDialog(context);
-                    return;
-                  }
+                if (!controller.canCreateTransaction()) {
+                  showCategoryRequiredDialog(context);
+                  return;
                 }
-                
+
                 await Get.toNamed(Routes.TRANSACTION_CREATE);
               },
             ),
@@ -175,26 +171,44 @@ class MainScreen extends GetView<MainController> {
               context: context,
               label: "Nhập nhanh",
               icon: Icons.chat_bubble_outline,
-              angle: math.pi / 2, // Trên (90 độ)
+              angle: 2 * math.pi / 3, // Giữa Trái (120 độ)
               animValue: animValue,
               baseBottom: baseBottom,
               screenHalfWidth: screenHalfWidth,
-              onTap: () {
+              onTap: () async {
                 controller.toggleFab();
-                // TODO: Chuyển hướng
+                // Đợi hiệu ứng đóng FAB hoàn tất rồi mới Push Route
+                await Future.delayed(const Duration(milliseconds: 260));
+
+                await Get.toNamed(Routes.SMART_INPUT);
               },
             ),
             _buildChildFab(
               context: context,
               label: "Giọng nói",
               icon: Icons.mic_none,
-              angle: math.pi / 6, // Phải (30 độ)
+              angle: math.pi / 3, // Giữa Phải (60 độ)
               animValue: animValue,
               baseBottom: baseBottom,
               screenHalfWidth: screenHalfWidth,
-              onTap: () {
+              onTap: () async {
                 controller.toggleFab();
-                // TODO: Chuyển hướng
+                await Future.delayed(const Duration(milliseconds: 260));
+                
+                await Get.toNamed(Routes.VOICE_INPUT);
+              },
+            ),
+
+            _buildChildFab(
+              context: context,
+              label: "Camera",
+              icon: Icons.camera_alt_outlined,
+              angle: 0.0, // Phải (0 độ)
+              animValue: animValue,
+              baseBottom: baseBottom,
+              screenHalfWidth: screenHalfWidth,
+              onTap: () async {
+                controller.toggleFab();
               },
             ),
 

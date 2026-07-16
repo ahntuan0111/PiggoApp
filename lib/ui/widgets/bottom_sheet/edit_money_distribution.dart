@@ -77,6 +77,17 @@ class _EditMoneyDistributionBottomSheetState
     } else {
       _offsetAmount = double.tryParse(cleanString) ?? 0.0;
     }
+    
+    // Auto-correct nếu vượt quá số dư khả dụng
+    if (_isAdding && _selectedSourceAvailableAmount != null && _offsetAmount > _selectedSourceAvailableAmount!) {
+      _offsetAmount = _selectedSourceAvailableAmount!;
+      String formatted = formatter.format(_offsetAmount);
+      _offsetController.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+    }
+
     _calculateFinalBudget();
   }
 
@@ -327,6 +338,17 @@ class _EditMoneyDistributionBottomSheetState
                         _selectedSourceName = name;
                         _selectedSourceAvailableAmount = availableAmount;
                         _selectedSourceIconName = iconName;
+                        
+                        // Auto-correct nếu offsetAmount hiện tại lớn hơn số dư của nguồn mới chọn
+                        if (_isAdding && _offsetAmount > availableAmount) {
+                          _offsetAmount = availableAmount;
+                          String formatted = formatter.format(_offsetAmount);
+                          _offsetController.value = TextEditingValue(
+                            text: formatted,
+                            selection: TextSelection.collapsed(offset: formatted.length),
+                          );
+                          _calculateFinalBudget();
+                        }
                       });
                     },
                   ),
@@ -419,11 +441,33 @@ class _EditMoneyDistributionBottomSheetState
                 onPressed: canSave
                     ? () {
                         if (_selectedSourceId != null) {
+                          if (_isAdding && _offsetAmount > _selectedSourceAvailableAmount!) {
+                            Get.snackbar(
+                              "Lỗi",
+                              "Nguồn tiền không đủ để lấy. Tối đa chỉ có thể lấy ${formatter.format(_selectedSourceAvailableAmount!)}đ.",
+                              backgroundColor: Colors.red,
+                              colorText: Colors.white,
+                              snackPosition: SnackPosition.BOTTOM,
+                            );
+                            return;
+                          }
+                          
+                          // Tìm category gốc để lấy defaultBudget hiện tại
+                          double sourceAllocated = 0.0;
+                          for (var group in widget.categoryGroups) {
+                            for (var cat in group.categories) {
+                              if (cat.categoryModel.id == _selectedSourceId) {
+                                sourceAllocated = cat.categoryModel.defaultBudget;
+                                break;
+                              }
+                            }
+                          }
+
                           double newSourceBudget;
                           if (_isAdding) {
-                            newSourceBudget = _selectedSourceAvailableAmount! - _offsetAmount;
+                            newSourceBudget = sourceAllocated - _offsetAmount;
                           } else {
-                            newSourceBudget = _selectedSourceAvailableAmount! + _offsetAmount;
+                            newSourceBudget = sourceAllocated + _offsetAmount;
                           }
                           widget.onSave(
                             _finalBudget,

@@ -10,6 +10,8 @@ import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/services/budget_service.dart';
 import 'package:appintern/data/models/budget_category.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
+import 'package:appintern/domain/repositories/auth_repository.dart';
+import 'package:appintern/core/errors/error_handler.dart';
 
 class HomeController extends BaseController with BudgetAware {
   final storage = Get.find<StorageService>();
@@ -54,10 +56,42 @@ class HomeController extends BaseController with BudgetAware {
   @override
   void onReady() {
     super.onReady();
+    _verifySessionAndFetchData();
+  }
+
+  Future<void> _verifySessionAndFetchData() async {
     if (!budgetService.isDataLoaded.value) {
       showLoading();
-      fetchData();
     }
+    
+    // Kiểm tra xem session thực sự còn hiệu lực trên Appwrite Server hiện tại không
+    // Việc này rất quan trọng khi thay đổi IP localhost
+    final authRepo = Get.find<AuthRepository>();
+    final sessionResult = await ErrorHandler.execute(
+      () async => await authRepo.getUser(),
+      tag: 'VERIFY_SESSION',
+    );
+    
+    await sessionResult.fold(
+      (failure) async {
+        // Session không hợp lệ (IP thay đổi, cookie mất, v.v.)
+        hideLoading();
+        storage.clearAll();
+        Get.offAllNamed(Routes.ONBOARDING);
+        Get.snackbar(
+          "Phiên đăng nhập hết hạn", 
+          "Vui lòng đăng nhập lại (Do IP máy chủ thay đổi hoặc phiên hết hạn).",
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+        );
+      },
+      (user) async {
+        // Nếu session hợp lệ, tải dữ liệu
+        if (!budgetService.isDataLoaded.value) {
+          await budgetService.refreshData();
+        }
+      },
+    );
   }
 
   Future<void> fetchData() async {

@@ -185,7 +185,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            "Đã phân bổ",
+                            "Còn lại",
                             style: TextStyle(
                               fontSize: 12.sp,
                               color: const Color(0xFF757575),
@@ -197,9 +197,11 @@ class SelectSourceBottomSheet extends StatelessWidget {
                       ...group.categories
                           .where((c) => c.categoryModel.id != currentCategoryId && !excludeCategoryIds.contains(c.categoryModel.id))
                           .map((category) {
+                        double remaining = category.allocated - category.spent;
+                        if (remaining < 0) remaining = 0;
                         return GestureDetector(
                           onTap: () {
-                            onSelected(category.categoryModel.id, category.name, category.allocated, category.icon);
+                            onSelected(category.categoryModel.id, category.name, remaining, category.icon);
                             Get.back();
                           },
                           child: Container(
@@ -233,7 +235,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                                _buildMoneyText(category.allocated, formatter),
+                                _buildMoneyText(remaining, formatter),
                               ],
                             ),
                           ),

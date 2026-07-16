@@ -14,6 +14,8 @@ import 'core/routes/app_pages.dart';
 import 'core/services/appwrite_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/network_service.dart';
+import 'domain/services/i_ai_service.dart';
+import 'core/services/appwrite_ai_service_impl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +34,7 @@ void main() async {
   // Services
   Get.put(NetworkService());
   Get.put(BudgetService());
+  Get.put<IAIService>(AppwriteAIServiceImpl());
 
   runApp(const MyApp());
 }

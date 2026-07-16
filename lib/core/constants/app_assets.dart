@@ -17,5 +17,13 @@ class AppAssets {
   static const String iconExpense = 'assets/icons/icon_expense.png';
   static const String iconIncome = 'assets/icons/icon_income.png';
   static const String iconWarning = 'assets/icons/icon_warning.png';
-  // Add more as needed
+  static const String iconNavBudgetActive = 'assets/icons/icon_vi_0.png';
+  static const String iconNavBudgetInactive = 'assets/icons/icon_vi_1.png';
+  static const String iconNavWalletActive = 'assets/icons/icon_bank_0.png';
+  static const String iconNavWalletInactive = 'assets/icons/icon_bank_1.png';
+  static const String iconNavChartActive = 'assets/icons/icon_chart_0.png';
+  static const String iconNavChartInactive = 'assets/icons/icon_chart_1.png';
+  static const String iconNavProfileActive = 'assets/icons/icon_profile_0.png';
+  static const String iconNavProfileInactive = 'assets/icons/icon_profile_1.png';
+  static const String iconMagic = 'assets/icons/icon_magic.png';
 }

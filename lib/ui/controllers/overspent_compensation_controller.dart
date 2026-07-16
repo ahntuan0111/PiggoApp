@@ -13,12 +13,23 @@ class OverspentCompensationController extends BaseController with BudgetAware {
 
   late CategoryModel targetCategory;
   final sources = <CompensationSource>[].obs;
+  
+  // Quản lý TextEditingController cho mỗi nguồn
+  final textControllers = <int, TextEditingController>{};
 
   @override
   void onInit() {
     super.onInit();
     // Khởi tạo từ arguments (truyền sang từ HomeScreen)
     targetCategory = Get.arguments as CategoryModel;
+  }
+
+  @override
+  void onClose() {
+    for (var controller in textControllers.values) {
+      controller.dispose();
+    }
+    super.onClose();
   }
 
   // Tổng số tiền bù vào
@@ -62,8 +73,11 @@ class OverspentCompensationController extends BaseController with BudgetAware {
               availableAmount: availableAmount,
               amountToCompensate: 0, // Reset số tiền nhập
             );
+            textControllers[indexToReplace]?.text = '';
+            sources.refresh();
           } else {
             // Thêm nguồn mới
+            int newIndex = sources.length;
             sources.add(
               CompensationSource(
                 sourceId: id,
@@ -73,6 +87,7 @@ class OverspentCompensationController extends BaseController with BudgetAware {
                 amountToCompensate: 0,
               ),
             );
+            textControllers[newIndex] = TextEditingController();
           }
         },
       ),
@@ -91,6 +106,13 @@ class OverspentCompensationController extends BaseController with BudgetAware {
   void removeSource(int index) {
     if (index >= 0 && index < sources.length) {
       sources.removeAt(index);
+      textControllers[index]?.dispose();
+      
+      // Shift controllers down
+      for (int i = index; i < sources.length; i++) {
+        textControllers[i] = textControllers[i + 1]!;
+      }
+      textControllers.remove(sources.length);
     }
   }
 
@@ -102,6 +124,17 @@ class OverspentCompensationController extends BaseController with BudgetAware {
         'Vui lòng thêm nguồn tiền và nhập số tiền bù đắp.',
       );
       return;
+    }
+
+    // Kiểm tra xem có nguồn nào bị lấy lố tiền không (vượt quá availableAmount)
+    for (var source in sources) {
+      if (source.amountToCompensate > source.availableAmount) {
+        showErrorMessage(
+          'Lỗi',
+          'Số tiền bù đắp từ nguồn "${source.sourceName}" vượt quá số dư khả dụng!',
+        );
+        return;
+      }
     }
 
     showLoading();

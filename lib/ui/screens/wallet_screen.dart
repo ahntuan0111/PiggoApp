@@ -220,9 +220,12 @@ class WalletScreen extends GetView<WalletController> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () => Get.toNamed(Routes.TRANSACTION_HISTORY),
+                            onPressed: () =>
+                                Get.toNamed(Routes.TRANSACTION_HISTORY),
                             style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFFEBC14F), // Màu vàng cam chủ đạo
+                              foregroundColor: const Color(
+                                0xFFEBC14F,
+                              ), // Màu vàng cam chủ đạo
                               padding: EdgeInsets.zero,
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -286,96 +289,104 @@ class WalletScreen extends GetView<WalletController> {
                 }
 
                 return SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final item = controller.recentTransactions[index];
-                    final TransactionModel tx = item['transaction'];
-                    final TransactionDetailModel? detail = item['detail'];
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = controller.recentTransactions[index];
+                      final TransactionModel tx = item['transaction'];
+                      final TransactionDetailModel? detail = item['detail'];
 
-                    final bool isExpense = tx.type == 'EXPENSE';
-                    final amountColor = isExpense
-                        ? const Color(0xFFE53935)
-                        : const Color(0xFF4CAF50);
-                    final sign = isExpense ? '-' : '+';
+                      final bool isExpense = tx.type == 'EXPENSE';
+                      final amountColor = isExpense
+                          ? const Color(0xFFE53935)
+                          : const Color(0xFF4CAF50);
+                      final sign = isExpense ? '-' : '+';
 
-                    // Tìm category info (nếu có thể lấy từ budgetService)
-                    String categoryName = 'Giao dịch';
-                    String iconName = 'category';
-                    final catIndex = controller.budgetService.categories
-                        .indexWhere((c) => c.categoryModel.id == tx.categoryId);
-                    if (catIndex != -1) {
-                      final cat = controller.budgetService.categories[catIndex];
-                      categoryName = cat.name;
-                      iconName = cat.icon;
-                    }
+                      // Tìm category info (nếu có thể lấy từ budgetService)
+                      String categoryName = 'Giao dịch';
+                      String iconName = 'category';
+                      final catIndex = controller.budgetService.categories
+                          .indexWhere(
+                            (c) => c.categoryModel.id == tx.categoryId,
+                          );
+                      if (catIndex != -1) {
+                        final cat =
+                            controller.budgetService.categories[catIndex];
+                        categoryName = cat.name;
+                        iconName = cat.icon;
+                      }
 
-                    return Container(
-                      margin: EdgeInsets.only(
-                        bottom: 12.h,
-                        left: 16.w,
-                        right: 16.w,
-                      ),
-                      padding: EdgeInsets.all(16.w),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16.r),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      return Container(
+                        margin: EdgeInsets.only(
+                          bottom: 12.h,
+                          left: 16.w,
+                          right: 16.w,
+                        ),
+                        padding: EdgeInsets.all(16.w),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    categoryName,
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1E1E1E),
+                                    ),
+                                  ),
+                                  if (detail?.note != null &&
+                                      detail!.note.isNotEmpty) ...[
+                                    SizedBox(height: 4.h),
+                                    Text(
+                                      detail.note,
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        color: Colors.grey[600],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  categoryName,
+                                  "$sign${formatter.format(tx.amount)}đ",
                                   style: TextStyle(
                                     fontSize: 16.sp,
                                     fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1E1E1E),
+                                    color: amountColor,
                                   ),
                                 ),
-                                if (detail?.note != null &&
-                                    detail!.note.isNotEmpty) ...[
-                                  SizedBox(height: 4.h),
-                                  Text(
-                                    detail.note,
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      color: Colors.grey[600],
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                SizedBox(height: 4.h),
+                                Text(
+                                  DateFormat(
+                                    'dd/MM/yyyy',
+                                  ).format(tx.transactionDate),
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: Colors.grey[500],
                                   ),
-                                ],
+                                ),
                               ],
                             ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                "$sign${formatter.format(tx.amount)}đ",
-                                style: TextStyle(
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: amountColor,
-                                ),
-                              ),
-                              SizedBox(height: 4.h),
-                              Text(
-                                DateFormat(
-                                  'dd/MM/yyyy',
-                                ).format(tx.transactionDate),
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.grey[500],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  }, childCount: controller.recentTransactions.length),
+                          ],
+                        ),
+                      );
+                    },
+                    childCount: controller.recentTransactions.length > 5
+                        ? 5
+                        : controller.recentTransactions.length,
+                  ),
                 );
               }),
             ],

@@ -251,6 +251,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final bool isSelected = value != null;
 
     return PopupMenuButton<T>(
+      constraints: BoxConstraints(maxHeight: 250.h), // Giới hạn chiều cao popup menu khoảng 4 items
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       onSelected: onChanged,
       itemBuilder: (BuildContext context) {

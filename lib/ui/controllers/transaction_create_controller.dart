@@ -9,6 +9,7 @@ import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
+import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/data/models/transaction_model.dart';
@@ -16,10 +17,8 @@ import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/domain/repositories/storage_repository.dart';
 
-class TransactionCreateController extends BaseController {
+class TransactionCreateController extends BaseController with BudgetAware {
   final storage = Get.find<StorageService>();
-  final CategoryRepository categoryRepository = Get.find<CategoryRepository>();
-  final WalletRepository walletRepository = Get.find<WalletRepository>();
   final TransactionRepository transactionRepository =
       Get.find<TransactionRepository>();
   final StorageRepository storageRepository = Get.find<StorageRepository>();
@@ -124,18 +123,26 @@ class TransactionCreateController extends BaseController {
 
     showLoading();
     final result = await ErrorHandler.execute(() async {
-      final userWallets = await walletRepository.getWallets(userId);
-      wallets.value = userWallets;
-      if (userWallets.isNotEmpty) {
-        selectedWallet.value = userWallets.first;
+      // Đảm bảo budgetService đã load xong data
+      if (!budgetService.isDataLoaded.value) {
+        await budgetService.refreshData();
       }
 
-      final types = await categoryRepository.getCategoryTypes(userId);
-      if (types.isNotEmpty) {
-        final typeIds = types.map((e) => e.id).toList();
-        final cats = await categoryRepository.getCategories(typeIds);
-        categories.value = cats;
+      wallets.value = budgetService.wallets;
+      if (wallets.isNotEmpty) {
+        selectedWallet.value = wallets.first;
       }
+
+      // Lọc ra các categories KHÔNG thuộc nhóm "Tiết kiệm lâu dài" (Goal Savings)
+      // Vì Goal Savings có luồng nạp/rút riêng, không thể thêm giao dịch thông thường.
+      final validCategories = budgetService.categoryGroups
+          .where((group) => group.typeName != 'Tiết kiệm lâu dài')
+          .expand((group) => group.categories)
+          .map((budgetCat) => budgetCat.categoryModel)
+          .toList();
+
+      categories.value = validCategories;
+          
     }, tag: "FETCH_TRANSACTION_CREATE");
 
     hideLoading();

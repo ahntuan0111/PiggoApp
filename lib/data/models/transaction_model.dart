@@ -45,9 +45,6 @@ class TransactionModel {
     if (categoryId.isNotEmpty) {
       map['categories'] = categoryId;
     }
-    if (note != null && note!.isNotEmpty) {
-      map['note'] = note;
-    }
     return map;
   }
 }
