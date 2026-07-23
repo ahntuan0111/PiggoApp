@@ -10,6 +10,8 @@ import 'package:appintern/ui/screens/wallet_screen.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'dart:math' as math;
 
+
+
 class MainScreen extends GetView<MainController> {
   MainScreen({super.key});
 
@@ -137,12 +139,13 @@ class MainScreen extends GetView<MainController> {
               child: GestureDetector(
                 onTap: controller.toggleFab,
                 child: Container(
-                  color: Colors.black.withOpacity(
-                    0.7 * animValue.clamp(0.0, 1.0),
+                  color: Colors.black.withValues(
+                    alpha: 0.7 * animValue.clamp(0.0, 1.0),
                   ),
                 ),
               ),
             ),
+
 
             // Các nút con
             _buildChildFab(
@@ -207,10 +210,10 @@ class MainScreen extends GetView<MainController> {
               animValue: animValue,
               baseBottom: baseBottom,
               screenHalfWidth: screenHalfWidth,
-              onTap: () async {
-                controller.toggleFab();
-              },
+              onTap: controller.openCameraReceiptScan,
             ),
+
+
 
             // Nút FAB Chính (chuyển thành dấu X)
             Positioned(

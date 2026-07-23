@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:get/get.dart';
-import 'dart:math' as math;
+import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/data/models/budget_category.dart';
 import 'package:appintern/data/models/wallet_model.dart';
@@ -9,15 +9,21 @@ import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
+import 'package:appintern/domain/repositories/goal_repository.dart';
+import 'package:appintern/data/models/goal_model.dart';
+import 'package:appintern/data/models/monthly_budget_model.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 
 class BudgetService extends GetxService {
   final StorageService storage = Get.find<StorageService>();
   final CategoryRepository categoryRepository = Get.find<CategoryRepository>();
   final WalletRepository walletRepository = Get.find<WalletRepository>();
-  final TransactionRepository txRepo = Get.find<TransactionRepository>();
+  final TransactionRepository transactionRepository =
+      Get.find<TransactionRepository>();
+  final GoalRepository goalRepository = Get.find<GoalRepository>();
 
   var currentUserId = "".obs;
+  var currentTrackingMonth = DateTime.now().obs;
 
   final totalWalletBalance = 0.0.obs;
   final allocatedAmount = 0.0.obs;
@@ -26,6 +32,8 @@ class BudgetService extends GetxService {
   final categories = <BudgetCategory>[].obs;
   final categoryGroups = <BudgetCategoryGroup>[].obs;
   final wallets = <WalletModel>[].obs;
+  final goals = <GoalModel>[].obs;
+  final monthlyBudgets = <MonthlyBudgetModel>[].obs;
 
   var isDataLoaded = false.obs;
   var isError = false.obs;
@@ -39,7 +47,7 @@ class BudgetService extends GetxService {
     currentUserId.value = storage.read(AppKeys.userId) ?? "";
 
     // Listen to transaction updates
-    _txSubscription = txRepo.onTransactionUpdated.listen((_) {
+    _txSubscription = transactionRepository.onTransactionUpdated.listen((_) {
       refreshData();
     });
   }
@@ -48,12 +56,12 @@ class BudgetService extends GetxService {
     // Luôn đọc lại userId phòng trường hợp vừa login xong
     currentUserId.value = storage.read(AppKeys.userId) ?? "";
     final userId = currentUserId.value;
-    
+
     if (userId.isEmpty) {
       isError.value = true;
       errorMessage.value = "Người dùng chưa đăng nhập";
       // Đánh dấu loaded để tránh kẹt loading ở HomeController
-      isDataLoaded.value = true; 
+      isDataLoaded.value = true;
       return;
     }
 
@@ -66,6 +74,13 @@ class BudgetService extends GetxService {
         final typeIds = types.map((e) => e.id).toList();
         final cats = await categoryRepository.getCategories(typeIds);
 
+        String monthYearStr =
+            "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
+        final fetchedMonthlyBudgets = await categoryRepository.getMonthlyBudgets(
+          monthYearStr,
+        );
+        monthlyBudgets.value = fetchedMonthlyBudgets;
+
         for (var type in types) {
           final typeCats = cats
               .where((c) => c.categoryTypeId == type.id)
@@ -75,17 +90,18 @@ class BudgetService extends GetxService {
               BudgetCategoryGroup(
                 type.id,
                 type.name,
-                typeCats
-                    .map(
-                      (c) => BudgetCategory(
-                        categoryModel: c,
-                        icon: c.iconName,
-                        name: c.name,
-                        allocated: c.defaultBudget,
-                        spent: c.spent,
-                      ),
-                    )
-                    .toList(),
+                typeCats.map((c) {
+                  final mb = fetchedMonthlyBudgets.firstWhereOrNull(
+                    (m) => m.categoryId == c.id,
+                  );
+                  return BudgetCategory(
+                    categoryModel: c,
+                    icon: c.iconName,
+                    name: c.name,
+                    allocated: mb?.budgetedAmount ?? 0.0,
+                    spent: mb?.spentAmount ?? 0.0,
+                  );
+                }).toList(),
               ),
             );
           }
@@ -94,16 +110,35 @@ class BudgetService extends GetxService {
       }
 
       final fetchedWallets = await walletRepository.getWallets(userId);
-      
+      final fetchedGoals = await goalRepository.getGoals();
+
       // Update values all at once to prevent UI flashing intermediate state
       categoryGroups.value = tempGroups;
       categories.value = tempCategories;
       wallets.value = fetchedWallets;
-      totalWalletBalance.value = fetchedWallets.fold(0.0, (sum, w) => sum + w.balance);
+
+      // Filter goals exactly as previously done in GoalController
+      final validCategoryIds = tempCategories
+          .map((c) => c.categoryModel.id)
+          .toSet();
+      final userGoals = fetchedGoals
+          .where(
+            (g) =>
+                validCategoryIds.contains(g.categoryId) &&
+                g.name.trim().isNotEmpty &&
+                g.targetAmount > 0,
+          )
+          .toList();
+      goals.value = userGoals;
+
+      totalWalletBalance.value = fetchedWallets.fold(
+        0.0,
+        (sum, w) => sum + w.balance,
+      );
 
       double totalRemainingBudgets = tempCategories.fold(
         0.0,
-        (sum, c) => sum + math.max(0, c.allocated - c.spent),
+        (sum, c) => sum + (c.allocated - c.spent),
       );
 
       allocatedAmount.value = totalRemainingBudgets;
@@ -113,7 +148,7 @@ class BudgetService extends GetxService {
 
     result.fold(
       (failure) {
-        print("Error fetching budget data: ${failure.message}");
+        AppLogger.error("FETCH_BUDGET_DATA", failure.message);
         isError.value = true;
         errorMessage.value = failure.message;
       },
@@ -123,6 +158,10 @@ class BudgetService extends GetxService {
         isDataLoaded.value = true;
       },
     );
+  }
+
+  MonthlyBudgetModel? getBudgetForCategory(String categoryId) {
+    return monthlyBudgets.firstWhereOrNull((m) => m.categoryId == categoryId);
   }
 
   @override

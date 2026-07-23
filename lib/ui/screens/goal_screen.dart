@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:appintern/ui/controllers/goal_controller.dart';
 import 'package:appintern/data/models/goal_model.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
-import 'package:appintern/ui/widgets/dialogs/goal_sweep_dialog.dart' as import_goal_sweep_dialog;
+import 'package:appintern/ui/widgets/goal_saving_card_item.dart';
+import 'package:appintern/ui/widgets/dialogs/goal_sweep_dialog.dart'
+    as import_goal_sweep_dialog;
+import 'package:appintern/ui/widgets/bottom_sheet/edit_money_distribution.dart';
 
 class GoalScreen extends GetView<GoalController> {
   const GoalScreen({super.key});
@@ -22,7 +25,11 @@ class GoalScreen extends GetView<GoalController> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: const Color(0xFF0B4A3A), size: 20.sp),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: const Color(0xFF0B4A3A),
+            size: 20.sp,
+          ),
           onPressed: () => Get.back(),
         ),
         title: Text(
@@ -35,12 +42,17 @@ class GoalScreen extends GetView<GoalController> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.savings_outlined, color: const Color(0xFFEBC14F), size: 24.sp),
+            icon: Icon(
+              Icons.savings_outlined,
+              color: const Color(0xFFEBC14F),
+              size: 24.sp,
+            ),
             onPressed: () {
               if (controller.budgetService.unallocatedAmount.value > 0) {
                 Get.dialog(
                   import_goal_sweep_dialog.GoalSweepDialog(
-                    unallocatedAmount: controller.budgetService.unallocatedAmount.value,
+                    unallocatedAmount:
+                        controller.budgetService.unallocatedAmount.value,
                     onConfirm: () {
                       Get.toNamed(Routes.BUDGET_DISTRIBUTION);
                     },
@@ -134,7 +146,9 @@ class GoalScreen extends GetView<GoalController> {
                     ),
                   )
                 else
-                  ...controller.goals.map((goal) => _buildGoalCard(goal, formatter)).toList(),
+                  ...controller.goals
+                      .map((goal) => _buildGoalCard(goal, formatter))
+                      .toList(),
 
                 SizedBox(height: 32.h),
 
@@ -145,7 +159,9 @@ class GoalScreen extends GetView<GoalController> {
         );
       }),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Get.toNamed(Routes.GOAL_CREATE)?.then((_) => controller.fetchGoals()),
+        onPressed: () => Get.toNamed(
+          Routes.GOAL_CREATE,
+        )?.then((_) => controller.fetchGoals()),
         backgroundColor: const Color(0xFF0B4A3A),
         child: const Icon(Icons.add, color: Color(0xFFEBC14F)),
       ),
@@ -155,132 +171,73 @@ class GoalScreen extends GetView<GoalController> {
   Widget _buildGoalCard(GoalModel goal, NumberFormat formatter) {
     final progress = controller.getGoalProgress(goal);
     final savedAmount = controller.getSavedAmount(goal);
-    
+
     // Tìm icon của category
-    final goalCategory = controller.budgetService.categories.firstWhereOrNull((c) => c.categoryModel.id == goal.categoryId);
+    final goalCategory = controller.budgetService.categories.firstWhereOrNull(
+      (c) => c.categoryModel.id == goal.categoryId,
+    );
     String iconName = 'icon_expense';
     if (goalCategory != null) {
       iconName = goalCategory.categoryModel.iconName;
     }
 
-    String deadlineText = "Không có thời hạn";
+    String deadlineString = "Không có";
+    String timeLeftString = "Vô hạn";
     if (goal.deadline != null) {
-      deadlineText = "Dự kiến: ${DateFormat('dd/MM/yyyy').format(goal.deadline!)}";
+      deadlineString = DateFormat('MM/yyyy').format(goal.deadline!);
+      final now = DateTime.now();
+      final difference = goal.deadline!.difference(now);
+      final months = (difference.inDays / 30).floor();
+      if (months > 0) {
+        timeLeftString = "Còn $months tháng";
+      } else if (difference.inDays > 0) {
+        timeLeftString = "Còn ${difference.inDays} ngày";
+      } else {
+        timeLeftString = "Đã đến hạn";
+      }
     }
 
-    return GestureDetector(
-      onTap: () {
-        Get.toNamed(Routes.GOAL_DETAIL, arguments: goal)?.then((_) => controller.fetchGoals());
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 16.h),
-        padding: EdgeInsets.all(16.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20.r),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0B4A3A).withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16.h),
+      child: GoalSavingCardItem(
+        title: goal.name,
+        deadlineString: deadlineString,
+        formattedCurrentAmount: "${formatter.format(savedAmount)} đ",
+        formattedTargetAmount: "${formatter.format(goal.targetAmount)} đ",
+        progress: progress,
+        progressText: "${(progress * 100).toStringAsFixed(1)}%",
+        timeLeftString: timeLeftString,
+        iconName: iconName,
+        onTap: () {
+          Get.toNamed(
+            Routes.GOAL_DETAIL,
+            arguments: goal,
+          )?.then((_) => controller.fetchGoals());
+        },
+        onAddFunds: () {
+          if (goalCategory == null) return;
+          Get.bottomSheet(
+            EditMoneyDistributionBottomSheet(
+              initialAllocated: goalCategory.categoryModel.defaultBudget,
+              unallocatedAmount: controller.budgetService.unallocatedAmount.value,
+              categoryGroups: controller.budgetService.categoryGroups,
+              currentCategoryId: goalCategory.categoryModel.id,
+              isGoal: true,
+              onSave: (newBudget, {sourceCategoryId, sourceCategoryNewBudget, note}) {
+                Get.back(); // close bottom sheet
+                controller.updateGoalBudget(
+                  goalCategory,
+                  newBudget,
+                  sourceCategoryId: sourceCategoryId,
+                  sourceCategoryNewBudget: sourceCategoryNewBudget,
+                  note: note,
+                );
+              },
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                // Icon
-                Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B4A3A).withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: CustomIconWidget(
-                    iconName: iconName,
-                    size: 24.w,
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                // Texts
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        goal.name,
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        deadlineText,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Percentage Badge
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B4A3A).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text(
-                    "${(progress * 100).toStringAsFixed(0)}%",
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF0B4A3A),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16.h),
-            // Amounts
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "${formatter.format(savedAmount)} đ",
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF0B4A3A),
-                  ),
-                ),
-                Text(
-                  "/ ${formatter.format(goal.targetAmount)} đ",
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[400],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8.h),
-            // Progress Bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4.r),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFEBC14F)),
-                minHeight: 6.h,
-              ),
-            ),
-          ],
-        ),
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+          );
+        },
       ),
     );
   }

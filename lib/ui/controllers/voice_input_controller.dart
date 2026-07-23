@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
@@ -36,11 +35,6 @@ class VoiceInputController extends BaseController
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
-
-    // Yêu cầu quyền ngay khi mở màn hình nhưng không tự động thu âm
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      requestPermission();
-    });
   }
 
   @override
@@ -50,21 +44,49 @@ class VoiceInputController extends BaseController
     super.onClose();
   }
 
-  Future<void> requestPermission() async {
+  Future<bool> requestPermission() async {
     final status = await Permission.microphone.request();
-    if (!status.isGranted) {
+    if (status.isPermanentlyDenied) {
+      Get.dialog(
+        AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text("Quyền truy cập Micro bị từ chối", style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text("Vui lòng vào Cài đặt để cấp quyền truy cập Micro cho ứng dụng để sử dụng tính năng nhận diện giọng nói."),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
+              onPressed: () {
+                Get.back();
+                openAppSettings();
+              },
+              child: const Text("Cài đặt", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      return false;
+    } else if (!status.isGranted) {
       showErrorMessage(
         "Thiếu quyền truy cập",
         "Vui lòng cấp quyền Micro để sử dụng tính năng này.",
       );
+      return false;
     }
+    return true;
   }
 
   Future<void> handlePointerDown() async {
     if (await Permission.microphone.isGranted) {
       await _startRecording();
     } else {
-      await requestPermission();
+      final granted = await requestPermission();
+      if (granted) {
+        await _startRecording();
+      }
     }
   }
 

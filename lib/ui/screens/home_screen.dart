@@ -1,13 +1,14 @@
 import 'package:appintern/core/constants/app_assets.dart';
 import 'package:appintern/core/routes/app_routes.dart';
-import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/home_controller.dart';
+import 'package:appintern/ui/controllers/wallet_controller.dart';
 import 'package:appintern/ui/widgets/budget_category_item.dart';
 import 'package:appintern/ui/widgets/empty_category_suggestion_widget.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
@@ -39,7 +40,15 @@ class HomeScreen extends GetView<HomeController> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(Icons.settings, color: Colors.white),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.savings,
+                                color: Colors.white,
+                              ),
+                              onPressed: () => Get.toNamed(Routes.GOAL),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
                             Column(
                               children: [
                                 Text(
@@ -167,6 +176,11 @@ class HomeScreen extends GetView<HomeController> {
                                         SizedBox(height: 12.h),
                                         InkWell(
                                           onTap: () async {
+                                            if (Get.isRegistered<WalletController>()) {
+                                              final walletCtrl = Get.find<WalletController>();
+                                              walletCtrl.resetFields();
+                                              walletCtrl.isAdjustMode.value = walletCtrl.wallets.isNotEmpty;
+                                            }
                                             await Get.toNamed(
                                               Routes.WALLETCREATE,
                                             );
@@ -373,7 +387,11 @@ class HomeScreen extends GetView<HomeController> {
                                   width: 22.r,
                                   height: 22.r,
                                   errorBuilder: (context, error, stackTrace) =>
-                                      Icon(Icons.warning_amber_rounded, size: 22.r, color: Colors.orange),
+                                      Icon(
+                                        Icons.warning_amber_rounded,
+                                        size: 22.r,
+                                        color: Colors.orange,
+                                      ),
                                 ),
                               ),
                               SizedBox(width: 16.w),
@@ -429,81 +447,92 @@ class HomeScreen extends GetView<HomeController> {
             SliverToBoxAdapter(
               child: Obx(() {
                 if (controller.isLoading.value) {
-                  return Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48.h),
-                      child: CircularProgressIndicator(
-                        color: const Color(0xFFC49A45),
-                      ),
-                    ),
-                  );
-                }
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 48.h),
+                          child: CircularProgressIndicator(
+                            color: const Color(0xFFC49A45),
+                          ),
+                        ),
+                      );
+                    }
 
-                if (controller.categories.isEmpty) {
-                  return EmptyCategorySuggestionWidget(
-                    onSuggestionTap: () async {
-                      await Get.toNamed(Routes.CATEGORY);
-                      controller.fetchData();
-                    },
-                  );
-                }
+                    if (controller.categories.isEmpty) {
+                      return EmptyCategorySuggestionWidget(
+                        onSuggestionTap: () async {
+                          await Get.toNamed(Routes.CATEGORY);
+                          controller.fetchData();
+                        },
+                      );
+                    }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 16.h),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: controller.categoryGroups.map((group) {
-                          return Column(
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 16.h),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                group.typeName,
-                                style: TextStyle(
-                                  fontSize: 18.sp,
-                                  color: const Color(0xFF1E1E1E),
-                                ),
-                              ),
-                              SizedBox(height: 16.h),
-                              Column(
-                                children: group.categories.map((cat) {
-                                  return BudgetCategoryItem(
-                                    category: cat,
-                                    formattedAllocated: controller
-                                        .formatCurrency(cat.allocated),
-                                    formattedSpent: controller.formatCurrency(
-                                      cat.spent,
-                                    ),
-                                    formattedRemaining: controller
-                                        .formatCurrency(cat.remaining),
-                                    onTap: () {
-                                      Get.toNamed(
-                                        Routes.CATEGORY_DETAIL,
-                                        arguments: cat.categoryModel,
-                                      );
-                                    },
-                                    onEdit: () {
-                                      Get.toNamed(
-                                        Routes.OVERSPENT_COMPENSATION,
-                                        arguments: cat.categoryModel,
-                                      );
-                                    },
+                            children: controller.categoryGroups.map((group) {
+                              final filteredCategories = group.categories.where(
+                                (cat) {
+                                  return !controller.budgetService.goals.any(
+                                    (goal) =>
+                                        goal.categoryId == cat.categoryModel.id,
                                   );
-                                }).toList(),
-                              ),
-                              SizedBox(height: 16.h),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            ),
+                                },
+                              ).toList();
+
+                              if (filteredCategories.isEmpty)
+                                return const SizedBox.shrink();
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    group.typeName,
+                                    style: TextStyle(
+                                      fontSize: 18.sp,
+                                      color: const Color(0xFF1E1E1E),
+                                    ),
+                                  ),
+                                  SizedBox(height: 16.h),
+                                  Column(
+                                    children: filteredCategories.map((cat) {
+                                      return BudgetCategoryItem(
+                                        category: cat,
+                                        formattedAllocated: controller
+                                            .formatCurrency(cat.allocated),
+                                        formattedSpent: controller
+                                            .formatCurrency(cat.spent),
+                                        formattedRemaining: controller
+                                            .formatCurrency(cat.remaining),
+                                        onTap: () {
+                                          Get.toNamed(
+                                            Routes.CATEGORY_DETAIL,
+                                            arguments: cat.categoryModel,
+                                          );
+                                        },
+                                        onEdit: () {
+                                          Get.toNamed(
+                                            Routes.OVERSPENT_COMPENSATION,
+                                            arguments: cat.categoryModel,
+                                          );
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                                  SizedBox(height: 16.h),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
             SliverToBoxAdapter(child: SizedBox(height: 80.h)),
           ],
         ),

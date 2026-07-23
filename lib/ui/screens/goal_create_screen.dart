@@ -6,7 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:appintern/ui/controllers/goal_create_controller.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
-import 'package:appintern/ui/widgets/emoji_picker_bottom_sheet.dart' as import_emoji_picker;
+import 'package:appintern/ui/widgets/emoji_picker_bottom_sheet.dart'
+    as import_emoji_picker;
 
 class GoalCreateScreen extends GetView<GoalCreateController> {
   const GoalCreateScreen({super.key});
@@ -20,7 +21,11 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: const Color(0xFF0B4A3A), size: 20.sp),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: const Color(0xFF0B4A3A),
+            size: 20.sp,
+          ),
           onPressed: () => Get.back(),
         ),
         title: Text(
@@ -39,7 +44,7 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
               backgroundColor: Colors.grey[300],
               child: Icon(Icons.person, color: Colors.grey[600], size: 20.sp),
             ),
-          )
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -47,7 +52,6 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // Gợi ý cho bạn
             Text(
               "Gợi ý cho bạn",
@@ -64,7 +68,11 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
               children: [
                 _buildSuggestionChip('icon_plane.png', 'Du lịch', 'Du lịch'),
                 _buildSuggestionChip('icon_transport.png', 'Xe mới', 'Xe mới'),
-                _buildSuggestionChip('icon_education.png', 'Giáo dục', 'Giáo dục'),
+                _buildSuggestionChip(
+                  'icon_education.png',
+                  'Giáo dục',
+                  'Giáo dục',
+                ),
                 _buildSuggestionChip('icon_health.png', 'Nghỉ hưu', 'Nghỉ hưu'),
               ],
             ),
@@ -78,7 +86,7 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
               decoration: InputDecoration(
                 hintText: "Ví dụ: Căn hộ mơ ước",
                 filled: true,
-                fillColor: Colors.white, 
+                fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: Colors.grey[200]!),
@@ -139,15 +147,21 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Obx(() => Text(
-                      controller.selectedDeadline.value != null
-                          ? DateFormat('dd/MM/yyyy').format(controller.selectedDeadline.value!)
-                          : "dd/mm/yyyy",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        color: controller.selectedDeadline.value != null ? Colors.black87 : Colors.grey[400],
+                    Obx(
+                      () => Text(
+                        controller.selectedDeadline.value != null
+                            ? DateFormat(
+                                'dd/MM/yyyy',
+                              ).format(controller.selectedDeadline.value!)
+                            : "dd/mm/yyyy",
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          color: controller.selectedDeadline.value != null
+                              ? Colors.black87
+                              : Colors.grey[400],
+                        ),
                       ),
-                    )),
+                    ),
                     Icon(Icons.calendar_month, color: const Color(0xFF0B4A3A)),
                   ],
                 ),
@@ -160,17 +174,19 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
             SizedBox(height: 8.h),
             Row(
               children: [
-                Obx(() => Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B4A3A),
-                    borderRadius: BorderRadius.circular(12.r),
+                Obx(
+                  () => Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFCF5D5),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: CustomIconWidget(
+                      iconName: controller.selectedIcon.value,
+                      size: 24.w,
+                    ),
                   ),
-                  child: CustomIconWidget(
-                    iconName: controller.selectedIcon.value,
-                    size: 24.w,
-                  ),
-                )),
+                ),
                 SizedBox(width: 16.w),
                 Expanded(
                   child: GestureDetector(
@@ -191,7 +207,11 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.edit, size: 16.sp, color: Colors.grey[600]),
+                          Icon(
+                            Icons.edit,
+                            size: 16.sp,
+                            color: Colors.grey[600],
+                          ),
                           SizedBox(width: 8.w),
                           Text(
                             "Thay đổi icon",
@@ -209,7 +229,6 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
               ],
             ),
             SizedBox(height: 24.h),
-
 
             // Nút Tạo mục tiêu
             SizedBox(
@@ -270,10 +289,7 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CustomIconWidget(
-              iconName: iconName,
-              size: 24.w,
-            ),
+            CustomIconWidget(iconName: iconName, size: 24.w),
             SizedBox(height: 8.h),
             Text(
               label,

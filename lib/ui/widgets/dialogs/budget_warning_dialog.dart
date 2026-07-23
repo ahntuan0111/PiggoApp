@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:appintern/core/routes/app_routes.dart';
-import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:appintern/core/constants/app_assets.dart';
 import 'package:intl/intl.dart';
 

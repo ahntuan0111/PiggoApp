@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:appintern/ui/controllers/category_controller.dart';
 import 'package:appintern/ui/widgets/emoji_picker_bottom_sheet.dart';
-import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
 class AddCategoryBottomSheet extends StatefulWidget {

@@ -4,9 +4,9 @@ import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/wallet_controller.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:intl/intl.dart';
-import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
+import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
 class WalletScreen extends GetView<WalletController> {
   const WalletScreen({super.key});
@@ -38,12 +38,14 @@ class WalletScreen extends GetView<WalletController> {
                           color: const Color(0xFF0B4A3A),
                           borderRadius: BorderRadius.circular(24.r),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.15),
+                            color: Colors.white.withValues(alpha: 0.15),
                             width: 1,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0B4A3A).withOpacity(0.4),
+                              color: const Color(
+                                0xFF0B4A3A,
+                              ).withValues(alpha: 0.4),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -72,10 +74,10 @@ class WalletScreen extends GetView<WalletController> {
                                           MainAxisAlignment.center,
                                       children: [
                                         Text(
-                                          "Tổng tài sản",
+                                          "Tổng ngân sách",
                                           style: TextStyle(
-                                            color: Colors.white.withOpacity(
-                                              0.8,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.8,
                                             ),
                                             fontSize: 14.sp,
                                           ),
@@ -83,7 +85,9 @@ class WalletScreen extends GetView<WalletController> {
                                         SizedBox(width: 8.w),
                                         Icon(
                                           Icons.remove_red_eye,
-                                          color: Colors.white.withOpacity(0.8),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.8,
+                                          ),
                                           size: 16.sp,
                                         ),
                                       ],
@@ -113,7 +117,7 @@ class WalletScreen extends GetView<WalletController> {
                                                 "Đã phân bổ (Còn lại)",
                                                 style: TextStyle(
                                                   color: Colors.white
-                                                      .withOpacity(0.7),
+                                                      .withValues(alpha: 0.7),
                                                   fontSize: 12.sp,
                                                 ),
                                               ),
@@ -138,7 +142,9 @@ class WalletScreen extends GetView<WalletController> {
                                         Container(
                                           width: 1,
                                           height: 40.h,
-                                          color: Colors.white.withOpacity(0.2),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
                                         ),
                                         Expanded(
                                           child: Column(
@@ -147,7 +153,7 @@ class WalletScreen extends GetView<WalletController> {
                                                 "Chưa phân bổ",
                                                 style: TextStyle(
                                                   color: Colors.white
-                                                      .withOpacity(0.7),
+                                                      .withValues(alpha: 0.7),
                                                   fontSize: 12.sp,
                                                 ),
                                               ),
@@ -198,9 +204,11 @@ class WalletScreen extends GetView<WalletController> {
                           _buildActionButton(
                             icon: Icons.bolt,
                             label: "Điều chỉnh ví",
-                            onTap: () => Get.toNamed(
-                              Routes.WALLETCREATE,
-                            ), // Route tới màn hình quản lý ví
+                            onTap: () {
+                              controller.resetFields();
+                              controller.isAdjustMode.value = controller.wallets.isNotEmpty;
+                              Get.toNamed(Routes.WALLETCREATE);
+                            },
                           ),
                         ],
                       ),
@@ -303,7 +311,7 @@ class WalletScreen extends GetView<WalletController> {
 
                       // Tìm category info (nếu có thể lấy từ budgetService)
                       String categoryName = 'Giao dịch';
-                      String iconName = 'category';
+                      String iconName = 'icon_wallet.png';
                       final catIndex = controller.budgetService.categories
                           .indexWhere(
                             (c) => c.categoryModel.id == tx.categoryId,
@@ -315,71 +323,82 @@ class WalletScreen extends GetView<WalletController> {
                         iconName = cat.icon;
                       }
 
-                      return Container(
-                        margin: EdgeInsets.only(
-                          bottom: 12.h,
-                          left: 16.w,
-                          right: 16.w,
-                        ),
-                        padding: EdgeInsets.all(16.w),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16.r),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                      return InkWell(
+                        onTap: () {
+                          Get.toNamed(
+                            Routes.TRANSACTION_DETAIL,
+                            arguments: {'transaction': tx},
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(16.r),
+                        child: Container(
+                          margin: EdgeInsets.only(
+                            bottom: 12.h,
+                            left: 16.w,
+                            right: 16.w,
+                          ),
+                          padding: EdgeInsets.all(16.w),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16.r),
+                          ),
+                          child: Row(
+                            children: [
+                              CustomIconWidget(iconName: iconName, size: 24.sp),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      categoryName,
+                                      style: TextStyle(
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF1E1E1E),
+                                      ),
+                                    ),
+                                    if (detail?.note != null &&
+                                        detail!.note.isNotEmpty) ...[
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        detail.note,
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: Colors.grey[600],
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    categoryName,
+                                    "$sign${formatter.format(tx.amount)}đ",
                                     style: TextStyle(
                                       fontSize: 16.sp,
                                       fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF1E1E1E),
+                                      color: amountColor,
                                     ),
                                   ),
-                                  if (detail?.note != null &&
-                                      detail!.note.isNotEmpty) ...[
-                                    SizedBox(height: 4.h),
-                                    Text(
-                                      detail.note,
-                                      style: TextStyle(
-                                        fontSize: 12.sp,
-                                        color: Colors.grey[600],
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    DateFormat(
+                                      'dd/MM/yyyy',
+                                    ).format(tx.transactionDate),
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: Colors.grey[500],
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  "$sign${formatter.format(tx.amount)}đ",
-                                  style: TextStyle(
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.bold,
-                                    color: amountColor,
-                                  ),
-                                ),
-                                SizedBox(height: 4.h),
-                                Text(
-                                  DateFormat(
-                                    'dd/MM/yyyy',
-                                  ).format(tx.transactionDate),
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -445,10 +464,8 @@ class GoldCurvesPainter extends CustomPainter {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color(0xFFD4AF37).withOpacity(0.0),
-              const Color(
-                0xFFD4AF37,
-              ).withOpacity(0.18), // Tăng nhẹ độ sáng của glow
+              const Color(0xFFD4AF37).withValues(alpha: 0.0),
+              const Color(0xFFD4AF37).withValues(alpha: 0.18),
             ],
           ).createShader(
             Rect.fromLTWH(0, size.height * 0.5, size.width, size.height * 0.5),
@@ -500,7 +517,7 @@ class GoldCurvesPainter extends CustomPainter {
       path1,
       baseStrokePaint
         ..strokeWidth = 1.0
-        ..color = const Color(0xFFD4AF37).withOpacity(0.2),
+        ..color = const Color(0xFFD4AF37).withValues(alpha: 0.2),
     );
 
     // Đường cong 2 (Mới - Tạo độ rối nhẹ ở giữa)
@@ -522,7 +539,7 @@ class GoldCurvesPainter extends CustomPainter {
       path2,
       baseStrokePaint
         ..strokeWidth = 1.2
-        ..color = const Color(0xFFD4AF37).withOpacity(0.3),
+        ..color = const Color(0xFFD4AF37).withValues(alpha: 0.3),
     );
 
     // Đường cong 3 (Chính giữa, nét đậm và sáng nhất)
@@ -544,7 +561,7 @@ class GoldCurvesPainter extends CustomPainter {
       path3,
       baseStrokePaint
         ..strokeWidth = 2.0
-        ..color = const Color(0xFFD4AF37).withOpacity(0.55),
+        ..color = const Color(0xFFD4AF37).withValues(alpha: 0.55),
     );
 
     // Đường cong 4 (Mới - Cắt ngang lên trên, lượn sóng sâu)
@@ -566,7 +583,7 @@ class GoldCurvesPainter extends CustomPainter {
       path4,
       baseStrokePaint
         ..strokeWidth = 1.5
-        ..color = const Color(0xFFD4AF37).withOpacity(0.4),
+        ..color = const Color(0xFFD4AF37).withValues(alpha: 0.4),
     );
 
     // Đường cong 5 (Dưới cùng sát mép thẻ)
@@ -588,7 +605,7 @@ class GoldCurvesPainter extends CustomPainter {
       path5,
       baseStrokePaint
         ..strokeWidth = 1.0
-        ..color = const Color(0xFFD4AF37).withOpacity(0.25),
+        ..color = const Color(0xFFD4AF37).withValues(alpha: 0.25),
     );
   }
 

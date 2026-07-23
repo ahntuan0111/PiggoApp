@@ -1,6 +1,5 @@
 import "package:flutter/material.dart";
 import "package:get/get.dart";
-import "dart:math" as math;
 import "package:flutter_screenutil/flutter_screenutil.dart";
 import '../controllers/onboarding_controller.dart';
 import 'package:appintern/core/constants/app_assets.dart';

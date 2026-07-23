@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import 'package:appintern/ui/widgets/emoji_picker_bottom_sheet.dart';
 
 class WalletCreateScreen extends GetView<WalletController> {
-  const WalletCreateScreen({Key? key}) : super(key: key);
+  const WalletCreateScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +16,7 @@ class WalletCreateScreen extends GetView<WalletController> {
       backgroundColor: const Color(0xFFF8F6F0), // Nền kem sáng nhạt
       body: SafeArea(
         child: Obx(() {
-          if (controller.isAdjustMode) {
+          if (controller.isAdjustMode.value) {
             return _buildAdjustMode();
           }
           return _buildCreateMode();
@@ -53,6 +54,116 @@ class WalletCreateScreen extends GetView<WalletController> {
             ),
           ),
           SizedBox(height: 24.h),
+
+          // Card Tổng ngân sách hiện tại & RealTime sau điều chỉnh
+          Obx(() {
+            final current = controller.currentTotalBalance;
+            final newTotal = controller.newTotalBalance;
+            final isAdding = controller.isAdding.value;
+            final amount = controller.inputAmount.value;
+            final formatter = NumberFormat('#,###', 'vi_VN');
+
+            return Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: const Color(0xFFE0E0E0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Tổng ngân sách hiện tại:',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: const Color(0xFF616161),
+                        ),
+                      ),
+                      Text(
+                        '${formatter.format(current)} đ',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E1E1E),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 10.h),
+                  const Divider(height: 1),
+                  SizedBox(height: 10.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            isAdding ? Icons.trending_up : Icons.trending_down,
+                            size: 18.sp,
+                            color: isAdding
+                                ? const Color(0xFF369B56)
+                                : Colors.red.shade600,
+                          ),
+                          SizedBox(width: 6.w),
+                          Text(
+                            'Tổng ngân sách mới:',
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1E1E1E),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${formatter.format(newTotal)} đ',
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                          color: newTotal < 0
+                              ? Colors.red.shade700
+                              : (isAdding && amount > 0
+                                  ? const Color(0xFF369B56)
+                                  : const Color(0xFF1E1E1E)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (amount > 0) ...[
+                    SizedBox(height: 4.h),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        isAdding
+                            ? '(+ ${formatter.format(amount)} đ)'
+                            : '(- ${formatter.format(amount)} đ)',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w500,
+                          color: isAdding
+                              ? const Color(0xFF369B56)
+                              : Colors.red.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+          SizedBox(height: 20.h),
 
           // Tabs: Thêm vào / Trừ đi
           Container(
@@ -432,7 +543,7 @@ class WalletCreateScreen extends GetView<WalletController> {
                     onChanged: (val) {
                       controller.isDefault.value = val;
                     },
-                    activeColor: Colors.white,
+                    activeThumbColor: Colors.white,
                     activeTrackColor: const Color(0xFFF9C03C),
                   ),
                 ),

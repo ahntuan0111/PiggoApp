@@ -34,9 +34,10 @@ class TransactionDetailModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'transactions': transactionId, // Tên relationship thường là 'transactions'
+      'transactions':
+          transactionId, // Tên relationship thường là 'transactions'
       'note': note,
-      'receiptFileId': receiptFileIds.join(','), // Gộp mảng List thành 1 chuỗi String
+      'receiptFileId': receiptFileIds.join(','),
       'rawInputText': rawInputText,
       'confidenceScore': confidenceScore,
     };

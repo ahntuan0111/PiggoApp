@@ -102,7 +102,8 @@ class SmartInputScreen extends GetView<SmartInputController> {
                           : () => controller.submitTextInput(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFF9C03C),
-                        disabledBackgroundColor: const Color(0xFFF9C03C).withOpacity(0.5),
+                        disabledBackgroundColor: const Color(0xFFF9C03C).withValues(alpha: 0.5),
+
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16.r),
                         ),

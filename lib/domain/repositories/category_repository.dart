@@ -1,6 +1,7 @@
 import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/category_type_model.dart';
+import 'package:appintern/data/models/monthly_budget_model.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 
@@ -49,8 +50,6 @@ class CategoryRepository with AppwriteErrorHandler {
     if (typeIds.isEmpty) return [];
     return handleAppwriteError(() async {
       List<CategoryModel> allCategories = [];
-      String currentMonthStr =
-          "${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}";
 
       for (String typeId in typeIds) {
         final response = await _appwrite.tables.listRows(
@@ -61,28 +60,26 @@ class CategoryRepository with AppwriteErrorHandler {
 
         for (var row in response.rows) {
           CategoryModel cat = CategoryModel.fromMap(row.data);
-
-          // Thử tìm budget của tháng hiện tại cho category này
-          final budgetResponse = await _appwrite.tables.listRows(
-            databaseId: _appwrite.databaseId,
-            tableId: _appwrite.monthlyBudgetsTableId,
-            queries: [
-              Query.equal('categories', cat.id),
-              Query.equal('monthYear', currentMonthStr),
-            ],
-          );
-
-          if (budgetResponse.rows.isNotEmpty) {
-            cat.spent = (budgetResponse.rows.first.data['spentAmount'] ?? 0)
-                .toDouble();
-          } else {
-            cat.spent = 0.0;
-          }
-
           allCategories.add(cat);
         }
       }
       return allCategories;
+    });
+  }
+
+  Future<List<MonthlyBudgetModel>> getMonthlyBudgets(String monthYearStr) async {
+    return handleAppwriteError(() async {
+      final response = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.monthlyBudgetsTableId,
+        queries: [
+          Query.equal('monthYear', monthYearStr),
+        ],
+      );
+      return response.rows
+          .map((row) => MonthlyBudgetModel.fromMap(row.data))
+          .where((mb) => mb.categoryId.isNotEmpty)
+          .toList();
     });
   }
 
@@ -172,6 +169,41 @@ class CategoryRepository with AppwriteErrorHandler {
         data: data,
       );
       return CategoryModel.fromMap(response.data);
+    });
+  }
+
+  Future<void> updateMonthlyBudget(String budgetId, double budgetedAmount) async {
+    return handleAppwriteError(() async {
+      await _appwrite.tables.updateRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.monthlyBudgetsTableId,
+        rowId: budgetId,
+        data: {'budgetedAmount': budgetedAmount},
+      );
+    });
+  }
+
+  Future<MonthlyBudgetModel> createMonthlyBudget({
+    required String categoryId,
+    required String monthYear,
+    required double budgetedAmount,
+    double rolloverAmount = 0.0,
+    double spentAmount = 0.0,
+  }) async {
+    return handleAppwriteError(() async {
+      final response = await _appwrite.tables.createRow(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.monthlyBudgetsTableId,
+        rowId: ID.unique(),
+        data: {
+          'categories': categoryId,
+          'monthYear': monthYear,
+          'budgetedAmount': budgetedAmount,
+          'rolloverAmount': rolloverAmount,
+          'spentAmount': spentAmount,
+        },
+      );
+      return MonthlyBudgetModel.fromMap(response.data);
     });
   }
 

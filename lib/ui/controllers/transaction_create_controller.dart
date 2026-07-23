@@ -6,8 +6,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
-import 'package:appintern/domain/repositories/category_repository.dart';
-import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/data/models/category_model.dart';
@@ -16,6 +14,9 @@ import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/domain/repositories/storage_repository.dart';
+import 'package:appintern/ui/widgets/dialogs/post_adjustment_warning_dialog.dart';
+import 'package:intl/intl.dart';
+import 'package:collection/collection.dart';
 
 class TransactionCreateController extends BaseController with BudgetAware {
   final storage = Get.find<StorageService>();
@@ -25,8 +26,13 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
   var currentUserId = "".obs;
 
-  // Tabs (0: CHI PHÍ, 1: THU NHẬP)
-  final selectedTab = 0.obs;
+  // Edit Mode
+  var isEdit = false.obs;
+  TransactionModel? editingTransaction;
+  TransactionDetailModel? editingDetail;
+  CategoryModel? oldCategory;
+  WalletModel? oldWallet;
+
 
   // Input
   final amountController = TextEditingController();
@@ -48,7 +54,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: selectedDate.value,
-      firstDate: DateTime(2000),
+      firstDate: DateTime(2020, 1, 1),
       lastDate: DateTime.now(),
       builder: (context, child) {
         return Theme(
@@ -142,7 +148,32 @@ class TransactionCreateController extends BaseController with BudgetAware {
           .toList();
 
       categories.value = validCategories;
-          
+
+      // Xử lý dữ liệu Chỉnh sửa (Edit Mode) nếu được truyền sang
+      if (Get.arguments != null && Get.arguments['isEdit'] == true) {
+        isEdit.value = true;
+        editingTransaction = Get.arguments['transaction'] as TransactionModel?;
+        editingDetail = Get.arguments['detail'] as TransactionDetailModel?;
+
+        if (editingTransaction != null) {
+          final formatter = NumberFormat('#,###', 'vi_VN');
+          amountController.text = formatter.format(editingTransaction!.amount);
+          noteController.text = editingDetail?.note ?? editingTransaction!.note ?? '';
+          selectedDate.value = editingTransaction!.transactionDate;
+
+          final matchedWallet = wallets.firstWhereOrNull((w) => w.id == editingTransaction!.walletId);
+          if (matchedWallet != null) {
+            selectedWallet.value = matchedWallet;
+            oldWallet = matchedWallet;
+          }
+
+          final matchedCategory = categories.firstWhereOrNull((c) => c.id == editingTransaction!.categoryId);
+          if (matchedCategory != null) {
+            selectedCategory.value = matchedCategory;
+            oldCategory = matchedCategory;
+          }
+        }
+      }
     }, tag: "FETCH_TRANSACTION_CREATE");
 
     hideLoading();
@@ -160,17 +191,26 @@ class TransactionCreateController extends BaseController with BudgetAware {
     }
 
     try {
-      // 1. Kiểm tra trạng thái quyền
-      var status = await Permission.photos.status;
+      PermissionStatus status = PermissionStatus.denied;
+      PermissionStatus cameraStatus = PermissionStatus.denied;
 
-      // 2. Nếu chưa cấp quyền, tiến hành xin quyền
-      if (!status.isGranted) {
+      if (Platform.isIOS) {
         status = await Permission.photos.request();
+        cameraStatus = await Permission.camera.request();
+      } else {
+        // Android: Thử request photos (Android 13+) trước, nếu không được thì storage (Android 12-)
+        status = await Permission.photos.request();
+        if (!status.isGranted) {
+          final storageStatus = await Permission.storage.request();
+          if (storageStatus.isGranted || storageStatus.isLimited) {
+            status = storageStatus;
+          }
+        }
+        cameraStatus = await Permission.camera.request();
       }
 
-      // 3. Xử lý kết quả
-      if (status.isGranted || status.isLimited) {
-        // Nếu người dùng đồng ý -> mở thư viện ảnh
+      // Xử lý kết quả
+      if ((status.isGranted || status.isLimited) && cameraStatus.isGranted) {
         final ImagePicker picker = ImagePicker();
         final XFile? image = await picker.pickImage(
           source: ImageSource.gallery,
@@ -178,20 +218,38 @@ class TransactionCreateController extends BaseController with BudgetAware {
         if (image != null) {
           imagePaths.add(image.path);
         }
-      } else if (status.isPermanentlyDenied) {
-        // Nếu người dùng từ chối vĩnh viễn -> yêu cầu vào Cài đặt
-        showErrorMessage(
-          'Quyền bị từ chối',
-          'Vui lòng vào Cài đặt để cấp quyền truy cập Ảnh cho ứng dụng.',
-        );
-        await openAppSettings();
+      } else if (status.isPermanentlyDenied || cameraStatus.isPermanentlyDenied) {
+        _showPermissionDialog("Quyền truy cập bị từ chối", "Vui lòng vào Cài đặt để cấp quyền truy cập Ảnh và Camera cho ứng dụng.");
       } else {
-        // Nếu người dùng bấm Từ chối (lần đầu)
-        showErrorMessage('Lỗi', 'Bạn cần cấp quyền để thêm ảnh giao dịch.');
+        showErrorMessage('Lỗi', 'Bạn cần cấp đủ quyền Ảnh và Camera để thêm ảnh giao dịch.');
       }
     } catch (e) {
       showErrorMessage('Lỗi', 'Không thể chọn ảnh: $e');
     }
+  }
+
+  void _showPermissionDialog(String title, String message) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
+            onPressed: () {
+              Get.back();
+              openAppSettings();
+            },
+            child: const Text("Cài đặt", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void removeImage(int index) {
@@ -202,23 +260,12 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
   double get currentSpent {
     if (selectedCategory.value == null) return 0.0;
-    double spent = selectedCategory.value!.spent;
-    if (selectedTab.value == 0) {
-      spent += amountValue.value;
-    } else {
-      spent -= amountValue.value;
-      if (spent < 0) spent = 0;
-    }
-    return spent;
+    return selectedCategory.value!.spent + amountValue.value;
   }
 
   double get currentRemaining {
     if (selectedCategory.value == null) return 0.0;
-    double baseRemaining = selectedCategory.value!.remaining;
-    if (selectedTab.value == 0) {
-      return baseRemaining - amountValue.value;
-    }
-    return baseRemaining + amountValue.value;
+    return selectedCategory.value!.remaining - amountValue.value;
   }
 
   double get currentProgress {
@@ -226,14 +273,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
     double defaultBudget = selectedCategory.value!.defaultBudget;
     if (defaultBudget == 0) return 0.0;
 
-    double spent = selectedCategory.value!.spent;
-    if (selectedTab.value == 0) {
-      spent += amountValue.value;
-    } else {
-      spent -= amountValue.value;
-      if (spent < 0) spent = 0;
-    }
-
+    double spent = selectedCategory.value!.spent + amountValue.value;
     double ratio = spent / defaultBudget;
     if (ratio > 1.0) ratio = 1.0;
     return ratio;
@@ -279,6 +319,33 @@ class TransactionCreateController extends BaseController with BudgetAware {
     //   return;
     // }
 
+    final selectedDt = selectedDate.value;
+    final currentDt = budgetService.currentTrackingMonth.value;
+    
+    bool isClosedMonth = false;
+    if (selectedDt.year < currentDt.year || 
+       (selectedDt.year == currentDt.year && selectedDt.month < currentDt.month)) {
+      isClosedMonth = true;
+    }
+
+    if (isClosedMonth) {
+      PostAdjustmentWarningDialog.show(() {
+        if (isEdit.value) {
+          _executeUpdateTransaction();
+        } else {
+          _executeSaveTransaction();
+        }
+      });
+    } else {
+      if (isEdit.value) {
+        _executeUpdateTransaction();
+      } else {
+        _executeSaveTransaction();
+      }
+    }
+  }
+
+  Future<void> _executeSaveTransaction() async {
     showLoading();
 
     final result = await ErrorHandler.execute(() async {
@@ -295,7 +362,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
         walletId: selectedWallet.value!.id,
         categoryId: selectedCategory.value!.id,
         amount: amountValue.value,
-        type: selectedTab.value == 0 ? 'EXPENSE' : 'INCOME',
+        type: 'EXPENSE',
         transactionDate: selectedDate.value,
         status: 'COMPLETED',
         note: noteController.text.trim(), // Thêm trường note (Denormalized)
@@ -338,13 +405,71 @@ class TransactionCreateController extends BaseController with BudgetAware {
     );
   }
 
+  Future<void> _executeUpdateTransaction() async {
+    if (editingTransaction == null) return;
+    showLoading();
+
+    final result = await ErrorHandler.execute(() async {
+      // 1. Upload ảnh mới (nếu có)
+      List<String> uploadedFileIds = [];
+      for (String path in imagePaths) {
+        if (!path.startsWith('http')) {
+          String fileId = await storageRepository.uploadReceiptImage(File(path));
+          uploadedFileIds.add(fileId);
+        }
+      }
+
+      final newTx = TransactionModel(
+        id: editingTransaction!.id,
+        walletId: selectedWallet.value!.id,
+        categoryId: selectedCategory.value!.id,
+        amount: amountValue.value,
+        type: 'EXPENSE',
+        transactionDate: selectedDate.value,
+        status: editingTransaction!.status,
+        note: noteController.text.trim(),
+      );
+
+      final newDetail = TransactionDetailModel(
+        id: editingDetail?.id ?? '',
+        transactionId: editingTransaction!.id,
+        note: noteController.text.trim(),
+        receiptFileIds: uploadedFileIds.isNotEmpty ? uploadedFileIds : (editingDetail?.receiptFileIds ?? const []),
+        rawInputText: editingDetail?.rawInputText ?? '',
+        confidenceScore: editingDetail?.confidenceScore ?? 1.0,
+      );
+
+      await transactionRepository.updateTransaction(
+        oldTransaction: editingTransaction!,
+        newTransaction: newTx,
+        newTransactionDetail: newDetail,
+        oldWallet: oldWallet ?? selectedWallet.value!,
+        newWallet: selectedWallet.value!,
+        oldCategory: oldCategory,
+        newCategory: selectedCategory.value!,
+      );
+    }, tag: "UPDATE_TRANSACTION");
+
+    hideLoading();
+
+    result.fold(
+      (failure) {
+        showErrorMessage("Lỗi", "Không thể cập nhật giao dịch: ${failure.message}");
+      },
+      (_) {
+        Get.back(result: true);
+        showSuccessMessage("Thành công", "Đã cập nhật giao dịch thành công");
+      },
+    );
+  }
+
   String formatCurrency(double amount) {
     String numStr = amount.toStringAsFixed(0);
-    return numStr.replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]}.',
-        ) +
-        'đ';
+    final formatted = numStr.replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
+    return '${formatted}đ';
   }
 
   @override

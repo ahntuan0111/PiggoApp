@@ -11,6 +11,10 @@ class EmojiPickerBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<String> icons = [
+      'icon_health.png',
+      'icon_plane.png',
+      'icon_transport.png',
+      'icon_education.png',
       '1.png',
       '2.png',
       '3.png',
@@ -32,6 +36,13 @@ class EmojiPickerBottomSheet extends StatelessWidget {
       '19.png',
       '20.png',
       '21.png',
+      '22.png',
+      '23.png',
+      '24.png',
+      '25.png',
+      '26.png',
+      '27.png',
+      '28.png',
     ];
 
     return Container(

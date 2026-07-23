@@ -78,6 +78,62 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler implem
     });
   }
 
+  @override
+  Future<List<Map<String, dynamic>>> parseReceiptImage({
+    required File imageFile,
+    required List<String> availableCategories,
+    required String currentTime,
+  }) async {
+    return handleAppwriteError(() async {
+      final bytes = await imageFile.readAsBytes();
+      final base64String = base64Encode(bytes);
+
+      final payload = {
+        'image_base64': base64String,
+        'categories': availableCategories,
+        'currentTime': currentTime,
+      };
+
+      String? envFunctionId = dotenv.env['APPWRITE_FUNCTION_PARSE_RECEIPT_VISION'];
+      final functionId = (envFunctionId != null && envFunctionId.isNotEmpty)
+          ? envFunctionId
+          : 'parse_receipt_vision';
+
+      dev.log('[AI_SERVICE] Calling vision function: $functionId', name: 'PARSE_RECEIPT_VISION');
+
+      final execution = await _appwriteService.functions.createExecution(
+        functionId: functionId,
+        body: jsonEncode(payload),
+        xasync: false,
+      );
+
+      dev.log('[AI_SERVICE] Vision Execution Result status: ${execution.status}, code: ${execution.responseStatusCode}', name: 'PARSE_RECEIPT_VISION');
+
+      if (execution.responseStatusCode >= 400) {
+        final serverMessage = (execution.responseBody.isNotEmpty)
+            ? _tryParseMessage(execution.responseBody)
+            : 'Server trả về lỗi ${execution.responseStatusCode}';
+        throw Exception('Vision Function failed: $serverMessage');
+      }
+
+      final responseBody = execution.responseBody;
+      if (responseBody.isNotEmpty) {
+        final Map<String, dynamic> result = jsonDecode(responseBody);
+        if (result['success'] == true && result['data'] != null) {
+          final data = result['data'] as Map<String, dynamic>;
+          final List<dynamic> txs = data['transactions'] ?? [];
+          return txs.map((e) => e as Map<String, dynamic>).toList();
+        } else {
+          final msg = result['message'] ?? 'Không thể bóc tách hóa đơn từ AI';
+          throw Exception(msg);
+        }
+      } else {
+        throw Exception('Function trả về kết quả rỗng');
+      }
+    });
+  }
+
+
   /// Cố parse JSON để lấy field "message", nếu không được thì trả nguyên chuỗi
   String _tryParseMessage(String body) {
     try {

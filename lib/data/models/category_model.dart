@@ -6,7 +6,7 @@ class CategoryModel {
   final String iconName;
   final double defaultBudget;
   double spent; // Thêm trường spent để sửa lỗi UI
-  
+
   double get remaining => defaultBudget - spent; // Getter tính số tiền còn lại
 
   CategoryModel({

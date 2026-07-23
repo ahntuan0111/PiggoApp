@@ -7,7 +7,7 @@ import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 import 'package:appintern/ui/widgets/history_transaction_item.dart';
 import 'package:appintern/ui/widgets/emoji_picker_bottom_sheet.dart' as import_emoji_picker;
 import 'package:appintern/data/models/transaction_model.dart';
-import 'package:appintern/data/models/transaction_detail_model.dart';
+
 
 class GoalDetailScreen extends GetView<GoalDetailController> {
   const GoalDetailScreen({super.key});
@@ -45,13 +45,17 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
           ),
         ],
       ),
-      body: Obx(() {
-        final goal = controller.goal.value;
-        final progress = controller.currentProgress;
-        final saved = controller.savedAmount;
+      body: RefreshIndicator(
+        onRefresh: controller.refreshAll,
+        color: const Color(0xFF0B4A3A),
+        child: Obx(() {
+          final goal = controller.goal.value;
+          final progress = controller.currentProgress;
+          final saved = controller.savedAmount;
 
-        return Column(
-          children: [
+          return Column(
+            children: [
+
             // Thông tin tiến độ (Vòng tròn)
             Container(
               padding: EdgeInsets.symmetric(vertical: 24.h),
@@ -160,7 +164,7 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, -5),
                     )
@@ -211,19 +215,21 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
                                     );
                                   },
                                 ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        );
-      }),
+              ],
+            );
+        }),
+      ),
     );
   }
 
   void _showDeleteConfirm() {
     Get.dialog(
+
       AlertDialog(
         title: const Text("Xóa mục tiêu"),
         content: const Text("Bạn có chắc chắn muốn xóa mục tiêu này? Danh mục tiết kiệm tương ứng cũng sẽ bị xóa."),

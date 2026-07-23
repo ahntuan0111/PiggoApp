@@ -22,8 +22,8 @@ class TransactionModel {
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
     return TransactionModel(
       id: map['\$id'] ?? map['id'] ?? '',
-      walletId: map['walletId'] ?? '',
-      categoryId: map['categoryId'] ?? '',
+      walletId: _extractId(map['wallets']) ?? map['walletId'] ?? '',
+      categoryId: _extractId(map['categories']) ?? map['categoryId'] ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
       type: map['type'] ?? 'EXPENSE',
       transactionDate: map['transactionDate'] != null
@@ -46,5 +46,12 @@ class TransactionModel {
       map['categories'] = categoryId;
     }
     return map;
+  }
+
+  static String? _extractId(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is Map) return value['\$id'] ?? value['id'];
+    return null;
   }
 }

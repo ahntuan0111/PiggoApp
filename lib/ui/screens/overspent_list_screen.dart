@@ -21,7 +21,7 @@ class OverspentListScreen extends GetView<OverspentListController> {
           icon: Container(
             padding: EdgeInsets.all(4.r),
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.close, color: Colors.white, size: 16.sp),
@@ -47,121 +47,127 @@ class OverspentListScreen extends GetView<OverspentListController> {
             ),
             SizedBox(height: 24.h),
             Expanded(
-              child: Obx(() {
-                final overspentCats = controller.overspentCategories;
-                
-                if (overspentCats.isEmpty) {
-                  return Center(
-                    child: Text(
-                      "Tuyệt vời!\nKhông có danh mục nào chi tiêu vượt mức.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        color: Colors.grey[600],
-                        height: 1.5,
-                      ),
-                    ),
-                  );
-                }
+              child: RefreshIndicator(
+                onRefresh: controller.fetchData,
+                color: const Color(0xFFD81B60),
+                child: Obx(() {
+                  final overspentCats = controller.overspentCategories;
 
-                return ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  itemCount: overspentCats.length,
-                  itemBuilder: (context, index) {
-                    final cat = overspentCats[index];
-                    return GestureDetector(
-                      onTap: () => controller.navigateToCompensation(cat.categoryModel),
-                      child: Container(
-                        margin: EdgeInsets.only(bottom: 16.h),
-                        padding: EdgeInsets.all(16.w),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48.r,
-                              height: 48.r,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFCF5D5),
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              child: Center(
-                                child: CustomIconWidget(
-                                  iconName: cat.categoryModel.iconName,
-                                  size: 24.sp,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 16.w),
-                            Expanded(
-                              child: Text(
-                                cat.categoryModel.name,
-                                style: TextStyle(
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF1E1E1E),
-                                ),
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                RichText(
-                                  text: TextSpan(
-                                    text: formatter.format(cat.remaining),
-                                    style: TextStyle(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF1E1E1E),
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: 'đ',
-                                        style: TextStyle(
-                                          fontSize: 16.sp,
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF1E1E1E),
-                                          decoration: TextDecoration.underline,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 8.h),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFD81B60),
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                  child: Text(
-                                    "Đang tiêu vượt mức",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11.sp,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                  if (overspentCats.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "Tuyệt vời!\nKhông có danh mục nào chi tiêu vượt mức.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          color: Colors.grey[600],
+                          height: 1.5,
                         ),
                       ),
                     );
-                  },
-                );
-              }),
+                  }
+
+                  return ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    itemCount: overspentCats.length,
+                    itemBuilder: (context, index) {
+                      final cat = overspentCats[index];
+                      return GestureDetector(
+                        onTap: () => controller.navigateToCompensation(cat.categoryModel),
+                        child: Container(
+                          margin: EdgeInsets.only(bottom: 16.h),
+                          padding: EdgeInsets.all(16.w),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 48.r,
+                                height: 48.r,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFCF5D5),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Center(
+                                  child: CustomIconWidget(
+                                    iconName: cat.categoryModel.iconName,
+                                    size: 24.sp,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 16.w),
+                              Expanded(
+                                child: Text(
+                                  cat.categoryModel.name,
+                                  style: TextStyle(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF1E1E1E),
+                                  ),
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  RichText(
+                                    text: TextSpan(
+                                      text: formatter.format(cat.remaining),
+                                      style: TextStyle(
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF1E1E1E),
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: 'đ',
+                                          style: TextStyle(
+                                            fontSize: 16.sp,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF1E1E1E),
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFD81B60),
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: Text(
+                                      "Đang tiêu vượt mức",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+              ),
             ),
+
           ],
         ),
       ),

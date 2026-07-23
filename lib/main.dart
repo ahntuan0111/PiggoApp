@@ -4,6 +4,8 @@ import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/domain/repositories/storage_repository.dart';
 import 'package:appintern/domain/repositories/goal_repository.dart';
+import 'package:appintern/domain/repositories/transfer_log_repository.dart';
+import 'package:appintern/domain/repositories/rollover_repository.dart';
 import 'package:appintern/core/services/budget_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -30,6 +32,8 @@ void main() async {
   Get.put(StorageRepository(appwriteService));
   Get.put(TransactionRepository(appwriteService));
   Get.put(GoalRepository(appwriteService));
+  Get.put(TransferLogRepository(appwriteService));
+  Get.put(RolloverRepository(appwriteService));
 
   // Services
   Get.put(NetworkService());
@@ -56,7 +60,7 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF4285F4),
+              seedColor: const Color(0xFFF9F7F1),
             ),
             useMaterial3: true,
             fontFamily: 'Roboto',

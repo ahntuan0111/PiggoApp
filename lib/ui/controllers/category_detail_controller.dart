@@ -2,16 +2,13 @@ import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
+import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
-import 'package:flutter/material.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'package:appintern/core/services/budget_service.dart';
-import 'package:appwrite/appwrite.dart';
-
 class CategoryDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
       Get.find<TransactionRepository>();
@@ -26,6 +23,10 @@ class CategoryDetailController extends BaseController with BudgetAware {
   // Danh sách các map chứa thông tin để hiển thị
   var historyList = <Map<String, dynamic>>[].obs;
 
+  // --- Proxy Getters từ BudgetService (Tránh Get.find trong Screen) ---
+  double get unallocatedAmount => budgetService.unallocatedAmount.value;
+  List<BudgetCategoryGroup> get categoryGroups => budgetService.categoryGroups;
+
   @override
   void onInit() {
     super.onInit();
@@ -36,6 +37,11 @@ class CategoryDetailController extends BaseController with BudgetAware {
     _transactionRepo.onTransactionUpdated.listen((_) {
       fetchHistory();
     });
+  }
+
+  /// Pull-to-Refresh: làm mới toàn bộ trang chi tiết danh mục
+  Future<void> refreshAll() async {
+    await Future.wait([fetchHistory(), budgetService.refreshData()]);
   }
 
   Future<void> fetchHistory() async {
@@ -125,6 +131,9 @@ class CategoryDetailController extends BaseController with BudgetAware {
     showLoading();
 
     final result = await ErrorHandler.execute(() async {
+      final now = budgetService.currentTrackingMonth.value;
+      final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
+
       await _categoryRepo.updateCategory(
         category.id,
         category.name,
@@ -132,6 +141,16 @@ class CategoryDetailController extends BaseController with BudgetAware {
         category.color,
         defaultBudget: newBudget,
       );
+      final mbTarget = budgetService.getBudgetForCategory(category.id);
+      if (mbTarget != null) {
+        await _categoryRepo.updateMonthlyBudget(mbTarget.id, newBudget);
+      } else {
+        await _categoryRepo.createMonthlyBudget(
+          categoryId: category.id,
+          monthYear: monthYearStr,
+          budgetedAmount: newBudget,
+        );
+      }
 
       // Cập nhật category nguồn (nếu có và không phải là 'unallocated')
       if (sourceCategoryId != null &&
@@ -150,6 +169,16 @@ class CategoryDetailController extends BaseController with BudgetAware {
             sourceCat.color,
             defaultBudget: sourceCategoryNewBudget,
           );
+          final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
+          if (mbSource != null) {
+            await _categoryRepo.updateMonthlyBudget(mbSource.id, sourceCategoryNewBudget);
+          } else {
+            await _categoryRepo.createMonthlyBudget(
+              categoryId: sourceCat.id,
+              monthYear: monthYearStr,
+              budgetedAmount: sourceCategoryNewBudget,
+            );
+          }
         }
       }
     }, tag: "UPDATE_BUDGET");

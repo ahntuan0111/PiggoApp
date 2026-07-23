@@ -6,12 +6,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:appintern/ui/controllers/transaction_create_controller.dart';
-import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
 class TransactionCreateScreen extends GetView<TransactionCreateController> {
-  const TransactionCreateScreen({Key? key}) : super(key: key);
+  const TransactionCreateScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,85 +22,17 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1E1E1E)),
           onPressed: () => Get.back(),
         ),
-        title: Text(
-          'Thêm giao dịch',
+        title: Obx(() => Text(
+          controller.isEdit.value ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch',
           style: TextStyle(
             color: const Color(0xFF1E1E1E),
             fontSize: 18.sp,
             fontWeight: FontWeight.w600,
           ),
-        ),
+        )),
       ),
       body: Column(
         children: [
-          // Tabs
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            child: Obx(
-              () => Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => controller.selectedTab.value = 0,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: controller.selectedTab.value == 0
-                                  ? const Color(0xFF1E1E1E)
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'CHI PHÍ',
-                          style: TextStyle(
-                            color: controller.selectedTab.value == 0
-                                ? const Color(0xFF1E1E1E)
-                                : Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => controller.selectedTab.value = 1,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: controller.selectedTab.value == 1
-                                  ? const Color(0xFF1E1E1E)
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'THU NHẬP',
-                          style: TextStyle(
-                            color: controller.selectedTab.value == 1
-                                ? const Color(0xFF1E1E1E)
-                                : Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
 
           Expanded(
             child: SingleChildScrollView(
@@ -665,14 +595,14 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                 borderRadius: BorderRadius.circular(24.r),
               ),
             ),
-            child: Text(
-              'Thêm',
+            child: Obx(() => Text(
+              controller.isEdit.value ? 'Cập nhật' : 'Thêm',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w600,
               ),
-            ),
+            )),
           ),
         ),
       ),

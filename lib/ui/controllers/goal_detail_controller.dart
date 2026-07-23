@@ -6,7 +6,6 @@ import 'package:appintern/domain/repositories/goal_repository.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:get/get.dart';
-import 'package:appwrite/appwrite.dart';
 
 class GoalDetailController extends BaseController with BudgetAware {
   final GoalRepository goalRepository = Get.find<GoalRepository>();
@@ -50,6 +49,11 @@ class GoalDetailController extends BaseController with BudgetAware {
         transactions.assignAll(data);
       }
     );
+  }
+
+  /// Pull-to-Refresh: làm mới lịch sử và đồng bộ budget
+  Future<void> refreshAll() async {
+    await Future.wait([fetchHistory(), budgetService.refreshData()]);
   }
 
   Future<void> deleteGoal() async {

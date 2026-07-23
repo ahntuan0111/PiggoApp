@@ -1,9 +1,10 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:appintern/core/base/base_controller.dart';
-
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
-import 'package:appintern/core/routes/app_pages.dart';
+import 'package:appintern/ui/controllers/smart_input_controller.dart';
+
 
 class MainController extends BaseController with GetSingleTickerProviderStateMixin, BudgetAware {
   var selectedIndex = 0.obs;
@@ -41,9 +42,17 @@ class MainController extends BaseController with GetSingleTickerProviderStateMix
     return budgetService.categories.isNotEmpty;
   }
 
+  Future<void> openCameraReceiptScan() async {
+    toggleFab();
+    await Future.delayed(const Duration(milliseconds: 260));
+    final smartInputController = Get.find<SmartInputController>();
+    await smartInputController.pickAndProcessReceipt(ImageSource.camera);
+  }
+
   @override
   void onClose() {
     animationController.dispose();
     super.onClose();
   }
 }
+

@@ -139,35 +139,41 @@ class OverspentCompensationController extends BaseController with BudgetAware {
 
     showLoading();
     final result = await ErrorHandler.execute(() async {
-      // 1. Cập nhật category bị âm (Cộng tiền)
-      double newTargetBudget = targetCategory.defaultBudget + totalCompensated;
-      await _categoryRepo.updateCategory(
-        targetCategory.id,
-        targetCategory.name,
-        targetCategory.iconName,
-        targetCategory.color,
-        defaultBudget: newTargetBudget,
-      );
+      final now = budgetService.currentTrackingMonth.value;
+      final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
+
+      final mbTarget = budgetService.getBudgetForCategory(targetCategory.id);
+      if (mbTarget != null) {
+        double newTargetBudget = mbTarget.budgetedAmount + totalCompensated;
+        await _categoryRepo.updateMonthlyBudget(mbTarget.id, newTargetBudget);
+      } else {
+        await _categoryRepo.createMonthlyBudget(
+          categoryId: targetCategory.id,
+          monthYear: monthYearStr,
+          budgetedAmount: targetCategory.defaultBudget + totalCompensated,
+        );
+      }
 
       // 2. Cập nhật các nguồn bị lấy tiền (Trừ tiền)
       for (var source in sources) {
         if (source.amountToCompensate > 0 && source.sourceId != 'unallocated') {
-          // Lấy category gốc từ BudgetService để biết thông tin hiện tại
           final sourceCatList = budgetService.categories
               .where((c) => c.categoryModel.id == source.sourceId)
               .toList();
 
           if (sourceCatList.isNotEmpty) {
             final sourceCat = sourceCatList.first.categoryModel;
-            double newSourceBudget =
-                sourceCat.defaultBudget - source.amountToCompensate;
-            await _categoryRepo.updateCategory(
-              sourceCat.id,
-              sourceCat.name,
-              sourceCat.iconName,
-              sourceCat.color,
-              defaultBudget: newSourceBudget,
-            );
+            final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
+            if (mbSource != null) {
+              double newSourceBudget = mbSource.budgetedAmount - source.amountToCompensate;
+              await _categoryRepo.updateMonthlyBudget(mbSource.id, newSourceBudget);
+            } else {
+              await _categoryRepo.createMonthlyBudget(
+                categoryId: sourceCat.id,
+                monthYear: monthYearStr,
+                budgetedAmount: sourceCat.defaultBudget - source.amountToCompensate,
+              );
+            }
           }
         }
       }

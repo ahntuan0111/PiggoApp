@@ -35,6 +35,15 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   void onInit() {
     super.onInit();
     
+    // Đọc arguments nếu có truyền từ màn hình khác
+    if (Get.arguments != null) {
+      if (Get.arguments is Map) {
+        if (Get.arguments['category'] != null) {
+          selectedCategory.value = Get.arguments['category'];
+        }
+      }
+    }
+
     // Lắng nghe sự thay đổi của text search để thực hiện Debounce 500ms
     searchController.addListener(() {
       if (_debounce?.isActive ?? false) _debounce?.cancel();
@@ -158,7 +167,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
         'detail': detail,
         'walletName': walletName,
         'categoryName': category?.name ?? 'Giao dịch',
-        'icon': category?.icon ?? 'category',
+        'icon': category?.icon ?? 'icon_wallet.png',
       });
     }
     return map;

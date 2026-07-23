@@ -2,13 +2,11 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/core/services/appwrite_service.dart';
-import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/data/models/goal_model.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/goal_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:appintern/data/models/budget_category.dart';
 import 'package:get/get.dart';
 import 'package:appwrite/appwrite.dart';
 

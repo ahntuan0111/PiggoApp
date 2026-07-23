@@ -6,27 +6,17 @@ import 'package:appintern/core/constants/app_assets.dart';
 import 'package:appintern/ui/controllers/transaction_history_controller.dart';
 import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/data/models/category_model.dart';
+import 'package:appintern/core/routes/app_routes.dart';
 
-class TransactionHistoryScreen extends StatefulWidget {
-  const TransactionHistoryScreen({super.key});
+class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
+  TransactionHistoryScreen({super.key});
 
-  @override
-  State<TransactionHistoryScreen> createState() => _TransactionHistoryScreenState();
-}
-
-class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
-  final TransactionHistoryController controller = Get.find();
   final ScrollController _scrollController = ScrollController();
   final NumberFormat formatter = NumberFormat('#,###', 'vi_VN');
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
-
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       if (!controller.isFetchingMore.value && !controller.hasReachedMax.value) {
         controller.fetchTransactions(isRefresh: false);
       }
@@ -34,15 +24,17 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   }
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Gắn scroll listener mỗi lần build (GetView không có initState)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.removeListener(_onScroll);
+        _scrollController.addListener(_onScroll);
+      }
+    });
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Nền xám nhạt
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -66,7 +58,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           _buildFiltersRow(),
           Expanded(
             child: Obx(() {
-              if (controller.isLoading.value && controller.transactionsList.isEmpty) {
+              if (controller.isLoading.value &&
+                  controller.transactionsList.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
 
@@ -78,13 +71,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               final dates = groupedData.keys.toList();
 
               return RefreshIndicator(
-                onRefresh: () async => controller.fetchTransactions(isRefresh: true),
+                onRefresh: () async =>
+                    controller.fetchTransactions(isRefresh: true),
                 color: const Color(0xFFEBC14F),
                 child: ListView.builder(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                  itemCount: dates.length + (controller.isFetchingMore.value ? 1 : 0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 12.h,
+                  ),
+                  itemCount:
+                      dates.length + (controller.isFetchingMore.value ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == dates.length) {
                       return Padding(
@@ -116,7 +114,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                             borderRadius: BorderRadius.circular(16.r),
                           ),
                           child: Column(
-                            children: transactions.map((txData) => _buildTransactionItem(txData)).toList(),
+                            children: transactions
+                                .map((txData) => _buildTransactionItem(txData))
+                                .toList(),
                           ),
                         ),
                       ],
@@ -159,64 +159,75 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       padding: EdgeInsets.only(bottom: 12.h, left: 16.w, right: 16.w),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Obx(() => Row(
-          children: [
-            // Month Filter
-            _buildFilterChip(
-              label: "Tháng ${controller.selectedMonth.value.month} ${controller.selectedMonth.value.year}",
-              icon: Icons.calendar_month_outlined,
-              onTap: () => controller.pickMonth(context),
-            ),
-            SizedBox(width: 8.w),
-            
-            // Sort Filter
-            _buildFilterChip(
-              label: controller.sortAscending.value ? "Cũ - Mới" : "Mới - Cũ",
-              icon: Icons.sort,
-              onTap: controller.toggleSortOrder,
-            ),
-            SizedBox(width: 8.w),
-            
-            // Wallet Filter
-            _buildDropdownFilter<WalletModel>(
-              label: controller.selectedWallet.value?.name ?? "Ví tiền",
-              items: controller.budgetService.wallets,
-              value: controller.selectedWallet.value,
-              itemLabel: (w) => w.name,
-              onChanged: (val) => controller.selectedWallet.value = val,
-              onClear: () => controller.selectedWallet.value = null,
-            ),
-            SizedBox(width: 8.w),
-            
-            // Category Filter
-            _buildDropdownFilter<CategoryModel>(
-              label: controller.selectedCategory.value?.name ?? "Danh mục",
-              items: controller.budgetService.categories.map((c) => c.categoryModel).toList(),
-              value: controller.selectedCategory.value,
-              itemLabel: (c) => c.name,
-              onChanged: (val) => controller.selectedCategory.value = val,
-              onClear: () => controller.selectedCategory.value = null,
-            ),
-            SizedBox(width: 8.w),
+        child: Obx(
+          () => Row(
+            children: [
+              // Month Filter
+              _buildFilterChip(
+                label:
+                    "Tháng ${controller.selectedMonth.value.month} ${controller.selectedMonth.value.year}",
+                icon: Icons.calendar_month_outlined,
+                onTap: () => controller.pickMonth(Get.context!),
+              ),
+              SizedBox(width: 8.w),
 
-            // Type Filter
-            _buildDropdownFilter<String>(
-              label: controller.selectedType.value == 'EXPENSE' ? 'Chi tiêu' 
-                   : controller.selectedType.value == 'INCOME' ? 'Thu nhập' 
-                   : "Kiểu",
-              items: ['EXPENSE', 'INCOME'],
-              value: controller.selectedType.value,
-              itemLabel: (t) => t == 'EXPENSE' ? 'Chi tiêu' : 'Thu nhập',
-              onChanged: (val) => controller.selectedType.value = val,
-              onClear: () => controller.selectedType.value = null,
-            ),
-          ],
-        )),
+              // Sort Filter
+              _buildFilterChip(
+                label: controller.sortAscending.value ? "Cũ - Mới" : "Mới - Cũ",
+                icon: Icons.sort,
+                onTap: controller.toggleSortOrder,
+              ),
+              SizedBox(width: 8.w),
+
+              // Wallet Filter
+              _buildDropdownFilter<WalletModel>(
+                label: controller.selectedWallet.value?.name ?? "Ví tiền",
+                items: controller.budgetService.wallets,
+                value: controller.selectedWallet.value,
+                itemLabel: (w) => w.name,
+                onChanged: (val) => controller.selectedWallet.value = val,
+                onClear: () => controller.selectedWallet.value = null,
+              ),
+              SizedBox(width: 8.w),
+
+              // Category Filter
+              _buildDropdownFilter<CategoryModel>(
+                label: controller.selectedCategory.value?.name ?? "Danh mục",
+                items: controller.budgetService.categories
+                    .map((c) => c.categoryModel)
+                    .toList(),
+                value: controller.selectedCategory.value,
+                itemLabel: (c) => c.name,
+                onChanged: (val) => controller.selectedCategory.value = val,
+                onClear: () => controller.selectedCategory.value = null,
+              ),
+              SizedBox(width: 8.w),
+
+              // Type Filter
+              _buildDropdownFilter<String>(
+                label: controller.selectedType.value == 'EXPENSE'
+                    ? 'Chi tiêu'
+                    : controller.selectedType.value == 'INCOME'
+                    ? 'Thu nhập'
+                    : "Kiểu",
+                items: ['EXPENSE', 'INCOME'],
+                value: controller.selectedType.value,
+                itemLabel: (t) => t == 'EXPENSE' ? 'Chi tiêu' : 'Thu nhập',
+                onChanged: (val) => controller.selectedType.value = val,
+                onClear: () => controller.selectedType.value = null,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildFilterChip({required String label, required IconData icon, required VoidCallback onTap}) {
+  Widget _buildFilterChip({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -251,21 +262,20 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final bool isSelected = value != null;
 
     return PopupMenuButton<T>(
-      constraints: BoxConstraints(maxHeight: 250.h), // Giới hạn chiều cao popup menu khoảng 4 items
+      constraints: BoxConstraints(maxHeight: 250.h),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       onSelected: onChanged,
       itemBuilder: (BuildContext context) {
         return items.map((T item) {
-          return PopupMenuItem<T>(
-            value: item,
-            child: Text(itemLabel(item)),
-          );
+          return PopupMenuItem<T>(value: item, child: Text(itemLabel(item)));
         }).toList();
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEBC14F).withOpacity(0.1) : Colors.grey[100],
+          color: isSelected
+              ? const Color(0xFFEBC14F).withValues(alpha: 0.1)
+              : Colors.grey[100],
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
             color: isSelected ? const Color(0xFFEBC14F) : Colors.grey[300]!,
@@ -285,10 +295,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             if (isSelected)
               GestureDetector(
                 onTap: onClear,
-                child: Icon(Icons.close, size: 16.sp, color: const Color(0xFFEBC14F)),
+                child: Icon(
+                  Icons.close,
+                  size: 16.sp,
+                  color: const Color(0xFFEBC14F),
+                ),
               )
             else
-              Icon(Icons.keyboard_arrow_down, size: 16.sp, color: Colors.black87),
+              Icon(
+                Icons.keyboard_arrow_down,
+                size: 16.sp,
+                color: Colors.black87,
+              ),
           ],
         ),
       ),
@@ -300,8 +318,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final detail = txData['detail'];
     final bool isExpense = tx.type == 'EXPENSE';
     final sign = isExpense ? '-' : '+';
-    final amountColor = isExpense ? const Color(0xFFE53935) : const Color(0xFF4CAF50);
-    
+    final amountColor = isExpense
+        ? const Color(0xFFE53935)
+        : const Color(0xFF4CAF50);
+
     String note = "Không có mô tả";
     if (tx.note != null && tx.note.trim().isNotEmpty) {
       note = tx.note;
@@ -309,92 +329,96 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       note = detail.note;
     }
 
-    return Padding(
-      padding: EdgeInsets.all(16.w),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon Giao dịch (Thu / Chi)
-          Container(
-            padding: EdgeInsets.all(10.w),
-            decoration: BoxDecoration(
-              color: isExpense 
-                  ? const Color(0xFFE53935).withOpacity(0.1) // Nền đỏ nhạt cho chi tiêu
-                  : const Color(0xFF4CAF50).withOpacity(0.1), // Nền xanh nhạt cho thu nhập
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            child: Image.asset(
-              isExpense ? AppAssets.iconExpense : AppAssets.iconIncome,
-              width: 24.w,
-              height: 24.w,
-              errorBuilder: (context, error, stackTrace) => Icon(
-                isExpense ? Icons.arrow_downward : Icons.arrow_upward,
-                color: isExpense ? const Color(0xFFE53935) : const Color(0xFF4CAF50),
-                size: 24.w,
+    return InkWell(
+      onTap: () {
+        Get.toNamed(Routes.TRANSACTION_DETAIL, arguments: {'transaction': tx});
+      },
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon Giao dịch (Thu / Chi)
+            Container(
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(
+                color: isExpense
+                    ? const Color(0xFFE53935).withValues(alpha: 0.1)
+                    : const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Image.asset(
+                isExpense ? AppAssets.iconExpense : AppAssets.iconIncome,
+                width: 24.w,
+                height: 24.w,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  isExpense ? Icons.arrow_downward : Icons.arrow_upward,
+                  color: isExpense
+                      ? const Color(0xFFE53935)
+                      : const Color(0xFF4CAF50),
+                  size: 24.w,
+                ),
               ),
             ),
-          ),
-          SizedBox(width: 12.w),
-          
-          // Info Danh mục & Mô tả
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            SizedBox(width: 12.w),
+
+            // Info Danh mục & Mô tả
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    txData['categoryName'],
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    note,
+                    style: TextStyle(fontSize: 13.sp, color: Colors.grey[600]),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 8.w),
+
+            // Số tiền & Ví
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  txData['categoryName'],
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
+                  child: Text(
+                    txData['walletName'],
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: Colors.green[700],
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                SizedBox(height: 4.h),
+                SizedBox(height: 6.h),
                 Text(
-                  note,
+                  "$sign${formatter.format(tx.amount)}đ",
                   style: TextStyle(
-                    fontSize: 13.sp,
-                    color: Colors.grey[600],
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.bold,
+                    color: amountColor,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
-          SizedBox(width: 8.w),
-
-          // Số tiền & Ví
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4.r),
-                ),
-                child: Text(
-                  txData['walletName'],
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    color: Colors.green[700],
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                "$sign${formatter.format(tx.amount)}đ",
-                style: TextStyle(
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.bold,
-                  color: amountColor,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

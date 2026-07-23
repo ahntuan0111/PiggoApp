@@ -14,4 +14,10 @@ class OverspentListController extends BaseController with BudgetAware {
   void navigateToCompensation(CategoryModel category) {
     Get.toNamed(Routes.OVERSPENT_COMPENSATION, arguments: category);
   }
+
+  /// Pull-to-Refresh: reload dữ liệu các danh mục từ BudgetService
+  Future<void> fetchData() async {
+    await budgetService.refreshData();
+  }
 }
+

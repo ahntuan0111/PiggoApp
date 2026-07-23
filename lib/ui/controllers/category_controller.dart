@@ -6,7 +6,6 @@ import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'package:appwrite/appwrite.dart';
 
 class CategoryController extends BaseController {
   final CategoryRepository categoryRepo = Get.find<CategoryRepository>();

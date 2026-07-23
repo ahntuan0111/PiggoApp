@@ -79,7 +79,7 @@ class BudgetDistributionScreen extends GetView<BudgetDistributionController> {
                       ),
                       child: Center(
                         child: Text(
-                          'Hiện tại (T7)',
+                          'Hiện tại (T${DateTime.now().month})',
                           style: TextStyle(
                             fontSize: 14.sp,
                             fontWeight: FontWeight.bold,
@@ -98,7 +98,7 @@ class BudgetDistributionScreen extends GetView<BudgetDistributionController> {
                       ),
                       child: Center(
                         child: Text(
-                          'Kế tiếp (T8)',
+                          'Kế tiếp (T${(DateTime.now().month % 12) + 1})',
                           style: TextStyle(
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w500,

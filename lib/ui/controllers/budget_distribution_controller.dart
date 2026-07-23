@@ -7,9 +7,8 @@ import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/core/utils/currency_formatter.dart';
-import 'dart:math' as math;
+import 'package:appintern/core/services/budget_service.dart';
+
 
 class BudgetDistributionGroup {
   final String typeId;
@@ -84,9 +83,12 @@ class BudgetDistributionController extends BaseController {
         final categories = await categoryRepository.getCategories(typeIds);
 
         for (var category in categories) {
+          final mb = Get.find<BudgetService>().getBudgetForCategory(category.id);
+          double remaining = mb != null ? mb.budgetedAmount - mb.spentAmount : category.remaining;
+
           // Format số tiền (vd: 500000 -> "500.000") để nhét vào TextField
           String currentAmount = formatCurrency(
-            category.remaining,
+            remaining,
           ).replaceAll('đ', '').trim();
 
           bool hasInputController = textControllers.containsKey(category.id);
@@ -149,10 +151,10 @@ class BudgetDistributionController extends BaseController {
   }
 
   void _calculateTotals() {
-    double currentAllocated = 0.0;
     double currentRemainingBudgets = 0.0;
 
     // Tính tổng số tiền đang hiển thị trên các TextField
+
     for (var group in categoryGroups) {
       double groupAllocated = 0.0;
       for (var cat in group.categories) {
@@ -167,26 +169,28 @@ class BudgetDistributionController extends BaseController {
             // Hỗ trợ số âm (khi còn lại bị âm)
             bool isNegative = text.startsWith('-');
             if (isNegative) text = text.substring(1);
-            
+
             double parsedVal = double.tryParse(text) ?? 0.0;
             double newRemaining = isNegative ? -parsedVal : parsedVal;
-            
+
+            final mb = Get.find<BudgetService>().getBudgetForCategory(cat.id);
+            double spent = mb != null ? mb.spentAmount : cat.spent;
+
             // Tiền phân bổ = Còn lại + Đã tiêu
-            double newAllocated = newRemaining + cat.spent;
-            
+            double newAllocated = newRemaining + spent;
+
             // Không cho phép tiền phân bổ < 0 (nếu muốn)
             if (newAllocated < 0) {
               newAllocated = 0.0;
-              newRemaining = -cat.spent; // Ép lại số dư nếu phân bổ = 0
+              newRemaining = -spent; // Ép lại số dư nếu phân bổ = 0
             }
 
             groupAllocated += newAllocated;
-            currentRemainingBudgets += math.max(0, newRemaining);
+            currentRemainingBudgets += newRemaining;
           }
         }
       }
       group.totalAllocated.value = groupAllocated;
-      currentAllocated += groupAllocated;
     }
 
     allocatedAmount.value = currentRemainingBudgets;
@@ -196,6 +200,10 @@ class BudgetDistributionController extends BaseController {
 
   Future<void> saveBudgets() async {
     showLoading();
+    final budgetService = Get.find<BudgetService>();
+    final now = budgetService.currentTrackingMonth.value;
+    final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
+
     final result = await ErrorHandler.execute(() async {
       // Duyệt qua tất cả các nhóm và danh mục hiện tại
       for (var group in categoryGroups) {
@@ -209,14 +217,17 @@ class BudgetDistributionController extends BaseController {
                 .trim();
             bool isNegative = text.startsWith('-');
             if (isNegative) text = text.substring(1);
-            
+
             double parsedVal = double.tryParse(text) ?? 0.0;
             double newRemaining = isNegative ? -parsedVal : parsedVal;
-            
-            double newBudget = newRemaining + cat.spent;
+
+            final mb = budgetService.getBudgetForCategory(cat.id);
+            double spent = mb != null ? mb.spentAmount : cat.spent;
+
+            double newBudget = newRemaining + spent;
             if (newBudget < 0) newBudget = 0.0;
 
-            // Nếu có thay đổi, cập nhật lên DB
+            // Luôn cập nhật defaultBudget trên Category (template)
             if (newBudget != cat.defaultBudget) {
               await categoryRepository.updateCategory(
                 cat.id,
@@ -224,6 +235,22 @@ class BudgetDistributionController extends BaseController {
                 cat.iconName,
                 cat.color,
                 defaultBudget: newBudget,
+              );
+            }
+
+            // Cập nhật hoặc tạo mới MonthlyBudget
+            if (mb != null) {
+              // Đã có → chỉ update budgetedAmount
+              if (mb.budgetedAmount != newBudget) {
+                await categoryRepository.updateMonthlyBudget(mb.id, newBudget);
+              }
+            } else {
+              // Chưa có → tạo mới row MonthlyBudget cho tháng hiện tại
+              await categoryRepository.createMonthlyBudget(
+                categoryId: cat.id,
+                monthYear: monthYearStr,
+                budgetedAmount: newBudget,
+                spentAmount: spent,
               );
             }
           }
@@ -241,6 +268,7 @@ class BudgetDistributionController extends BaseController {
       },
       (_) {
         Get.back();
+        Get.find<BudgetService>().refreshData();
         // Hiện thông báo thành công
         Get.snackbar(
           "Thành công",
@@ -255,11 +283,11 @@ class BudgetDistributionController extends BaseController {
 
   String formatCurrency(double amount) {
     String numStr = amount.toStringAsFixed(0);
-    return numStr.replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]}.',
-        ) +
-        'đ';
+    final formatted = numStr.replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
+    return '$formattedđ';
   }
 
   @override

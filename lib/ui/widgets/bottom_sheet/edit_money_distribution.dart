@@ -6,16 +6,24 @@ import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/select_source_bottom_sheet.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
+import 'package:appintern/core/services/budget_service.dart';
 
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
 class EditMoneyDistributionBottomSheet extends StatefulWidget {
   final double initialAllocated;
-  final Function(double newBudget, {String? sourceCategoryId, double? sourceCategoryNewBudget}) onSave;
-  
+  final Function(
+    double newBudget, {
+    String? sourceCategoryId,
+    double? sourceCategoryNewBudget,
+    String? note,
+  })
+  onSave;
+
   final double unallocatedAmount;
   final List<BudgetCategoryGroup> categoryGroups;
   final String currentCategoryId;
+  final bool isGoal;
 
   const EditMoneyDistributionBottomSheet({
     super.key,
@@ -24,6 +32,7 @@ class EditMoneyDistributionBottomSheet extends StatefulWidget {
     required this.unallocatedAmount,
     required this.categoryGroups,
     required this.currentCategoryId,
+    this.isGoal = false,
   });
 
   @override
@@ -45,6 +54,48 @@ class _EditMoneyDistributionBottomSheetState
   String? _selectedSourceName;
   double? _selectedSourceAvailableAmount;
   String? _selectedSourceIconName;
+
+  void _executeSave(String? note) {
+    if (_selectedSourceId != null) {
+      if (_isAdding &&
+          _offsetAmount > _selectedSourceAvailableAmount!) {
+        Get.snackbar(
+          "Lỗi",
+          "Nguồn tiền không đủ để lấy. Tối đa chỉ có thể lấy ${NumberFormat('#,###', 'vi_VN').format(_selectedSourceAvailableAmount!)}đ.",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      // Tìm category gốc để lấy defaultBudget hiện tại
+      double sourceAllocated = 0.0;
+      for (var group in widget.categoryGroups) {
+        for (var cat in group.categories) {
+          if (cat.categoryModel.id == _selectedSourceId) {
+            sourceAllocated = cat.categoryModel.defaultBudget;
+            break;
+          }
+        }
+      }
+
+      double newSourceBudget;
+      if (_isAdding) {
+        newSourceBudget = sourceAllocated - _offsetAmount;
+      } else {
+        newSourceBudget = sourceAllocated + _offsetAmount;
+      }
+      widget.onSave(
+        _finalBudget,
+        sourceCategoryId: _selectedSourceId,
+        sourceCategoryNewBudget: newSourceBudget,
+        note: note,
+      );
+    } else {
+      widget.onSave(_finalBudget, note: note);
+    }
+  }
 
   @override
   void initState() {
@@ -77,9 +128,11 @@ class _EditMoneyDistributionBottomSheetState
     } else {
       _offsetAmount = double.tryParse(cleanString) ?? 0.0;
     }
-    
+
     // Auto-correct nếu vượt quá số dư khả dụng
-    if (_isAdding && _selectedSourceAvailableAmount != null && _offsetAmount > _selectedSourceAvailableAmount!) {
+    if (_isAdding &&
+        _selectedSourceAvailableAmount != null &&
+        _offsetAmount > _selectedSourceAvailableAmount!) {
       _offsetAmount = _selectedSourceAvailableAmount!;
       String formatted = formatter.format(_offsetAmount);
       _offsetController.value = TextEditingValue(
@@ -332,20 +385,23 @@ class _EditMoneyDistributionBottomSheetState
                     unallocatedAmount: widget.unallocatedAmount,
                     categoryGroups: widget.categoryGroups,
                     currentCategoryId: widget.currentCategoryId,
+                    excludeCategoryIds: Get.find<BudgetService>().goals.map((g) => g.categoryId).toList(),
                     onSelected: (id, name, availableAmount, iconName) {
                       setState(() {
                         _selectedSourceId = id;
                         _selectedSourceName = name;
                         _selectedSourceAvailableAmount = availableAmount;
                         _selectedSourceIconName = iconName;
-                        
+
                         // Auto-correct nếu offsetAmount hiện tại lớn hơn số dư của nguồn mới chọn
                         if (_isAdding && _offsetAmount > availableAmount) {
                           _offsetAmount = availableAmount;
                           String formatted = formatter.format(_offsetAmount);
                           _offsetController.value = TextEditingValue(
                             text: formatted,
-                            selection: TextSelection.collapsed(offset: formatted.length),
+                            selection: TextSelection.collapsed(
+                              offset: formatted.length,
+                            ),
                           );
                           _calculateFinalBudget();
                         }
@@ -440,42 +496,59 @@ class _EditMoneyDistributionBottomSheetState
               child: ElevatedButton(
                 onPressed: canSave
                     ? () {
-                        if (_selectedSourceId != null) {
-                          if (_isAdding && _offsetAmount > _selectedSourceAvailableAmount!) {
-                            Get.snackbar(
-                              "Lỗi",
-                              "Nguồn tiền không đủ để lấy. Tối đa chỉ có thể lấy ${formatter.format(_selectedSourceAvailableAmount!)}đ.",
-                              backgroundColor: Colors.red,
-                              colorText: Colors.white,
-                              snackPosition: SnackPosition.BOTTOM,
-                            );
-                            return;
-                          }
-                          
-                          // Tìm category gốc để lấy defaultBudget hiện tại
-                          double sourceAllocated = 0.0;
-                          for (var group in widget.categoryGroups) {
-                            for (var cat in group.categories) {
-                              if (cat.categoryModel.id == _selectedSourceId) {
-                                sourceAllocated = cat.categoryModel.defaultBudget;
-                                break;
-                              }
-                            }
-                          }
-
-                          double newSourceBudget;
-                          if (_isAdding) {
-                            newSourceBudget = sourceAllocated - _offsetAmount;
-                          } else {
-                            newSourceBudget = sourceAllocated + _offsetAmount;
-                          }
-                          widget.onSave(
-                            _finalBudget,
-                            sourceCategoryId: _selectedSourceId,
-                            sourceCategoryNewBudget: newSourceBudget,
+                        if (widget.isGoal && !_isAdding) {
+                          final noteController = TextEditingController();
+                          Get.dialog(
+                            AlertDialog(
+                              backgroundColor: Colors.white,
+                              title: Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28.sp),
+                                  SizedBox(width: 8.w),
+                                  Text("Cảnh báo", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Việc rút ${formatter.format(_offsetAmount)}đ khỏi quỹ này sẽ làm chậm tiến độ đạt mục tiêu của bạn. Hãy cân nhắc kỹ!",
+                                    style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+                                  ),
+                                  SizedBox(height: 16.h),
+                                  TextField(
+                                    controller: noteController,
+                                    decoration: InputDecoration(
+                                      labelText: "Lý do rút tiền *",
+                                      border: OutlineInputBorder(),
+                                      hintText: "Vd: Kẹt tiền trả tiền nhà",
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Get.back(),
+                                  child: Text("HỦY", style: TextStyle(color: Colors.grey[600])),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                  onPressed: () {
+                                    if (noteController.text.trim().isEmpty) {
+                                      Get.snackbar("Lỗi", "Vui lòng nhập lý do rút tiền", backgroundColor: Colors.red, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+                                      return;
+                                    }
+                                    Get.back();
+                                    _executeSave(noteController.text.trim());
+                                  },
+                                  child: Text("XÁC NHẬN RÚT", style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
                           );
                         } else {
-                          widget.onSave(_finalBudget);
+                          _executeSave(null);
                         }
                       }
                     : null,

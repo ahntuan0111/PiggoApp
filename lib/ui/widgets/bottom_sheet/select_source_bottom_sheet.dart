@@ -92,7 +92,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        "Hiện tại (T7)",
+                        "Hiện tại (T${DateTime.now().month})",
                         style: TextStyle(
                           fontSize: 14.sp,
                           fontWeight: FontWeight.w500,
@@ -107,7 +107,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 10.h),
                     child: Center(
                       child: Text(
-                        "Kế tiếp (T8)",
+                        "Kế tiếp (T${(DateTime.now().month % 12) + 1})",
                         style: TextStyle(
                           fontSize: 14.sp,
                           color: const Color(0xFF757575),
@@ -170,6 +170,12 @@ class SelectSourceBottomSheet extends StatelessWidget {
 
                 // Category Groups
                 ...categoryGroups.map((group) {
+                  final validCategories = group.categories
+                      .where((c) => c.categoryModel.id != currentCategoryId && !excludeCategoryIds.contains(c.categoryModel.id))
+                      .toList();
+                      
+                  if (validCategories.isEmpty) return const SizedBox.shrink();
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -194,9 +200,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
                         ],
                       ),
                       SizedBox(height: 12.h),
-                      ...group.categories
-                          .where((c) => c.categoryModel.id != currentCategoryId && !excludeCategoryIds.contains(c.categoryModel.id))
-                          .map((category) {
+                      ...validCategories.map((category) {
                         double remaining = category.allocated - category.spent;
                         if (remaining < 0) remaining = 0;
                         return GestureDetector(

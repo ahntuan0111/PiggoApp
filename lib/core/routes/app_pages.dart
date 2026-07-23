@@ -1,37 +1,44 @@
 import 'package:appintern/core/services/storage_service.dart';
-import 'package:appintern/ui/bindings/wallet_create_binding.dart';
-import 'package:appintern/ui/screens/wallet_create_screen.dart';
 import 'package:appintern/ui/bindings/budget_distribution_binding.dart';
-import 'package:appintern/ui/screens/transaction_create_screen.dart';
+import 'package:appintern/ui/bindings/category_binding.dart';
+import 'package:appintern/ui/bindings/category_detail_binding.dart';
+import 'package:appintern/ui/bindings/goal_binding.dart';
+import 'package:appintern/ui/bindings/goal_create_binding.dart';
+import 'package:appintern/ui/bindings/goal_detail_binding.dart';
+import 'package:appintern/ui/bindings/main_binding.dart';
+import 'package:appintern/ui/bindings/onboarding_binding.dart';
+import 'package:appintern/ui/bindings/overspent_compensation_binding.dart';
+import 'package:appintern/ui/bindings/overspent_list_binding.dart';
+import 'package:appintern/ui/bindings/smart_input_binding.dart';
 import 'package:appintern/ui/bindings/transaction_create_binding.dart';
+import 'package:appintern/ui/bindings/transaction_detail_binding.dart';
+import 'package:appintern/ui/bindings/transaction_history_binding.dart';
+import 'package:appintern/ui/bindings/voice_input_binding.dart';
+import 'package:appintern/ui/bindings/rollover_binding.dart';
+import 'package:appintern/ui/bindings/wallet_create_binding.dart';
 import 'package:appintern/ui/screens/budget_distribution_screen.dart';
+import 'package:appintern/ui/screens/category_detail_screen.dart';
+import 'package:appintern/ui/screens/category_screen.dart';
+import 'package:appintern/ui/screens/goal_create_screen.dart';
+import 'package:appintern/ui/screens/goal_detail_screen.dart';
+import 'package:appintern/ui/screens/goal_screen.dart';
+import 'package:appintern/ui/screens/main_screen.dart';
+import 'package:appintern/ui/screens/onboarding_screen.dart';
+import 'package:appintern/ui/screens/overspent_compensation_screen.dart';
+import 'package:appintern/ui/screens/overspent_list_screen.dart';
+import 'package:appintern/ui/screens/smart_input_screen.dart';
+import 'package:appintern/ui/screens/transaction_create_screen.dart';
+import 'package:appintern/ui/screens/transaction_detail_screen.dart';
+import 'package:appintern/ui/screens/transaction_history_screen.dart';
+import 'package:appintern/ui/screens/voice_input_screen.dart';
+import 'package:appintern/ui/screens/wallet_create_screen.dart';
+import 'package:appintern/ui/screens/month_end_report_screen.dart';
+import 'package:appintern/ui/screens/rollover_decision_screen.dart';
+import 'package:appintern/ui/screens/new_month_setup_screen.dart';
+import 'package:appintern/ui/screens/multi_month_gap_screen.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'app_routes.dart';
-import '../../ui/screens/onboarding_screen.dart';
-import '../../ui/screens/main_screen.dart';
-import '../../ui/screens/category_screen.dart';
-import '../../ui/bindings/onboarding_binding.dart';
-import '../../ui/bindings/main_binding.dart';
-import '../../ui/bindings/category_binding.dart';
-import '../../ui/screens/category_detail_screen.dart';
-import '../../ui/bindings/category_detail_binding.dart';
-import '../../ui/screens/overspent_compensation_screen.dart';
-import '../../ui/bindings/overspent_compensation_binding.dart';
-import '../../ui/screens/overspent_list_screen.dart';
-import '../../ui/bindings/overspent_list_binding.dart';
-import '../../ui/screens/transaction_history_screen.dart';
-import '../../ui/bindings/transaction_history_binding.dart';
-import '../../ui/screens/goal_screen.dart';
-import '../../ui/bindings/goal_binding.dart';
-import '../../ui/screens/goal_create_screen.dart';
-import '../../ui/bindings/goal_create_binding.dart';
-import '../../ui/screens/goal_detail_screen.dart';
-import '../../ui/bindings/goal_detail_binding.dart';
-import '../../ui/screens/smart_input_screen.dart';
-import '../../ui/bindings/smart_input_binding.dart';
-import '../../ui/screens/voice_input_screen.dart';
-import '../../ui/bindings/voice_input_binding.dart';
 
 class AppPages {
   static String get INITIAL {
@@ -97,7 +104,7 @@ class AppPages {
     ),
     GetPage(
       name: Routes.TRANSACTION_HISTORY,
-      page: () => const TransactionHistoryScreen(),
+      page: () => TransactionHistoryScreen(),
       binding: TransactionHistoryBinding(),
       transition: Transition.rightToLeft,
     ),
@@ -129,6 +136,36 @@ class AppPages {
       name: Routes.VOICE_INPUT,
       page: () => const VoiceInputScreen(),
       binding: VoiceInputBinding(),
+      transition: Transition.downToUp,
+    ),
+    GetPage(
+      name: Routes.TRANSACTION_DETAIL,
+      page: () => const TransactionDetailScreen(),
+      binding: TransactionDetailBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.ROLLOVER_REPORT,
+      page: () => const MonthEndReportScreen(),
+      binding: RolloverBinding(),
+      transition: Transition.downToUp,
+    ),
+    GetPage(
+      name: Routes.ROLLOVER_DECISION,
+      page: () => const RolloverDecisionScreen(),
+      binding: RolloverBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.ROLLOVER_NEW_MONTH,
+      page: () => const NewMonthSetupScreen(),
+      binding: RolloverBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.ROLLOVER_GAP,
+      page: () => const MultiMonthGapScreen(),
+      binding: RolloverBinding(),
       transition: Transition.downToUp,
     ),
   ];

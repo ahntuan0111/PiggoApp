@@ -7,10 +7,10 @@ import 'package:appintern/ui/widgets/dialogs/budget_warning_dialog.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/constants/app_keys.dart';
-import 'package:appintern/core/services/budget_service.dart';
 import 'package:appintern/data/models/budget_category.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/domain/repositories/auth_repository.dart';
+import 'package:appintern/domain/repositories/rollover_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 
 class HomeController extends BaseController with BudgetAware {
@@ -30,7 +30,7 @@ class HomeController extends BaseController with BudgetAware {
     return categories.where((cat) => cat.remaining < 0).length;
   }
 
-  final currentMonth = 'Tháng 7 2026'.obs;
+  final currentMonth = 'Tháng ${DateTime.now().month} ${DateTime.now().year}'.obs;
 
   @override
   void onInit() {
@@ -86,10 +86,42 @@ class HomeController extends BaseController with BudgetAware {
         );
       },
       (user) async {
-        // Nếu session hợp lệ, tải dữ liệu
-        if (!budgetService.isDataLoaded.value) {
-          await budgetService.refreshData();
-        }
+        // Kiểm tra Pending Rollover
+        final rolloverRepo = Get.find<RolloverRepository>();
+        final rolloverResult = await ErrorHandler.execute(
+          () async => await rolloverRepo.checkRolloverState(),
+          tag: 'CHECK_ROLLOVER',
+        );
+
+        await rolloverResult.fold(
+          (failure) async {
+            hideLoading();
+            showErrorMessage("Lỗi Rollover", failure.message);
+          },
+          (result) async {
+            if (result.state == RolloverState.newAccount) {
+              // Khởi tạo im lặng cho tài khoản mới
+              await ErrorHandler.execute(
+                () async => await rolloverRepo.executeHardReset(user.$id),
+                tag: 'NEW_ACCOUNT_INIT',
+              );
+            } else if (result.state != RolloverState.noPending) {
+              hideLoading();
+              // Điều hướng sang luồng Rollover (MonthEndReportScreen)
+              // Cần khai báo ROUTES.ROLLOVER_REPORT trong app_routes.dart
+              Get.offAllNamed('/rollover_report', arguments: {
+                'state': result.state,
+                'lastActiveMonthYear': result.lastActiveMonthYear,
+              });
+              return; // Dừng luồng Home
+            }
+
+            // Nếu không vướng Rollover, tải dữ liệu
+            if (!budgetService.isDataLoaded.value) {
+              await budgetService.refreshData();
+            }
+          }
+        );
       },
     );
   }
