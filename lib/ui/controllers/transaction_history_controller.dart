@@ -3,7 +3,6 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,7 +13,6 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   // Filter States
   final selectedMonth = DateTime.now().obs;
   final sortAscending = false.obs; // false = Mới nhất (Giảm dần), true = Cũ nhất (Tăng dần)
-  final selectedWallet = Rxn<WalletModel>();
   final selectedCategory = Rxn<CategoryModel>();
   final selectedType = Rxn<String>(); // 'EXPENSE' or 'INCOME'
 
@@ -55,10 +53,8 @@ class TransactionHistoryController extends BaseController with BudgetAware {
       });
     });
 
-    // Lắng nghe thay đổi các bộ lọc khác
     ever(selectedMonth, (_) => _refreshData());
     ever(sortAscending, (_) => _refreshData());
-    ever(selectedWallet, (_) => _refreshData());
     ever(selectedCategory, (_) => _refreshData());
     ever(selectedType, (_) => _refreshData());
 
@@ -95,15 +91,6 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     }
 
     final result = await ErrorHandler.execute(() async {
-      List<String> walletIds = [];
-      if (selectedWallet.value != null) {
-        walletIds.add(selectedWallet.value!.id);
-      } else {
-        walletIds = budgetService.wallets.map((w) => w.id).toList();
-      }
-
-      if (walletIds.isEmpty) return <Map<String, dynamic>>[];
-
       // Tính start/end cho selectedMonth
       final start = DateTime(selectedMonth.value.year, selectedMonth.value.month, 1);
       final end = DateTime(selectedMonth.value.year, selectedMonth.value.month + 1, 0, 23, 59, 59);
@@ -113,8 +100,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
         lastDocId = transactionsList.last['transaction'].id;
       }
 
-      return await _transactionRepo.getTransactionsByWalletsAndFilters(
-        walletIds: walletIds,
+      return await _transactionRepo.getTransactionsByFilters(
         start: start,
         end: end,
         categoryId: selectedCategory.value?.id,
@@ -159,7 +145,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
       
       // Bổ sung các trường UI hiển thị
       final detail = item['detail'];
-      final walletName = budgetService.wallets.firstWhereOrNull((w) => w.id == tx.walletId)?.name ?? 'Ví';
+      final walletName = 'Ngân sách';
       final category = budgetService.categories.firstWhereOrNull((c) => c.categoryModel.id == tx.categoryId);
       
       map[dateKey]!.add({
@@ -205,7 +191,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   }
 
   void clearFilters() {
-    selectedWallet.value = null;
+
     selectedCategory.value = null;
     selectedType.value = null;
     searchController.clear();

@@ -3,11 +3,9 @@ import 'package:get/get.dart';
 import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/data/models/budget_category.dart';
-import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
-import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/domain/repositories/goal_repository.dart';
 import 'package:appintern/data/models/goal_model.dart';
@@ -17,7 +15,6 @@ import 'package:appintern/core/errors/error_handler.dart';
 class BudgetService extends GetxService {
   final StorageService storage = Get.find<StorageService>();
   final CategoryRepository categoryRepository = Get.find<CategoryRepository>();
-  final WalletRepository walletRepository = Get.find<WalletRepository>();
   final TransactionRepository transactionRepository =
       Get.find<TransactionRepository>();
   final GoalRepository goalRepository = Get.find<GoalRepository>();
@@ -31,7 +28,6 @@ class BudgetService extends GetxService {
 
   final categories = <BudgetCategory>[].obs;
   final categoryGroups = <BudgetCategoryGroup>[].obs;
-  final wallets = <WalletModel>[].obs;
   final goals = <GoalModel>[].obs;
   final monthlyBudgets = <MonthlyBudgetModel>[].obs;
 
@@ -98,7 +94,7 @@ class BudgetService extends GetxService {
                     categoryModel: c,
                     icon: c.iconName,
                     name: c.name,
-                    allocated: mb?.budgetedAmount ?? 0.0,
+                    allocated: (mb?.budgetedAmount ?? 0.0) + (mb?.rolloverAmount ?? 0.0),
                     spent: mb?.spentAmount ?? 0.0,
                   );
                 }).toList(),
@@ -109,13 +105,13 @@ class BudgetService extends GetxService {
         tempCategories = tempGroups.expand((g) => g.categories).toList();
       }
 
-      final fetchedWallets = await walletRepository.getWallets(userId);
       final fetchedGoals = await goalRepository.getGoals();
 
-      // Update values all at once to prevent UI flashing intermediate state
+      // Lấy tất cả MonthlySummaries của user để tính dòng tiền
+      final allSummaries = await categoryRepository.getAllMonthlySummaries();
+
       categoryGroups.value = tempGroups;
       categories.value = tempCategories;
-      wallets.value = fetchedWallets;
 
       // Filter goals exactly as previously done in GoalController
       final validCategoryIds = tempCategories
@@ -131,10 +127,12 @@ class BudgetService extends GetxService {
           .toList();
       goals.value = userGoals;
 
-      totalWalletBalance.value = fetchedWallets.fold(
-        0.0,
-        (sum, w) => sum + w.balance,
-      );
+      // Tính tổng Thu, tổng Chi của tất cả các tháng
+      double totalAllTimeIncome = allSummaries.fold(0.0, (sum, s) => sum + s.totalIncome);
+      double totalAllTimeExpense = allSummaries.fold(0.0, (sum, s) => sum + s.totalExpense);
+
+      // Tổng ngân sách hiện tại = Tổng Thu - Tổng Chi
+      totalWalletBalance.value = totalAllTimeIncome - totalAllTimeExpense;
 
       double totalRemainingBudgets = tempCategories.fold(
         0.0,
@@ -142,8 +140,9 @@ class BudgetService extends GetxService {
       );
 
       allocatedAmount.value = totalRemainingBudgets;
-      unallocatedAmount.value =
-          totalWalletBalance.value - totalRemainingBudgets;
+      
+      // Số tiền chưa phân bổ = Tổng ngân sách - Tổng đã phân bổ (còn lại)
+      unallocatedAmount.value = totalWalletBalance.value - totalRemainingBudgets;
     }, tag: "FETCH_BUDGET_DATA");
 
     result.fold(

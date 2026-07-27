@@ -41,7 +41,7 @@ class MultiMonthGapScreen extends GetView<RolloverController> {
                   borderRadius: BorderRadius.circular(24.r),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -90,7 +90,7 @@ class MultiMonthGapScreen extends GetView<RolloverController> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9F7F1),
                   borderRadius: BorderRadius.circular(30.r),
-                  border: Border.all(color: const Color(0xFFC49A45).withOpacity(0.3), width: 2),
+                  border: Border.all(color: const Color(0xFFC49A45).withValues(alpha: 0.3), width: 2),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -123,7 +123,7 @@ class MultiMonthGapScreen extends GetView<RolloverController> {
                       borderRadius: BorderRadius.circular(30.r),
                     ),
                     elevation: 5,
-                    shadowColor: const Color(0xFF0B4A3A).withOpacity(0.5),
+                    shadowColor: const Color(0xFF0B4A3A).withValues(alpha: 0.5),
                   ),
                   onPressed: () {
                     Get.toNamed('/rollover_new_month');

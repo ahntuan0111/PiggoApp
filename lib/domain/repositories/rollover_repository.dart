@@ -133,16 +133,10 @@ class RolloverRepository with AppwriteErrorHandler {
         }
       }
 
-      // 4. Fetch Wallets cho Total Wallet Balance
-      final walletsResponse = await _appwrite.tables.listRows(
-        databaseId: _appwrite.databaseId,
-        tableId: _appwrite.walletsTableId,
-        queries: [Query.equal('ownerId', userId)],
-      );
-      double totalWalletBalance = walletsResponse.rows.fold(
-        0.0,
-        (sum, w) => sum + (w.data['balance'] ?? 0).toDouble(),
-      );
+      // 4. (REMOVED) Fetch Wallets cho Total Wallet Balance
+      // Vì đã xóa bảng wallets, chúng ta sẽ để totalWalletBalance là 0.0
+      // Controller sẽ lấy số dư thực tế từ BudgetService thay thế.
+      double totalWalletBalance = 0.0;
 
       return RolloverData(
         summary: summary,
@@ -201,8 +195,8 @@ class RolloverRepository with AppwriteErrorHandler {
   Future<void> executeRollover(
     String userId,
     Map<String, double> updatedBudgets,
+    Map<String, double> rolloverAmounts,
   ) async {
-    // Tạm thời MVP: giống hệt HardReset nhưng thay budgetedAmount bằng mức ngân sách do user duyệt/AI đề xuất.
     return handleAppwriteError(() async {
       final now = DateTime.now();
       final currentMonthStr =
@@ -234,6 +228,8 @@ class RolloverRepository with AppwriteErrorHandler {
             updatedBudgets[catId] ??
             (catRow.data['defaultBudget'] ?? 0).toDouble();
 
+        final rolloverAmt = rolloverAmounts[catId] ?? 0.0;
+
         await _appwrite.tables.createRow(
           databaseId: _appwrite.databaseId,
           tableId: _appwrite.monthlyBudgetsTableId,
@@ -242,10 +238,81 @@ class RolloverRepository with AppwriteErrorHandler {
             'categories': catId,
             'monthYear': currentMonthStr,
             'budgetedAmount': defaultBudget,
-            'rolloverAmount': 0.0,
+            'rolloverAmount': rolloverAmt,
             'spentAmount': 0.0,
           },
         );
+      }
+    });
+  }
+
+  Future<void> clearMonthData(String monthYear) async {
+    return handleAppwriteError(() async {
+      // 1. Phân tích monthYear (MM-yyyy) để lấy khoảng thời gian
+      final parts = monthYear.split('-');
+      if (parts.length != 2)
+        throw Exception("Định dạng tháng năm không hợp lệ");
+      final month = int.parse(parts[0]);
+      final year = int.parse(parts[1]);
+
+      final start = DateTime(year, month, 1);
+      final end = DateTime(
+        year,
+        month + 1,
+        1,
+      ).subtract(const Duration(milliseconds: 1));
+
+      final startIso = start.toIso8601String();
+      final endIso = end.toIso8601String();
+
+      // 2 & 3. (REMOVED) Không cần hoàn tác số dư ví trong DB nữa
+      // Vì bảng wallets giờ chỉ lưu số dư ban đầu, Tổng ngân sách được tính tự động.
+
+      // 4. Xóa tất cả giao dịch trong tháng đó
+      // Chúng ta vẫn cần query giao dịch ra để xóa
+      final txResponse = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.transactionsTableId,
+        queries: [
+          Query.between('transactionDate', startIso, endIso),
+          Query.limit(500),
+        ],
+      );
+
+      for (var doc in txResponse.rows) {
+        await _appwrite.tables.deleteRow(
+          databaseId: _appwrite.databaseId,
+          tableId: _appwrite.transactionsTableId,
+          rowId: doc.$id,
+        ).catchError((_) => null);
+      }
+
+      // 5. Xóa tất cả ngân sách tháng (monthlybudgets) trong tháng đó
+      final budgetsResponse = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.monthlyBudgetsTableId,
+        queries: [Query.equal('monthYear', monthYear), Query.limit(500)],
+      );
+      for (var doc in budgetsResponse.rows) {
+        await _appwrite.tables.deleteRow(
+          databaseId: _appwrite.databaseId,
+          tableId: _appwrite.monthlyBudgetsTableId,
+          rowId: doc.$id,
+        ).catchError((_) => null);
+      }
+
+      // 6. Xóa tất cả báo cáo tháng (monthlysummaries) trong tháng đó
+      final summariesResponse = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.monthlySummariesTableId,
+        queries: [Query.equal('monthYear', monthYear), Query.limit(500)],
+      );
+      for (var doc in summariesResponse.rows) {
+        await _appwrite.tables.deleteRow(
+          databaseId: _appwrite.databaseId,
+          tableId: _appwrite.monthlySummariesTableId,
+          rowId: doc.$id,
+        ).catchError((_) => null);
       }
     });
   }

@@ -67,7 +67,7 @@ class HomeScreen extends GetView<HomeController> {
                                   ),
                                   decoration: BoxDecoration(
                                     border: Border.all(
-                                      color: Colors.white.withOpacity(0.5),
+                                      color: Colors.white.withValues(alpha: 0.5),
                                     ),
                                     borderRadius: BorderRadius.circular(16.r),
                                   ),
@@ -176,13 +176,9 @@ class HomeScreen extends GetView<HomeController> {
                                         SizedBox(height: 12.h),
                                         InkWell(
                                           onTap: () async {
-                                            if (Get.isRegistered<WalletController>()) {
-                                              final walletCtrl = Get.find<WalletController>();
-                                              walletCtrl.resetFields();
-                                              walletCtrl.isAdjustMode.value = walletCtrl.wallets.isNotEmpty;
-                                            }
                                             await Get.toNamed(
                                               Routes.WALLETCREATE,
+                                              arguments: {'isAdjustMode': true},
                                             );
                                             controller.fetchData();
                                           },
@@ -208,12 +204,7 @@ class HomeScreen extends GetView<HomeController> {
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  controller
-                                                          .budgetService
-                                                          .wallets
-                                                          .isEmpty
-                                                      ? Icons.add
-                                                      : Icons.settings,
+                                                  Icons.settings,
                                                   color: const Color(
                                                     0xFFC49A45,
                                                   ),
@@ -221,12 +212,7 @@ class HomeScreen extends GetView<HomeController> {
                                                 ),
                                                 SizedBox(width: 4.w),
                                                 Text(
-                                                  controller
-                                                          .budgetService
-                                                          .wallets
-                                                          .isEmpty
-                                                      ? "Thêm Ngân Sách"
-                                                      : "Chỉnh sửa ngân sách",
+                                                  "Chỉnh sửa ngân sách",
                                                   style: TextStyle(
                                                     fontSize: 12.sp,
                                                     fontWeight: FontWeight.bold,
@@ -307,7 +293,7 @@ class HomeScreen extends GetView<HomeController> {
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.red.withOpacity(0.2),
+                                        color: Colors.red.withValues(alpha: 0.2),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -349,7 +335,7 @@ class HomeScreen extends GetView<HomeController> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFE91E63).withOpacity(0.08),
+                          color: const Color(0xFFE91E63).withValues(alpha: 0.08),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
@@ -379,7 +365,7 @@ class HomeScreen extends GetView<HomeController> {
                                     255,
                                     255,
                                     255,
-                                  ).withOpacity(0.35),
+                                  ).withValues(alpha: 0.35),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Image.asset(
@@ -410,7 +396,7 @@ class HomeScreen extends GetView<HomeController> {
                                           0,
                                           0,
                                           0,
-                                        ).withOpacity(0.7),
+                                        ).withValues(alpha: 0.7),
                                         letterSpacing: 0.5,
                                       ),
                                     ),
@@ -430,7 +416,7 @@ class HomeScreen extends GetView<HomeController> {
                               // CTA Chevron
                               Icon(
                                 Icons.chevron_right_rounded,
-                                color: const Color(0xFFD81B60).withOpacity(0.6),
+                                color: const Color(0xFFD81B60).withValues(alpha: 0.6),
                                 size: 24.r,
                               ),
                             ],

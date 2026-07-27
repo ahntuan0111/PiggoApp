@@ -10,8 +10,6 @@ import 'package:appintern/ui/screens/wallet_screen.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'dart:math' as math;
 
-
-
 class MainScreen extends GetView<MainController> {
   MainScreen({super.key});
 
@@ -146,7 +144,6 @@ class MainScreen extends GetView<MainController> {
               ),
             ),
 
-
             // Các nút con
             _buildChildFab(
               context: context,
@@ -197,7 +194,7 @@ class MainScreen extends GetView<MainController> {
               onTap: () async {
                 controller.toggleFab();
                 await Future.delayed(const Duration(milliseconds: 260));
-                
+
                 await Get.toNamed(Routes.VOICE_INPUT);
               },
             ),
@@ -212,8 +209,6 @@ class MainScreen extends GetView<MainController> {
               screenHalfWidth: screenHalfWidth,
               onTap: controller.openCameraReceiptScan,
             ),
-
-
 
             // Nút FAB Chính (chuyển thành dấu X)
             Positioned(

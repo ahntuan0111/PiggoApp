@@ -131,8 +131,7 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                         // TODO: Open Wallet Picker BottomSheet
                       },
                       child: Text(
-                        controller.selectedWallet.value?.name ??
-                            'Chọn tài khoản',
+                        controller.selectedWalletName.value,
                         style: TextStyle(
                           color: const Color(0xFF1E1E1E),
                           fontSize: 16.sp,

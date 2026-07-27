@@ -180,10 +180,6 @@ class SmartInputController extends BaseController with BudgetAware {
     showLoading();
 
     final saveResult = await ErrorHandler.execute(() async {
-      if (budgetService.wallets.isEmpty) {
-        throw Exception("Bạn chưa có ví nào.");
-      }
-      final wallet = budgetService.wallets.first;
 
       // 1. Upload ảnh hóa đơn lên Appwrite Storage Bucket nếu có
       List<String> receiptFileIds = [];
@@ -209,14 +205,14 @@ class SmartInputController extends BaseController with BudgetAware {
         final type = confirmedData['type'] == 'inflow' ? 'INCOME' : 'EXPENSE';
         final amount = (confirmedData['amount'] as num).toDouble();
         final note = confirmedData['note']?.toString() ?? '';
+        final txDate = confirmedData['date'] as DateTime? ?? DateTime.now();
 
         final tx = TransactionModel(
           id: '',
-          walletId: wallet.id,
           categoryId: category?.id ?? '',
           amount: amount,
           type: type,
-          transactionDate: DateTime.now(),
+          transactionDate: txDate,
           status: 'COMPLETED',
           note: note,
         );
@@ -234,13 +230,11 @@ class SmartInputController extends BaseController with BudgetAware {
           await transactionRepository.createWalletAdjustmentTransaction(
             transaction: tx,
             transactionDetail: detail,
-            currentWallet: wallet,
           );
         } else {
           await transactionRepository.createTransaction(
             transaction: tx,
             transactionDetail: detail,
-            currentWallet: wallet,
             currentCategory: category,
           );
         }

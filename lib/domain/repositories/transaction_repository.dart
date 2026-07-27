@@ -3,7 +3,6 @@ import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
-import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'dart:async';
 
@@ -57,7 +56,6 @@ class TransactionRepository with AppwriteErrorHandler {
   Future<void> createTransaction({
     required TransactionModel transaction,
     required TransactionDetailModel transactionDetail,
-    required WalletModel currentWallet,
     required CategoryModel currentCategory,
   }) async {
     return handleAppwriteError(() async {
@@ -83,20 +81,8 @@ class TransactionRepository with AppwriteErrorHandler {
         data: detailData,
       );
 
-      // 3. Cập nhật số dư Ví (Wallet Balance)
-      double newBalance = currentWallet.balance;
-      if (transaction.type == 'INCOME') {
-        newBalance += transaction.amount;
-      } else {
-        newBalance -= transaction.amount;
-      }
-
-      await _appwrite.tables.updateRow(
-        databaseId: _appwrite.databaseId,
-        tableId: _appwrite.walletsTableId,
-        rowId: currentWallet.id,
-        data: {'balance': newBalance},
-      );
+      // 3. (REMOVED) Không còn cập nhật số dư Ví (Wallet Balance) ở đây
+      // Bảng wallets giờ chỉ lưu số dư ban đầu, Tổng ngân sách được tính động trong BudgetService.
 
       // 4. Cập nhật số tiền đã tiêu (MonthlyBudgets spentAmount)
       double amountChange = transaction.type == 'EXPENSE'
@@ -163,7 +149,6 @@ class TransactionRepository with AppwriteErrorHandler {
   Future<void> createWalletAdjustmentTransaction({
     required TransactionModel transaction,
     required TransactionDetailModel transactionDetail,
-    required WalletModel currentWallet,
   }) async {
     return handleAppwriteError(() async {
       // 1. Tạo bản ghi Transaction (Không liên kết category)
@@ -187,20 +172,8 @@ class TransactionRepository with AppwriteErrorHandler {
         data: detailData,
       );
 
-      // 3. Cập nhật số dư Ví (Wallet Balance)
-      double newBalance = currentWallet.balance;
-      if (transaction.type == 'INCOME') {
-        newBalance += transaction.amount;
-      } else {
-        newBalance -= transaction.amount;
-      }
-
-      await _appwrite.tables.updateRow(
-        databaseId: _appwrite.databaseId,
-        tableId: _appwrite.walletsTableId,
-        rowId: currentWallet.id,
-        data: {'balance': newBalance},
-      );
+      // 3. (REMOVED) Không còn cập nhật số dư Ví (Wallet Balance) ở đây
+      // Bảng wallets giờ chỉ lưu số dư ban đầu.
 
       // 4. Bỏ qua MonthlyBudgets vì đây là dòng tiền Unallocated
 
@@ -219,56 +192,12 @@ class TransactionRepository with AppwriteErrorHandler {
     required TransactionModel oldTransaction,
     required TransactionModel newTransaction,
     required TransactionDetailModel? newTransactionDetail,
-    required WalletModel oldWallet,
-    required WalletModel newWallet,
     CategoryModel? oldCategory,
     CategoryModel? newCategory,
   }) async {
     return handleAppwriteError(() async {
-      // 1. Hoàn tác tác động của oldTransaction lên oldWallet
-      double oldWalletBalance = oldWallet.balance;
-      if (oldTransaction.type == 'INCOME') {
-        oldWalletBalance -= oldTransaction.amount;
-      } else {
-        oldWalletBalance += oldTransaction.amount;
-      }
-
-      // 2. Tính số dư mới cho newWallet (xử lý ví cũ vs ví mới)
-      if (oldWallet.id == newWallet.id) {
-        double finalBalance = oldWalletBalance;
-        if (newTransaction.type == 'INCOME') {
-          finalBalance += newTransaction.amount;
-        } else {
-          finalBalance -= newTransaction.amount;
-        }
-        await _appwrite.tables.updateRow(
-          databaseId: _appwrite.databaseId,
-          tableId: _appwrite.walletsTableId,
-          rowId: newWallet.id,
-          data: {'balance': finalBalance},
-        );
-      } else {
-        // Cập nhật ví cũ
-        await _appwrite.tables.updateRow(
-          databaseId: _appwrite.databaseId,
-          tableId: _appwrite.walletsTableId,
-          rowId: oldWallet.id,
-          data: {'balance': oldWalletBalance},
-        );
-        // Cập nhật ví mới
-        double newWalletBalance = newWallet.balance;
-        if (newTransaction.type == 'INCOME') {
-          newWalletBalance += newTransaction.amount;
-        } else {
-          newWalletBalance -= newTransaction.amount;
-        }
-        await _appwrite.tables.updateRow(
-          databaseId: _appwrite.databaseId,
-          tableId: _appwrite.walletsTableId,
-          rowId: newWallet.id,
-          data: {'balance': newWalletBalance},
-        );
-      }
+      // 1 & 2. (REMOVED) Không còn hoàn tác và cập nhật số dư Ví cũ/mới ở bảng wallets
+      // Wallet Balance hoàn toàn tính toán tự động dựa trên MonthlySummaries.
 
       // 3. Hoàn tác MonthlyBudgets của oldCategory
       if (oldTransaction.type == 'EXPENSE' && oldCategory != null) {
@@ -403,30 +332,9 @@ class TransactionRepository with AppwriteErrorHandler {
     required TransactionModel oldTransaction,
     required TransactionModel newTransaction,
     required TransactionDetailModel? newTransactionDetail,
-    required WalletModel currentWallet,
   }) async {
     return handleAppwriteError(() async {
-      // 1. Hoàn tác số dư ví cũ
-      double balance = currentWallet.balance;
-      if (oldTransaction.type == 'INCOME') {
-        balance -= oldTransaction.amount;
-      } else {
-        balance += oldTransaction.amount;
-      }
-
-      // 2. Áp dụng số dư mới
-      if (newTransaction.type == 'INCOME') {
-        balance += newTransaction.amount;
-      } else {
-        balance -= newTransaction.amount;
-      }
-
-      await _appwrite.tables.updateRow(
-        databaseId: _appwrite.databaseId,
-        tableId: _appwrite.walletsTableId,
-        rowId: currentWallet.id,
-        data: {'balance': balance},
-      );
+      // 1 & 2. (REMOVED) Không còn hoàn tác số dư ví cũ và cập nhật số dư mới trong bảng wallets
 
       // 3. Cập nhật Transaction
       await _appwrite.tables.updateRow(
@@ -492,18 +400,29 @@ class TransactionRepository with AppwriteErrorHandler {
   Future<List<Map<String, dynamic>>> getHistoryByCategory(
     String categoryId, {
     int limit = 5,
+    DateTime? start,
+    DateTime? end,
   }) async {
     return handleAppwriteError(() async {
+      List<String> queries = [
+        Query.equal('categories', categoryId),
+        Query.notEqual('status', 'DELETED'),
+        Query.orderDesc('transactionDate'),
+        Query.limit(limit),
+      ];
+
+      if (start != null) {
+        queries.add(Query.greaterThanEqual('transactionDate', start.toIso8601String()));
+      }
+      if (end != null) {
+        queries.add(Query.lessThanEqual('transactionDate', end.toIso8601String()));
+      }
+
       // 1. Fetch transactions by categoryId
       final response = await _appwrite.tables.listRows(
         databaseId: _appwrite.databaseId,
         tableId: _appwrite.transactionsTableId,
-        queries: [
-          Query.equal('categories', categoryId),
-          Query.notEqual('status', 'DELETED'),
-          Query.orderDesc('transactionDate'),
-          Query.limit(limit),
-        ],
+        queries: queries,
       );
 
       List<Map<String, dynamic>> results = [];
@@ -542,22 +461,29 @@ class TransactionRepository with AppwriteErrorHandler {
     });
   }
 
-  Future<List<Map<String, dynamic>>> getHistoryByWallets(
-    List<String> walletIds, {
+  Future<List<Map<String, dynamic>>> getRecentHistory({
     int limit = 10,
+    DateTime? start,
+    DateTime? end,
   }) async {
     return handleAppwriteError(() async {
-      if (walletIds.isEmpty) return [];
+      List<String> queries = [
+        Query.notEqual('status', 'DELETED'),
+        Query.orderDesc('transactionDate'),
+        Query.limit(limit),
+      ];
+
+      if (start != null) {
+        queries.add(Query.greaterThanEqual('transactionDate', start.toIso8601String()));
+      }
+      if (end != null) {
+        queries.add(Query.lessThanEqual('transactionDate', end.toIso8601String()));
+      }
 
       final response = await _appwrite.tables.listRows(
         databaseId: _appwrite.databaseId,
         tableId: _appwrite.transactionsTableId,
-        queries: [
-          Query.equal('wallets', walletIds),
-          Query.notEqual('status', 'DELETED'),
-          Query.orderDesc('transactionDate'),
-          Query.limit(limit),
-        ],
+        queries: queries,
       );
 
       List<Map<String, dynamic>> results = [];
@@ -593,8 +519,7 @@ class TransactionRepository with AppwriteErrorHandler {
     });
   }
 
-  Future<List<Map<String, dynamic>>> getTransactionsByWalletsAndFilters({
-    required List<String> walletIds,
+  Future<List<Map<String, dynamic>>> getTransactionsByFilters({
     DateTime? start,
     DateTime? end,
     String? categoryId,
@@ -605,10 +530,7 @@ class TransactionRepository with AppwriteErrorHandler {
     bool ascending = false,
   }) async {
     return handleAppwriteError(() async {
-      if (walletIds.isEmpty) return [];
-
       List<String> queries = [
-        Query.equal('wallets', walletIds),
         Query.notEqual('status', 'DELETED'),
       ];
 
@@ -712,24 +634,10 @@ class TransactionRepository with AppwriteErrorHandler {
 
   Future<void> deleteTransaction({
     required TransactionModel transaction,
-    required WalletModel currentWallet,
     CategoryModel? currentCategory,
   }) async {
     return handleAppwriteError(() async {
-      // 1. Cập nhật số dư Ví
-      double newBalance = currentWallet.balance;
-      if (transaction.type == 'INCOME') {
-        newBalance -= transaction.amount;
-      } else {
-        newBalance += transaction.amount;
-      }
-
-      await _appwrite.tables.updateRow(
-        databaseId: _appwrite.databaseId,
-        tableId: _appwrite.walletsTableId,
-        rowId: currentWallet.id,
-        data: {'balance': newBalance},
-      );
+      // 1. (REMOVED) Không cập nhật số dư Ví ở bảng wallets nữa.
 
       // 2. Cập nhật Budget (Chỉ dành cho Outflow)
       if (transaction.type == 'EXPENSE' && currentCategory != null) {

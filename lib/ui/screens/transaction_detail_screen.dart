@@ -51,7 +51,6 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
         final tx = controller.rxTransaction.value;
         final detail = controller.detail.value;
         final category = controller.category.value;
-        final wallet = controller.wallet.value;
         final isExpense = tx.type == 'EXPENSE';
         final sign = isExpense ? '-' : '+';
         final amountColor = isExpense
@@ -108,7 +107,7 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
                   borderRadius: BorderRadius.circular(16.r),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -152,16 +151,15 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20.h),
-                    ],
+                              ],
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 20.h),
+                      ],
 
                     // Wallet
-                    if (wallet != null) ...[
-                      Row(
+                    Row(
                         children: [
                           Container(
                             padding: EdgeInsets.all(8.w),
@@ -188,7 +186,7 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
                               ),
                               SizedBox(height: 4.h),
                               Text(
-                                wallet.name,
+                                controller.selectedWalletName.value,
                                 style: TextStyle(
                                   fontSize: 16.sp,
                                   fontWeight: FontWeight.w500,
@@ -201,7 +199,6 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
                       SizedBox(height: 20.h),
                       Divider(color: Colors.grey[200]),
                       SizedBox(height: 20.h),
-                    ],
 
                     // Note
                     Text(

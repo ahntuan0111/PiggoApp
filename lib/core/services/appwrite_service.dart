@@ -26,7 +26,6 @@ class AppwriteService extends GetxService {
   String get avatarBucketId => dotenv.env['APPWRITE_AVATAR_BUCKET_ID']!;
 
   // Constants for table IDs
-  final String walletsTableId = 'wallets';
   final String categoriesTypeTableId = 'categorytypes';
   final String categoriesTableId = 'categories';
   final String monthlyBudgetsTableId = 'monthlybudgets';

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 import 'package:appwrite/models.dart';
+import 'package:appwrite/appwrite.dart';
 import 'package:google_sign_in/google_sign_in.dart' as google;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -69,16 +70,42 @@ class AuthRepository with AppwriteErrorHandler {
 
   Future<void> logout() async {
     return handleAppwriteError(() async {
-      try {
-        await _appwriteService.account.deleteSession(sessionId: 'current');
-      } catch (e) {
-        // Ignored
-      }
-      try {
-        final google.GoogleSignIn googleSignIn = google.GoogleSignIn.instance;
-        await googleSignIn.signOut();
-      } catch (e) {
-        // Ignored
+      await _appwriteService.account.deleteSession(sessionId: 'current').catchError((_) => null);
+      
+      final google.GoogleSignIn googleSignIn = google.GoogleSignIn.instance;
+      await googleSignIn.signOut().catchError((_) => null);
+    });
+  }
+
+  Future<void> clearAllUserData() async {
+    return handleAppwriteError(() async {
+      final tables = [
+        _appwriteService.transactionsTableId,
+        _appwriteService.transactionDetailsTableId,
+        _appwriteService.monthlyBudgetsTableId,
+        _appwriteService.monthlySummariesTableId,
+        _appwriteService.transferLogsTableId,
+        _appwriteService.goalsTableId,
+        _appwriteService.categoriesTableId,
+        _appwriteService.categoriesTypeTableId,
+      ];
+
+      for (var tableId in tables) {
+        while (true) {
+          final response = await _appwriteService.tables.listRows(
+            databaseId: _appwriteService.databaseId,
+            tableId: tableId,
+            queries: [Query.limit(100)],
+          );
+          if (response.rows.isEmpty) break;
+          for (var row in response.rows) {
+            await _appwriteService.tables.deleteRow(
+              databaseId: _appwriteService.databaseId,
+              tableId: tableId,
+              rowId: row.$id,
+            ).catchError((_) => null);
+          }
+        }
       }
     });
   }

@@ -5,14 +5,12 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
-import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 class CategoryDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
       Get.find<TransactionRepository>();
-  final WalletRepository _walletRepo = Get.find<WalletRepository>();
   final CategoryRepository _categoryRepo = Get.find<CategoryRepository>();
   final StorageService _storage = Get.find<StorageService>();
 
@@ -50,14 +48,18 @@ class CategoryDetailController extends BaseController with BudgetAware {
     final result = await ErrorHandler.execute(() async {
       final userId = _storage.read<String>(AppKeys.userId) ?? '';
 
-      // 1. Lấy toàn bộ ví để map tên
-      final wallets = await _walletRepo.getWallets(userId);
-      final walletMap = {for (var w in wallets) w.id: w.name};
+      // 1. (REMOVED) Lấy toàn bộ ví để map tên
 
       // 2. Lấy top 5 giao dịch
+      final currentMonth = budgetService.currentTrackingMonth.value;
+      final start = DateTime(currentMonth.year, currentMonth.month, 1);
+      final end = DateTime(currentMonth.year, currentMonth.month + 1, 0, 23, 59, 59);
+
       final rawHistory = await _transactionRepo.getHistoryByCategory(
         category.id,
         limit: 5,
+        start: start,
+        end: end,
       );
 
       // 3. Map lại thành danh sách dữ liệu hiển thị
@@ -65,7 +67,7 @@ class CategoryDetailController extends BaseController with BudgetAware {
       for (var item in rawHistory) {
         final tx = item['transaction'];
         final detail = item['detail'];
-        final walletName = walletMap[tx.walletId] ?? 'Không rõ';
+        final walletName = 'Ngân sách';
 
         displayList.add({
           'categoryName': category.name,

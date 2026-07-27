@@ -80,7 +80,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
                         ),
                         disabledBackgroundColor: const Color(
                           0xFF4285F4,
-                        ).withOpacity(0.6),
+                        ).withValues(alpha: 0.6),
                       ),
                       child: controller.isLoading.value
                           ? SizedBox(

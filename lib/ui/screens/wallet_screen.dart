@@ -206,7 +206,7 @@ class WalletScreen extends GetView<WalletController> {
                             label: "Điều chỉnh ví",
                             onTap: () {
                               controller.resetFields();
-                              controller.isAdjustMode.value = controller.wallets.isNotEmpty;
+                              controller.isAdjustMode.value = true;
                               Get.toNamed(Routes.WALLETCREATE);
                             },
                           ),

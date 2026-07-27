@@ -2,6 +2,7 @@ import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/data/models/monthly_budget_model.dart';
+import 'package:appintern/data/models/monthly_summary_model.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 
@@ -79,6 +80,19 @@ class CategoryRepository with AppwriteErrorHandler {
       return response.rows
           .map((row) => MonthlyBudgetModel.fromMap(row.data))
           .where((mb) => mb.categoryId.isNotEmpty)
+          .toList();
+    });
+  }
+
+  Future<List<MonthlySummaryModel>> getAllMonthlySummaries() async {
+    return handleAppwriteError(() async {
+      // Vì đã cấu hình Document Security, listRows tự động lọc theo ownerId của current user
+      final response = await _appwrite.tables.listRows(
+        databaseId: _appwrite.databaseId,
+        tableId: _appwrite.monthlySummariesTableId,
+      );
+      return response.rows
+          .map((row) => MonthlySummaryModel.fromMap(row.data))
           .toList();
     });
   }

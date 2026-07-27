@@ -29,7 +29,7 @@ abstract class BaseController extends GetxController {
     Get.snackbar(
       title,
       message,
-      backgroundColor: Colors.redAccent.withOpacity(0.8),
+      backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
       colorText: Colors.white,
       snackPosition: SnackPosition.BOTTOM,
       margin: const EdgeInsets.all(16),

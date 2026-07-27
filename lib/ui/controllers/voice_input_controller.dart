@@ -233,8 +233,6 @@ class VoiceInputController extends BaseController
     showLoading();
 
     final saveResult = await ErrorHandler.execute(() async {
-      if (budgetService.wallets.isEmpty) throw Exception("Bạn chưa có ví nào.");
-      final wallet = budgetService.wallets.first;
 
       for (var confirmedData in confirmedDataList) {
         final catName = confirmedData['categoryName'];
@@ -249,14 +247,14 @@ class VoiceInputController extends BaseController
         final type = confirmedData['type'] == 'inflow' ? 'INCOME' : 'EXPENSE';
         final amount = (confirmedData['amount'] as num).toDouble();
         final note = confirmedData['note']?.toString() ?? '';
+        final txDate = confirmedData['date'] as DateTime? ?? DateTime.now();
 
         final tx = TransactionModel(
           id: '',
-          walletId: wallet.id,
           categoryId: category?.id ?? '',
           amount: amount,
           type: type,
-          transactionDate: DateTime.now(),
+          transactionDate: txDate,
           status: 'COMPLETED',
           note: note,
         );
@@ -274,13 +272,11 @@ class VoiceInputController extends BaseController
           await _transactionRepository.createWalletAdjustmentTransaction(
             transaction: tx,
             transactionDetail: detail,
-            currentWallet: wallet,
           );
         } else {
           await _transactionRepository.createTransaction(
             transaction: tx,
             transactionDetail: detail,
-            currentWallet: wallet,
             currentCategory: category,
           );
         }

@@ -4,7 +4,6 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/domain/repositories/category_repository.dart';
-import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/services/budget_service.dart';
@@ -22,7 +21,6 @@ class BudgetDistributionGroup {
 class BudgetDistributionController extends BaseController {
   final storage = Get.find<StorageService>();
   final CategoryRepository categoryRepository = Get.find<CategoryRepository>();
-  final WalletRepository walletRepository = Get.find<WalletRepository>();
 
   var currentUserId = "".obs;
 
@@ -61,14 +59,8 @@ class BudgetDistributionController extends BaseController {
     showLoading();
 
     final result = await ErrorHandler.execute(() async {
-      final wallets = await walletRepository.getWallets(userId);
-
-      double totalBalance = 0.0;
-      for (var wallet in wallets) {
-        totalBalance = totalBalance + wallet.balance;
-      }
-      // Lưu vào biến tổng để cập nhật lên UI
-      totalWalletBalance.value = totalBalance;
+      // 1. Đồng bộ tổng ngân sách từ BudgetService (Nguồn chân lý duy nhất)
+      totalWalletBalance.value = Get.find<BudgetService>().totalWalletBalance.value;
 
       final types = await categoryRepository.getCategoryTypes(userId);
 
@@ -84,7 +76,9 @@ class BudgetDistributionController extends BaseController {
 
         for (var category in categories) {
           final mb = Get.find<BudgetService>().getBudgetForCategory(category.id);
-          double remaining = mb != null ? mb.budgetedAmount - mb.spentAmount : category.remaining;
+          double remaining = mb != null 
+              ? (mb.budgetedAmount + mb.rolloverAmount) - mb.spentAmount 
+              : category.remaining;
 
           // Format số tiền (vd: 500000 -> "500.000") để nhét vào TextField
           String currentAmount = formatCurrency(
@@ -223,33 +217,38 @@ class BudgetDistributionController extends BaseController {
 
             final mb = budgetService.getBudgetForCategory(cat.id);
             double spent = mb != null ? mb.spentAmount : cat.spent;
+            double rollover = mb != null ? mb.rolloverAmount : 0.0;
 
-            double newBudget = newRemaining + spent;
-            if (newBudget < 0) newBudget = 0.0;
+            // Tổng ngân sách cần có (Allocated)
+            double newTotalAllocated = newRemaining + spent;
+            if (newTotalAllocated < 0) newTotalAllocated = 0.0;
 
-            // Luôn cập nhật defaultBudget trên Category (template)
-            if (newBudget != cat.defaultBudget) {
+            // Số tiền cần nạp mới (Budgeted Amount) = Tổng Allocated - Tiền Cộng dồn
+            double newBudgetedAmount = newTotalAllocated - rollover;
+
+            // Cập nhật defaultBudget trên Category (template)
+            if (newBudgetedAmount != cat.defaultBudget) {
               await categoryRepository.updateCategory(
                 cat.id,
                 cat.name,
                 cat.iconName,
                 cat.color,
-                defaultBudget: newBudget,
+                defaultBudget: newBudgetedAmount,
               );
             }
 
             // Cập nhật hoặc tạo mới MonthlyBudget
             if (mb != null) {
               // Đã có → chỉ update budgetedAmount
-              if (mb.budgetedAmount != newBudget) {
-                await categoryRepository.updateMonthlyBudget(mb.id, newBudget);
+              if (mb.budgetedAmount != newBudgetedAmount) {
+                await categoryRepository.updateMonthlyBudget(mb.id, newBudgetedAmount);
               }
             } else {
               // Chưa có → tạo mới row MonthlyBudget cho tháng hiện tại
               await categoryRepository.createMonthlyBudget(
                 categoryId: cat.id,
                 monthYear: monthYearStr,
-                budgetedAmount: newBudget,
+                budgetedAmount: newBudgetedAmount,
                 spentAmount: spent,
               );
             }

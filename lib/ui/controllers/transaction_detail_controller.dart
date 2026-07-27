@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:collection/collection.dart';
@@ -25,7 +24,7 @@ class TransactionDetailController extends BaseController with BudgetAware {
 
   var detail = Rxn<TransactionDetailModel>();
   var category = Rxn<CategoryModel>();
-  var wallet = Rxn<WalletModel>();
+  final selectedWalletName = 'Ngân sách'.obs;
 
   var imageBytes = <String, Uint8List>{}.obs;
 
@@ -69,10 +68,6 @@ class TransactionDetailController extends BaseController with BudgetAware {
         final dataDetail = data['detail'] as TransactionDetailModel?;
         detail.value = dataDetail;
 
-        wallet.value = budgetService.wallets.firstWhereOrNull(
-          (w) => w.id == transaction.walletId,
-        );
-
         if (transaction.categoryId.isNotEmpty) {
           category.value = budgetService.categories
               .map((c) => c.categoryModel)
@@ -106,29 +101,21 @@ class TransactionDetailController extends BaseController with BudgetAware {
   }
 
   void onDeleteTransaction() {
-    if (wallet.value == null) return;
-
     // 1. Dry run
-    double futureWalletBalance = wallet.value!.balance;
     double futureUnallocated = budgetService.unallocatedAmount.value;
 
     if (transaction.type == 'INCOME') {
-      futureWalletBalance -= transaction.amount;
       futureUnallocated -= transaction.amount;
-    } else {
-      futureWalletBalance += transaction.amount;
     }
 
     // 2. Dialog if negative
-    if (futureWalletBalance < 0 || futureUnallocated < 0) {
+    if (futureUnallocated < 0) {
       Get.dialog(
         ConfirmDialogWidget(
           title: "Cảnh báo nghiêm trọng",
           content:
               "Việc xóa khoản giao dịch này sẽ làm "
-              "${futureWalletBalance < 0 ? 'Ví Tiền Mặt' : ''}"
-              "${futureWalletBalance < 0 && futureUnallocated < 0 ? ' và ' : ''}"
-              "${futureUnallocated < 0 ? 'Tiền Chưa Phân Bổ' : ''}"
+              "Tiền Chưa Phân Bổ"
               " của bạn bị ÂM. Bạn có chắc chắn muốn xóa không?",
           confirmText: "Vẫn Xóa",
           cancelText: "Hủy bỏ",
@@ -160,7 +147,6 @@ class TransactionDetailController extends BaseController with BudgetAware {
     final result = await ErrorHandler.execute(() async {
       await _transactionRepository.deleteTransaction(
         transaction: transaction,
-        currentWallet: wallet.value!,
         currentCategory: category.value,
       );
     }, tag: "DELETE_TRANSACTION");

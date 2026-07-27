@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:appintern/core/constants/app_assets.dart';
 import 'package:appintern/ui/controllers/transaction_history_controller.dart';
-import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 
@@ -176,17 +175,6 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
                 label: controller.sortAscending.value ? "Cũ - Mới" : "Mới - Cũ",
                 icon: Icons.sort,
                 onTap: controller.toggleSortOrder,
-              ),
-              SizedBox(width: 8.w),
-
-              // Wallet Filter
-              _buildDropdownFilter<WalletModel>(
-                label: controller.selectedWallet.value?.name ?? "Ví tiền",
-                items: controller.budgetService.wallets,
-                value: controller.selectedWallet.value,
-                itemLabel: (w) => w.name,
-                onChanged: (val) => controller.selectedWallet.value = val,
-                onClear: () => controller.selectedWallet.value = null,
               ),
               SizedBox(width: 8.w),
 

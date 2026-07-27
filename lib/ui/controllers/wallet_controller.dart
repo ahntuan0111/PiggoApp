@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/utils/logger.dart';
-import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
-import 'package:appintern/domain/repositories/wallet_repository.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
@@ -14,12 +12,10 @@ import 'package:appintern/core/errors/error_handler.dart';
 import 'package:intl/intl.dart';
 
 class WalletController extends BaseController with BudgetAware {
-  final WalletRepository walletRepository = Get.find<WalletRepository>();
   final TransactionRepository transactionRepository =
       Get.find<TransactionRepository>();
   final storage = Get.find<StorageService>();
 
-  late final RxList<WalletModel> wallets = budgetService.wallets.toList().obs;
   var recentTransactions = <Map<String, dynamic>>[].obs;
   var isLoadingWallets = false.obs;
 
@@ -44,23 +40,33 @@ class WalletController extends BaseController with BudgetAware {
     super.onInit();
     balanceController.addListener(_onBalanceChanged);
 
-    if (Get.arguments != null && Get.arguments['isEdit'] == true) {
-      isEditTransactionMode.value = true;
-      isAdjustMode.value = true;
-      editingTransaction = Get.arguments['transaction'] as TransactionModel?;
-      editingDetail = Get.arguments['detail'] as TransactionDetailModel?;
+    if (Get.arguments != null) {
+      if (Get.arguments['isAdjustMode'] == true) {
+        isAdjustMode.value = true;
+      }
 
-      if (editingTransaction != null) {
-        final formatter = NumberFormat('#,###', 'vi_VN');
-        balanceController.text = formatter.format(editingTransaction!.amount);
-        noteController.text = editingDetail?.note ?? editingTransaction!.note ?? '';
-        isAdding.value = editingTransaction!.type == 'INCOME';
+      if (Get.arguments['isEdit'] == true) {
+        isEditTransactionMode.value = true;
+        isAdjustMode.value = true;
+        editingTransaction = Get.arguments['transaction'] as TransactionModel?;
+        editingDetail = Get.arguments['detail'] as TransactionDetailModel?;
+
+        if (editingTransaction != null) {
+          final formatter = NumberFormat('#,###', 'vi_VN');
+          balanceController.text = formatter.format(editingTransaction!.amount);
+          noteController.text =
+              editingDetail?.note ?? editingTransaction!.note ?? '';
+          isAdding.value = editingTransaction!.type == 'INCOME';
+        }
       }
     }
   }
 
   void _onBalanceChanged() {
-    final raw = balanceController.text.replaceAll('.', '').replaceAll('đ', '').trim();
+    final raw = balanceController.text
+        .replaceAll('.', '')
+        .replaceAll('đ', '')
+        .trim();
     inputAmount.value = double.tryParse(raw) ?? 0.0;
   }
 
@@ -74,14 +80,13 @@ class WalletController extends BaseController with BudgetAware {
     }
   }
 
-  @override
   void onReady() {
     super.onReady();
-    fetchWallets().then((_) => fetchRecentTransactions());
+    fetchRecentTransactions();
 
     // Lắng nghe sự thay đổi của giao dịch
     transactionRepository.onTransactionUpdated.listen((_) {
-      fetchWallets().then((_) => fetchRecentTransactions());
+      fetchRecentTransactions();
       budgetService.refreshData();
     });
   }
@@ -122,33 +127,26 @@ class WalletController extends BaseController with BudgetAware {
   }
 
   Future<void> fetchWallets() async {
-    final userId = storage.read(AppKeys.userId) ?? "";
-    if (userId.isEmpty) return;
-
-    showLoading();
-    final result = await ErrorHandler.execute(() async {
-      final fetchedWallets = await walletRepository.getWallets(userId);
-      wallets.value = fetchedWallets;
-    }, tag: "FETCH_WALLETS");
-    hideLoading();
-
-    result.fold((failure) {
-      showErrorMessage("Lỗi", "Không thể tải danh sách ví: ${failure.message}");
-    }, (_) {});
+    // Không còn wallet
   }
 
   Future<void> fetchRecentTransactions() async {
-    if (wallets.isEmpty) {
-      recentTransactions.clear();
-      return;
-    }
-
-    final walletIds = wallets.map((w) => w.id).toList();
-
     final result = await ErrorHandler.execute(() async {
-      final history = await transactionRepository.getHistoryByWallets(
-        walletIds,
+      final currentMonth = budgetService.currentTrackingMonth.value;
+      final start = DateTime(currentMonth.year, currentMonth.month, 1);
+      final end = DateTime(
+        currentMonth.year,
+        currentMonth.month + 1,
+        0,
+        23,
+        59,
+        59,
+      );
+
+      final history = await transactionRepository.getRecentHistory(
         limit: 15,
+        start: start,
+        end: end,
       );
       recentTransactions.value = history;
     }, tag: "FETCH_GLOBAL_HISTORY");
@@ -165,62 +163,30 @@ class WalletController extends BaseController with BudgetAware {
     String iconName,
     bool isDefaultFlag,
   ) async {
-    final userId = storage.read(AppKeys.userId) ?? "";
-    if (userId.isEmpty) {
-      showErrorMessage('Lỗi', 'Không tìm thấy thông tin người dùng');
-      return;
-    }
-
-    showLoading();
-    final result = await ErrorHandler.execute(() async {
-      final newWallet = await walletRepository.createWallet(
-        userId,
-        name,
-        initialBalance,
-        currency,
-        iconName,
-        isDefaultFlag,
-      );
-      wallets.add(newWallet);
-    }, tag: "CREATE_WALLET");
-    hideLoading();
-
-    result.fold(
-      (failure) {
-        showErrorMessage("Lỗi", "Không thể tạo ví: ${failure.message}");
-      },
-      (_) {
-        Get.back();
-        // Khi Back thanh cong thi fetch lai Data
-        showSuccessMessage('Thành công', 'Đã thêm ví mới');
-      },
-    );
+    showErrorMessage('Tính năng', 'Tính năng đã bị vô hiệu hóa.');
   }
 
   Future<void> adjustBudget() async {
     final rawAmount = balanceController.text.replaceAll('.', '');
     final amount = double.tryParse(rawAmount) ?? 0.0;
-    
+
     if (amount <= 0) {
       showErrorMessage('Lỗi', 'Vui lòng nhập số tiền hợp lệ');
       return;
     }
 
     final userId = storage.read(AppKeys.userId) ?? "";
-    if (userId.isEmpty || wallets.isEmpty) return;
-
-    final targetWallet = wallets.first; // Lấy ví đầu tiên / mặc định
+    if (userId.isEmpty) return;
     final note = noteController.text.trim();
-    final description = note.isEmpty 
-      ? (isAdding.value ? 'Bổ sung ngân sách' : 'Điều chỉnh giảm ngân sách')
-      : note;
+    final description = note.isEmpty
+        ? (isAdding.value ? 'Bổ sung ngân sách' : 'Điều chỉnh giảm ngân sách')
+        : note;
 
     showLoading();
     final result = await ErrorHandler.execute(() async {
       if (isEditTransactionMode.value && editingTransaction != null) {
         final newTx = TransactionModel(
           id: editingTransaction!.id,
-          walletId: targetWallet.id,
           categoryId: '',
           amount: amount,
           type: isAdding.value ? 'INCOME' : 'EXPENSE',
@@ -242,12 +208,10 @@ class WalletController extends BaseController with BudgetAware {
           oldTransaction: editingTransaction!,
           newTransaction: newTx,
           newTransactionDetail: newDetail,
-          currentWallet: targetWallet,
         );
       } else {
         final transaction = TransactionModel(
           id: '',
-          walletId: targetWallet.id,
           categoryId: '', // Bỏ trống category vì đây là khoản unallocated
           amount: amount,
           type: isAdding.value ? 'INCOME' : 'EXPENSE',
@@ -267,7 +231,6 @@ class WalletController extends BaseController with BudgetAware {
         await transactionRepository.createWalletAdjustmentTransaction(
           transaction: transaction,
           transactionDetail: transactionDetail,
-          currentWallet: targetWallet,
         );
       }
     }, tag: "ADJUST_BUDGET");
@@ -275,32 +238,21 @@ class WalletController extends BaseController with BudgetAware {
 
     result.fold(
       (failure) {
-        showErrorMessage("Lỗi", "Không thể điều chỉnh ngân sách: ${failure.message}");
+        showErrorMessage(
+          "Lỗi",
+          "Không thể điều chỉnh ngân sách: ${failure.message}",
+        );
       },
       (_) {
         Get.back(result: true);
         showSuccessMessage('Thành công', 'Đã cập nhật ngân sách');
-        // Không cần fetchData ở đây vì _transactionUpdatedController 
+        // Không cần fetchData ở đây vì _transactionUpdatedController
         // sẽ báo cho HomeController refreshData tự động
       },
     );
   }
 
   Future<void> deleteWallet(String walletId) async {
-    showLoading();
-    final result = await ErrorHandler.execute(() async {
-      await walletRepository.deleteWallet(walletId);
-      wallets.removeWhere((w) => w.id == walletId);
-    }, tag: "DELETE_WALLET");
-    hideLoading();
-
-    result.fold(
-      (failure) {
-        showErrorMessage("Lỗi", "Không thể xóa ví: ${failure.message}");
-      },
-      (_) {
-        showSuccessMessage('Thành công', 'Đã xóa ví');
-      },
-    );
+    showErrorMessage('Tính năng', 'Tính năng đã bị vô hiệu hóa.');
   }
 }

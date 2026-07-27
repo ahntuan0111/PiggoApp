@@ -55,7 +55,7 @@ class GoalSavingCardItem extends StatelessWidget {
               child: Icon(
                 Icons.add_circle_outline,
                 size: 160.r,
-                color: Colors.grey.withOpacity(0.08),
+                color: Colors.grey.withValues(alpha: 0.08),
               ),
             ),
 
@@ -81,7 +81,7 @@ class GoalSavingCardItem extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF00ACC1).withOpacity(0.3),
+                              color: const Color(0xFF00ACC1).withValues(alpha: 0.3),
                               blurRadius: 8.r,
                               spreadRadius: 2.r,
                             ),
@@ -221,7 +221,7 @@ class GoalSavingCardItem extends StatelessWidget {
                     height: 12.h,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0).withOpacity(0.6),
+                      color: const Color(0xFFE0E0E0).withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(6.r),
                     ),
                     child: FractionallySizedBox(

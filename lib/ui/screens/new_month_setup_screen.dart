@@ -35,7 +35,7 @@ class NewMonthSetupScreen extends GetView<RolloverController> {
               borderRadius: BorderRadius.circular(24.r),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 )
@@ -69,38 +69,31 @@ class NewMonthSetupScreen extends GetView<RolloverController> {
                     controller.onExpectedIncomeChanged(val);
                   },
                 ),
-                Obx(() => controller.hasHardDeficit.value 
-                  ? Column(
+                Obx(() => Column(
                       children: [
                         SizedBox(height: 16.h),
-                        Container(
-                          padding: EdgeInsets.all(12.w),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF3E0), // Cam nhạt
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: Colors.orange.withOpacity(0.5)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.warning_amber_rounded, color: Colors.orange[800], size: 20.sp),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: Text(
-                                  "Cảnh báo: Bạn đang có khoản nợ kỹ thuật ${formatter.format(controller.deficitAmount.value)}đ. Hệ thống sẽ ưu tiên cấn trừ vào khoản thu nhập này.",
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: Colors.orange[900],
-                                    height: 1.4,
-                                  ),
-                                ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Tổng định mức đã phân bổ:",
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: Colors.black54,
                               ),
-                            ],
-                          ),
+                            ),
+                            Text(
+                              "${formatter.format(controller.totalAllocatedAmount.value)}đ",
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF0B4A3A),
+                              ),
+                            ),
+                          ],
                         )
                       ],
                     )
-                  : const SizedBox.shrink()
                 )
               ],
             ),
@@ -197,7 +190,7 @@ class NewMonthSetupScreen extends GetView<RolloverController> {
         borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -223,7 +216,7 @@ class NewMonthSetupScreen extends GetView<RolloverController> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC49A45).withOpacity(0.15),
+                    color: const Color(0xFFC49A45).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Row(

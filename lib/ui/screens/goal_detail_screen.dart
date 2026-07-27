@@ -202,7 +202,7 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
                                     final tx = item['transaction'] as TransactionModel;
                                     final detail = item['detail']; // TransactionDetailModel
                                     
-                                    final walletName = controller.budgetService.wallets.firstWhereOrNull((w) => w.id == tx.walletId)?.name ?? 'Ví';
+                                    final walletName = 'Ngân sách';
                                     final categoryName = controller.budgetService.categories.firstWhereOrNull((c) => c.categoryModel.id == tx.categoryId)?.categoryModel.name ?? 'Mục tiêu';
 
                                     return HistoryTransactionItem(

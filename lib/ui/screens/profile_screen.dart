@@ -64,10 +64,45 @@ class ProfileScreen extends GetView<ProfileController> {
                 width: double.infinity,
                 height: 52.h,
                 child: ElevatedButton.icon(
-                  onPressed: controller.logout,
-                  icon: const Icon(Icons.logout, color: Colors.white),
+                  onPressed: () {
+                    Get.dialog(
+                      AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        title: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                            SizedBox(width: 8.w),
+                            const Text("Reset dữ liệu"),
+                          ],
+                        ),
+                        content: const Text(
+                          "Hành động này sẽ xóa toàn bộ Ví, Hũ (Categories), Ngân Sách và Giao Dịch để bạn thiết lập lại từ đầu (vẫn giữ phiên đăng nhập).\n\nBạn có chắc chắn muốn thực hiện?",
+                          style: TextStyle(height: 1.4),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Get.back(),
+                            child: const Text("Hủy", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Get.back();
+                              controller.resetAccountData();
+                            },
+                            child: const Text(
+                              "Reset",
+                              style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
                   label: Text(
-                    "Đăng xuất",
+                    "Reset Dữ Liệu Tháng Này",
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
@@ -75,7 +110,31 @@ class ProfileScreen extends GetView<ProfileController> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE53935), // Đỏ
+                    backgroundColor: const Color(0xFFE65100), // Cam đậm cảnh báo
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              SizedBox(height: 16.h),
+              SizedBox(
+                width: double.infinity,
+                height: 52.h,
+                child: OutlinedButton.icon(
+                  onPressed: controller.logout,
+                  icon: const Icon(Icons.logout, color: Color(0xFF0B4A3A)),
+                  label: Text(
+                    "Đăng xuất",
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF0B4A3A),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF0B4A3A), width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16.r),
                     ),

@@ -1,6 +1,5 @@
 class TransactionModel {
   final String id;
-  final String walletId;
   final String categoryId;
   final double amount;
   final String type; // 'EXPENSE' or 'INCOME'
@@ -10,7 +9,6 @@ class TransactionModel {
 
   TransactionModel({
     required this.id,
-    required this.walletId,
     required this.categoryId,
     required this.amount,
     required this.type,
@@ -22,7 +20,6 @@ class TransactionModel {
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
     return TransactionModel(
       id: map['\$id'] ?? map['id'] ?? '',
-      walletId: _extractId(map['wallets']) ?? map['walletId'] ?? '',
       categoryId: _extractId(map['categories']) ?? map['categoryId'] ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
       type: map['type'] ?? 'EXPENSE',
@@ -36,7 +33,6 @@ class TransactionModel {
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
-      'wallets': walletId, // Sửa theo tên Relationship trên Appwrite
       'amount': amount,
       'type': type,
       'transactionDate': transactionDate.toIso8601String(),

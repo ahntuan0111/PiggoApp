@@ -31,7 +31,7 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                       decoration: BoxDecoration(
                         color: const Color(
                           0xFFC49A45,
-                        ).withOpacity(0.15), // Vàng Gold nhạt
+                        ).withValues(alpha: 0.15), // Vàng Gold nhạt
                         borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Row(
@@ -103,7 +103,7 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                           borderRadius: BorderRadius.circular(32.r),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 24,
                               offset: const Offset(0, 12),
                             ),
@@ -265,7 +265,7 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                       borderRadius: BorderRadius.circular(30.r),
                     ),
                     elevation: 5,
-                    shadowColor: const Color(0xFF0B4A3A).withOpacity(0.5),
+                    shadowColor: const Color(0xFF0B4A3A).withValues(alpha: 0.5),
                   ),
                   onPressed: () {
                     controller.onStartRolloverDecision();
@@ -335,7 +335,7 @@ class MonthEndReportScreen extends GetView<RolloverController> {
         borderRadius: BorderRadius.circular(24.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),

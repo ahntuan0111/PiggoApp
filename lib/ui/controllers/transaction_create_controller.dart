@@ -9,7 +9,6 @@ import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/data/models/wallet_model.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/domain/repositories/transaction_repository.dart';
@@ -31,17 +30,14 @@ class TransactionCreateController extends BaseController with BudgetAware {
   TransactionModel? editingTransaction;
   TransactionDetailModel? editingDetail;
   CategoryModel? oldCategory;
-  WalletModel? oldWallet;
-
+  
+  // Cập nhật giao diện mà không phá vỡ UI
+  final selectedWalletName = 'Ngân sách'.obs;
 
   // Input
   final amountController = TextEditingController();
   final amountValue = 0.0.obs;
   final isValidAmount = true.obs;
-
-  // Wallet Selection
-  final wallets = <WalletModel>[].obs;
-  final selectedWallet = Rxn<WalletModel>();
 
   // Category Selection
   final categories = <CategoryModel>[].obs;
@@ -51,11 +47,28 @@ class TransactionCreateController extends BaseController with BudgetAware {
   final selectedDate = DateTime.now().obs;
 
   Future<void> pickDate(BuildContext context) async {
+    DateTime firstDate;
+    DateTime lastDate;
+    
+    if (isEdit.value && editingTransaction != null) {
+      final txDate = editingTransaction!.transactionDate;
+      firstDate = DateTime(txDate.year, txDate.month, 1);
+      lastDate = DateTime(txDate.year, txDate.month + 1, 0);
+    } else {
+      final trackingMonth = budgetService.currentTrackingMonth.value;
+      firstDate = DateTime(trackingMonth.year, trackingMonth.month, 1);
+      lastDate = DateTime(trackingMonth.year, trackingMonth.month + 1, 0);
+    }
+
+    DateTime initialDate = selectedDate.value;
+    if (initialDate.isBefore(firstDate)) initialDate = firstDate;
+    if (initialDate.isAfter(lastDate)) initialDate = lastDate;
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: selectedDate.value,
-      firstDate: DateTime(2020, 1, 1),
-      lastDate: DateTime.now(),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -75,6 +88,24 @@ class TransactionCreateController extends BaseController with BudgetAware {
   }
 
   void setDate(DateTime date) {
+    DateTime firstDate;
+    DateTime lastDate;
+    
+    if (isEdit.value && editingTransaction != null) {
+      final txDate = editingTransaction!.transactionDate;
+      firstDate = DateTime(txDate.year, txDate.month, 1);
+      lastDate = DateTime(txDate.year, txDate.month + 1, 0);
+    } else {
+      final trackingMonth = budgetService.currentTrackingMonth.value;
+      firstDate = DateTime(trackingMonth.year, trackingMonth.month, 1);
+      lastDate = DateTime(trackingMonth.year, trackingMonth.month + 1, 0);
+    }
+
+    if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
+      showErrorMessage("Ngày không hợp lệ", "Chỉ được chọn ngày trong tháng hiện tại.");
+      return;
+    }
+
     selectedDate.value = date;
   }
 
@@ -133,12 +164,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
       if (!budgetService.isDataLoaded.value) {
         await budgetService.refreshData();
       }
-
-      wallets.value = budgetService.wallets;
-      if (wallets.isNotEmpty) {
-        selectedWallet.value = wallets.first;
-      }
-
       // Lọc ra các categories KHÔNG thuộc nhóm "Tiết kiệm lâu dài" (Goal Savings)
       // Vì Goal Savings có luồng nạp/rút riêng, không thể thêm giao dịch thông thường.
       final validCategories = budgetService.categoryGroups
@@ -148,6 +173,16 @@ class TransactionCreateController extends BaseController with BudgetAware {
           .toList();
 
       categories.value = validCategories;
+
+      if (!isEdit.value) {
+        final trackingMonth = budgetService.currentTrackingMonth.value;
+        final now = DateTime.now();
+        if (now.year == trackingMonth.year && now.month == trackingMonth.month) {
+          selectedDate.value = now;
+        } else {
+          selectedDate.value = DateTime(trackingMonth.year, trackingMonth.month, 1);
+        }
+      }
 
       // Xử lý dữ liệu Chỉnh sửa (Edit Mode) nếu được truyền sang
       if (Get.arguments != null && Get.arguments['isEdit'] == true) {
@@ -160,12 +195,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
           amountController.text = formatter.format(editingTransaction!.amount);
           noteController.text = editingDetail?.note ?? editingTransaction!.note ?? '';
           selectedDate.value = editingTransaction!.transactionDate;
-
-          final matchedWallet = wallets.firstWhereOrNull((w) => w.id == editingTransaction!.walletId);
-          if (matchedWallet != null) {
-            selectedWallet.value = matchedWallet;
-            oldWallet = matchedWallet;
-          }
 
           final matchedCategory = categories.firstWhereOrNull((c) => c.id == editingTransaction!.categoryId);
           if (matchedCategory != null) {
@@ -304,21 +333,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
       );
       return;
     }
-    if (selectedWallet.value == null) {
-      Get.snackbar(
-        "Lỗi",
-        "Vui lòng chọn ví",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return;
-    }
-    // if (noteController.text.trim().isEmpty) {
-    //   Get.snackbar("Lỗi", "Vui lòng nhập ghi chú cho giao dịch", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
-    //   return;
-    // }
-
     final selectedDt = selectedDate.value;
     final currentDt = budgetService.currentTrackingMonth.value;
     
@@ -359,7 +373,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
       // 2. Chuẩn bị dữ liệu
       final tx = TransactionModel(
         id: '', // Sẽ được tự gen ở repo
-        walletId: selectedWallet.value!.id,
         categoryId: selectedCategory.value!.id,
         amount: amountValue.value,
         type: 'EXPENSE',
@@ -381,7 +394,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
       await transactionRepository.createTransaction(
         transaction: tx,
         transactionDetail: detail,
-        currentWallet: selectedWallet.value!,
         currentCategory: selectedCategory.value!,
       );
     }, tag: "ADD_TRANSACTION");
@@ -421,7 +433,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
       final newTx = TransactionModel(
         id: editingTransaction!.id,
-        walletId: selectedWallet.value!.id,
         categoryId: selectedCategory.value!.id,
         amount: amountValue.value,
         type: 'EXPENSE',
@@ -443,8 +454,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
         oldTransaction: editingTransaction!,
         newTransaction: newTx,
         newTransactionDetail: newDetail,
-        oldWallet: oldWallet ?? selectedWallet.value!,
-        newWallet: selectedWallet.value!,
         oldCategory: oldCategory,
         newCategory: selectedCategory.value!,
       );

@@ -22,7 +22,7 @@ class OverspentCompensationScreen
           icon: Container(
             padding: EdgeInsets.all(4.r),
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.close, color: Colors.white, size: 16.sp),
@@ -236,7 +236,7 @@ class OverspentCompensationScreen
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

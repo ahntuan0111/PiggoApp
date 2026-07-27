@@ -16,28 +16,23 @@ class StorageRepository with AppwriteErrorHandler {
 
       String generatedFileId = ID.unique();
 
-      try {
-        final result = await _appwrite.storage.createFile(
-          bucketId: bucketId,
-          fileId: generatedFileId,
-          file: InputFile.fromPath(
-            path: file.path,
-            filename: file.path.split('/').last,
-          ),
-        );
-        return result.$id;
-      } catch (e) {
+      return await _appwrite.storage.createFile(
+        bucketId: bucketId,
+        fileId: generatedFileId,
+        file: InputFile.fromPath(
+          path: file.path,
+          filename: file.path.split('/').last,
+        ),
+      ).then((result) => result.$id).catchError((e) {
         // Appwrite SDK có thể gặp lỗi parse JSON response khi upload file (thường do field thiếu)
         // Dù file ĐÃ ĐƯỢC UPLOAD THÀNH CÔNG lên server (trả về 201), SDK vẫn văng TypeError.
         // Ta catch TypeError này và trả về ID tự sinh để không làm gián đoạn luồng app.
         if (e is TypeError &&
-            e.toString().contains(
-              "type 'Null' is not a subtype of type 'int'",
-            )) {
+            e.toString().contains("type 'Null' is not a subtype of type 'int'")) {
           return generatedFileId;
         }
-        rethrow;
-      }
+        throw e;
+      });
     });
   }
 }
