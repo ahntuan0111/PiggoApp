@@ -9,9 +9,10 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/data/models/budget_category.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
-import 'package:appintern/domain/repositories/auth_repository.dart';
-import 'package:appintern/domain/repositories/rollover_repository.dart';
+import 'package:appintern/data/repositories/auth_repository.dart';
+import 'package:appintern/data/repositories/rollover_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
+import 'package:appintern/core/services/network_service.dart';
 
 class HomeController extends BaseController with BudgetAware {
   final storage = Get.find<StorageService>();
@@ -22,15 +23,16 @@ class HomeController extends BaseController with BudgetAware {
   RxDouble get allocatedAmount => budgetService.allocatedAmount;
   RxDouble get unallocatedAmount => budgetService.unallocatedAmount;
 
-  RxList<BudgetCategory> get categories => budgetService.categories;
-  RxList<BudgetCategoryGroup> get categoryGroups =>
-      budgetService.categoryGroups;
+  List<BudgetCategory> get categories => budgetService.activeCategories;
+  List<BudgetCategoryGroup> get categoryGroups =>
+      budgetService.activeCategoryGroups;
 
   int get overspentCategoriesCount {
     return categories.where((cat) => cat.remaining < 0).length;
   }
 
-  final currentMonth = 'Tháng ${DateTime.now().month} ${DateTime.now().year}'.obs;
+  final currentMonth =
+      'Tháng ${DateTime.now().month} ${DateTime.now().year}'.obs;
 
   @override
   void onInit() {
@@ -63,7 +65,17 @@ class HomeController extends BaseController with BudgetAware {
     if (!budgetService.isDataLoaded.value) {
       showLoading();
     }
-    
+
+    // Nếu đang ngoại tuyến, bỏ qua bước verify session và tải dữ liệu từ cache
+    final network = Get.find<NetworkService>();
+    if (network.isOffline.value) {
+      if (!budgetService.isDataLoaded.value) {
+        await budgetService.refreshData(); // Sẽ load từ cache
+      }
+      hideLoading();
+      return;
+    }
+
     // Kiểm tra xem session thực sự còn hiệu lực trên Appwrite Server hiện tại không
     // Việc này rất quan trọng khi thay đổi IP localhost
     final authRepo = Get.find<AuthRepository>();
@@ -71,15 +83,15 @@ class HomeController extends BaseController with BudgetAware {
       () async => await authRepo.getUser(),
       tag: 'VERIFY_SESSION',
     );
-    
+
     await sessionResult.fold(
       (failure) async {
-        // Session không hợp lệ (IP thay đổi, cookie mất, v.v.)
+        // Chỉ logout nếu lỗi là ServerException (401 Unauthorized, v.v.), không phải NetworkException
         hideLoading();
         storage.clearAll();
         Get.offAllNamed(Routes.ONBOARDING);
         Get.snackbar(
-          "Phiên đăng nhập hết hạn", 
+          "Phiên đăng nhập hết hạn",
           "Vui lòng đăng nhập lại (Do IP máy chủ thay đổi hoặc phiên hết hạn).",
           backgroundColor: Colors.orange,
           colorText: Colors.white,
@@ -107,12 +119,26 @@ class HomeController extends BaseController with BudgetAware {
               );
             } else if (result.state != RolloverState.noPending) {
               hideLoading();
-              // Điều hướng sang luồng Rollover (MonthEndReportScreen)
-              // Cần khai báo ROUTES.ROLLOVER_REPORT trong app_routes.dart
-              Get.offAllNamed('/rollover_report', arguments: {
-                'state': result.state,
-                'lastActiveMonthYear': result.lastActiveMonthYear,
-              });
+
+              if (result.state == RolloverState.multiMonthGap) {
+                // Đá thẳng sang Thiết lập tháng mới, bỏ qua Báo cáo & Dọn dẹp
+                Get.offAllNamed(
+                  Routes.MULTI_MONTH_GAP,
+                  arguments: {
+                    'state': result.state,
+                    'lastActiveMonthYear': result.lastActiveMonthYear,
+                  },
+                );
+              } else {
+                // Điều hướng sang luồng Rollover (MonthEndReportScreen)
+                Get.offAllNamed(
+                  Routes.MONTH_END_REPORT,
+                  arguments: {
+                    'state': result.state,
+                    'lastActiveMonthYear': result.lastActiveMonthYear,
+                  },
+                );
+              }
               return; // Dừng luồng Home
             }
 
@@ -120,7 +146,7 @@ class HomeController extends BaseController with BudgetAware {
             if (!budgetService.isDataLoaded.value) {
               await budgetService.refreshData();
             }
-          }
+          },
         );
       },
     );

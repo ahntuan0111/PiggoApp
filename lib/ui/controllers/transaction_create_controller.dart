@@ -11,8 +11,8 @@ import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
-import 'package:appintern/domain/repositories/transaction_repository.dart';
-import 'package:appintern/domain/repositories/storage_repository.dart';
+import 'package:appintern/data/repositories/transaction_repository.dart';
+import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:appintern/ui/widgets/dialogs/post_adjustment_warning_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
@@ -30,7 +30,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
   TransactionModel? editingTransaction;
   TransactionDetailModel? editingDetail;
   CategoryModel? oldCategory;
-  
+
   // Cập nhật giao diện mà không phá vỡ UI
   final selectedWalletName = 'Ngân sách'.obs;
 
@@ -49,7 +49,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
   Future<void> pickDate(BuildContext context) async {
     DateTime firstDate;
     DateTime lastDate;
-    
+
     if (isEdit.value && editingTransaction != null) {
       final txDate = editingTransaction!.transactionDate;
       firstDate = DateTime(txDate.year, txDate.month, 1);
@@ -90,7 +90,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
   void setDate(DateTime date) {
     DateTime firstDate;
     DateTime lastDate;
-    
+
     if (isEdit.value && editingTransaction != null) {
       final txDate = editingTransaction!.transactionDate;
       firstDate = DateTime(txDate.year, txDate.month, 1);
@@ -102,7 +102,10 @@ class TransactionCreateController extends BaseController with BudgetAware {
     }
 
     if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
-      showErrorMessage("Ngày không hợp lệ", "Chỉ được chọn ngày trong tháng hiện tại.");
+      showErrorMessage(
+        "Ngày không hợp lệ",
+        "Chỉ được chọn ngày trong tháng hiện tại.",
+      );
       return;
     }
 
@@ -166,7 +169,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
       }
       // Lọc ra các categories KHÔNG thuộc nhóm "Tiết kiệm lâu dài" (Goal Savings)
       // Vì Goal Savings có luồng nạp/rút riêng, không thể thêm giao dịch thông thường.
-      final validCategories = budgetService.categoryGroups
+      final validCategories = budgetService.activeCategoryGroups
           .where((group) => group.typeName != 'Tiết kiệm lâu dài')
           .expand((group) => group.categories)
           .map((budgetCat) => budgetCat.categoryModel)
@@ -177,10 +180,15 @@ class TransactionCreateController extends BaseController with BudgetAware {
       if (!isEdit.value) {
         final trackingMonth = budgetService.currentTrackingMonth.value;
         final now = DateTime.now();
-        if (now.year == trackingMonth.year && now.month == trackingMonth.month) {
+        if (now.year == trackingMonth.year &&
+            now.month == trackingMonth.month) {
           selectedDate.value = now;
         } else {
-          selectedDate.value = DateTime(trackingMonth.year, trackingMonth.month, 1);
+          selectedDate.value = DateTime(
+            trackingMonth.year,
+            trackingMonth.month,
+            1,
+          );
         }
       }
 
@@ -193,10 +201,13 @@ class TransactionCreateController extends BaseController with BudgetAware {
         if (editingTransaction != null) {
           final formatter = NumberFormat('#,###', 'vi_VN');
           amountController.text = formatter.format(editingTransaction!.amount);
-          noteController.text = editingDetail?.note ?? editingTransaction!.note ?? '';
+          noteController.text =
+              editingDetail?.note ?? editingTransaction!.note ?? '';
           selectedDate.value = editingTransaction!.transactionDate;
 
-          final matchedCategory = categories.firstWhereOrNull((c) => c.id == editingTransaction!.categoryId);
+          final matchedCategory = categories.firstWhereOrNull(
+            (c) => c.id == editingTransaction!.categoryId,
+          );
           if (matchedCategory != null) {
             selectedCategory.value = matchedCategory;
             oldCategory = matchedCategory;
@@ -247,10 +258,17 @@ class TransactionCreateController extends BaseController with BudgetAware {
         if (image != null) {
           imagePaths.add(image.path);
         }
-      } else if (status.isPermanentlyDenied || cameraStatus.isPermanentlyDenied) {
-        _showPermissionDialog("Quyền truy cập bị từ chối", "Vui lòng vào Cài đặt để cấp quyền truy cập Ảnh và Camera cho ứng dụng.");
+      } else if (status.isPermanentlyDenied ||
+          cameraStatus.isPermanentlyDenied) {
+        _showPermissionDialog(
+          "Quyền truy cập bị từ chối",
+          "Vui lòng vào Cài đặt để cấp quyền truy cập Ảnh và Camera cho ứng dụng.",
+        );
       } else {
-        showErrorMessage('Lỗi', 'Bạn cần cấp đủ quyền Ảnh và Camera để thêm ảnh giao dịch.');
+        showErrorMessage(
+          'Lỗi',
+          'Bạn cần cấp đủ quyền Ảnh và Camera để thêm ảnh giao dịch.',
+        );
       }
     } catch (e) {
       showErrorMessage('Lỗi', 'Không thể chọn ảnh: $e');
@@ -269,7 +287,9 @@ class TransactionCreateController extends BaseController with BudgetAware {
             child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4CAF50),
+            ),
             onPressed: () {
               Get.back();
               openAppSettings();
@@ -335,10 +355,11 @@ class TransactionCreateController extends BaseController with BudgetAware {
     }
     final selectedDt = selectedDate.value;
     final currentDt = budgetService.currentTrackingMonth.value;
-    
+
     bool isClosedMonth = false;
-    if (selectedDt.year < currentDt.year || 
-       (selectedDt.year == currentDt.year && selectedDt.month < currentDt.month)) {
+    if (selectedDt.year < currentDt.year ||
+        (selectedDt.year == currentDt.year &&
+            selectedDt.month < currentDt.month)) {
       isClosedMonth = true;
     }
 
@@ -426,7 +447,9 @@ class TransactionCreateController extends BaseController with BudgetAware {
       List<String> uploadedFileIds = [];
       for (String path in imagePaths) {
         if (!path.startsWith('http')) {
-          String fileId = await storageRepository.uploadReceiptImage(File(path));
+          String fileId = await storageRepository.uploadReceiptImage(
+            File(path),
+          );
           uploadedFileIds.add(fileId);
         }
       }
@@ -445,7 +468,9 @@ class TransactionCreateController extends BaseController with BudgetAware {
         id: editingDetail?.id ?? '',
         transactionId: editingTransaction!.id,
         note: noteController.text.trim(),
-        receiptFileIds: uploadedFileIds.isNotEmpty ? uploadedFileIds : (editingDetail?.receiptFileIds ?? const []),
+        receiptFileIds: uploadedFileIds.isNotEmpty
+            ? uploadedFileIds
+            : (editingDetail?.receiptFileIds ?? const []),
         rawInputText: editingDetail?.rawInputText ?? '',
         confidenceScore: editingDetail?.confidenceScore ?? 1.0,
       );
@@ -463,7 +488,10 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
     result.fold(
       (failure) {
-        showErrorMessage("Lỗi", "Không thể cập nhật giao dịch: ${failure.message}");
+        showErrorMessage(
+          "Lỗi",
+          "Không thể cập nhật giao dịch: ${failure.message}",
+        );
       },
       (_) {
         Get.back(result: true);

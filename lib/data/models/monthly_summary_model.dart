@@ -15,7 +15,7 @@ class MonthlySummaryModel {
 
   factory MonthlySummaryModel.fromMap(Map<String, dynamic> map) {
     return MonthlySummaryModel(
-      id: map['\$id'] ?? '',
+      id: map['\$id'] ?? map['id'] ?? '',
       monthYear: map['monthYear'] ?? '',
       totalIncome: (map['totalIncome'] ?? 0).toDouble(),
       totalExpense: (map['totalExpense'] ?? 0).toDouble(),
@@ -25,6 +25,7 @@ class MonthlySummaryModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'monthYear': monthYear,
       'totalIncome': totalIncome,
       'totalExpense': totalExpense,

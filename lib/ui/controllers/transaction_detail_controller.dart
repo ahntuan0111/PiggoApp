@@ -1,15 +1,15 @@
 import 'dart:typed_data';
+import 'package:appintern/core/utils/logger.dart';
+import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:get/get.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/domain/repositories/transaction_repository.dart';
-import 'package:appintern/core/services/appwrite_service.dart';
+import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:collection/collection.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:appintern/ui/widgets/dialogs/confirm_dialog_widget.dart';
 
 import 'package:appintern/core/routes/app_routes.dart';
@@ -17,7 +17,7 @@ import 'package:appintern/core/routes/app_routes.dart';
 class TransactionDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepository =
       Get.find<TransactionRepository>();
-  final AppwriteService _appwrite = Get.find<AppwriteService>();
+  final StorageRepository _storageRepo = Get.find<StorageRepository>();
 
   late Rx<TransactionModel> rxTransaction;
   TransactionModel get transaction => rxTransaction.value;
@@ -25,6 +25,8 @@ class TransactionDetailController extends BaseController with BudgetAware {
   var detail = Rxn<TransactionDetailModel>();
   var category = Rxn<CategoryModel>();
   final selectedWalletName = 'Ngân sách'.obs;
+
+  bool get isSystemRollover => transaction.categoryId == 'SYSTEM_ROLLOVER';
 
   var imageBytes = <String, Uint8List>{}.obs;
 
@@ -85,18 +87,23 @@ class TransactionDetailController extends BaseController with BudgetAware {
   }
 
   Future<void> _loadImages(List<String> fileIds) async {
-    final bucketId =
-        dotenv.env['APPWRITE_RECEIPT_BUCKET_ID'] ?? _appwrite.avatarBucketId;
     for (String fileId in fileIds) {
-      try {
-        final bytes = await _appwrite.storage.getFileView(
-          bucketId: bucketId,
-          fileId: fileId,
-        );
-        imageBytes[fileId] = bytes;
-      } catch (e) {
-        print("Lỗi tải ảnh $fileId: $e");
-      }
+      final result = await ErrorHandler.execute(() async {
+        return await _storageRepo.getFileView(fileId);
+      }, tag: "LOAD_RECEIPT_IMAGE");
+
+      result.fold(
+        (failure) {
+          // Chỉ log lỗi, không báo lên UI làm phiền user
+          AppLogger.error(
+            "LOAD_RECEIPT_IMAGE",
+            "Lỗi tải ảnh $fileId: ${failure.message}",
+          );
+        },
+        (bytes) {
+          imageBytes[fileId] = Uint8List.fromList(bytes);
+        },
+      );
     }
   }
 
@@ -165,10 +172,7 @@ class TransactionDetailController extends BaseController with BudgetAware {
   }
 
   String getImageUrl(String fileId) {
-    final bucketId =
-        dotenv.env['APPWRITE_RECEIPT_BUCKET_ID'] ?? _appwrite.avatarBucketId;
-    final projectId = _appwrite.projectId;
-    return '${_appwrite.client.endPoint}/storage/buckets/$bucketId/files/$fileId/view?project=$projectId';
+    return _storageRepo.getImageUrl(fileId);
   }
 
   Future<void> onEditTransaction() async {

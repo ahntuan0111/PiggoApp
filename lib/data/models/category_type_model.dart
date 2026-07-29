@@ -13,7 +13,7 @@ class CategoryTypeModel {
 
   factory CategoryTypeModel.fromMap(Map<String, dynamic> map) {
     return CategoryTypeModel(
-      id: map['\$id'] ?? '',
+      id: map['\$id'] ?? map['id'] ?? '',
       ownerId: map['ownerId'] ?? '',
       name: map['name'] ?? '',
       priority: map['priority'] ?? 0,
@@ -22,6 +22,7 @@ class CategoryTypeModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'ownerId': ownerId,
       'name': name,
       'priority': priority,

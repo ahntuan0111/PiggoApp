@@ -8,8 +8,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io';
 import 'package:dio/dio.dart' as dio;
 import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
+import 'package:appintern/core/mixins/dio_error_mixin.dart';
 
-class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler implements IAIService {
+class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioErrorHandler implements IAIService {
   final AppwriteService _appwriteService = Get.find<AppwriteService>();
   final dio.Dio _dio = dio.Dio();
 
@@ -146,32 +147,34 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler implem
 
   @override
   Future<String> convertSpeechToText(String audioPath) async {
-    final file = await dio.MultipartFile.fromFile(audioPath, filename: 'voice_input.wav');
-    final formData = dio.FormData.fromMap({'file': file});
-    
-    // Lấy IP cấu hình từ .env, fallback về localhost/10.0.2.2 nếu chưa set
-    String? envSttUrl = dotenv.env['FASTAPI_STT_URL'];
-    String baseUrl = (envSttUrl != null && envSttUrl.isNotEmpty) 
-        ? envSttUrl 
-        : (Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000');
-    
-    final sttResponse = await _dio.post(
-      '$baseUrl/api/v1/transactions/voice',
-      data: formData,
-      options: dio.Options(
-        receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 15),
-      )
-    );
-    
-    if (sttResponse.data['status'] == 'success') {
-      final text = sttResponse.data['raw_text_detected'] ?? "";
-      if (text.isEmpty) {
-        throw Exception("Không nghe rõ bạn nói gì.");
+    return handleDioError(() async {
+      final file = await dio.MultipartFile.fromFile(audioPath, filename: 'voice_input.wav');
+      final formData = dio.FormData.fromMap({'file': file});
+      
+      // Lấy IP cấu hình từ .env, fallback về localhost/10.0.2.2 nếu chưa set
+      String? envSttUrl = dotenv.env['FASTAPI_STT_URL'];
+      String baseUrl = (envSttUrl != null && envSttUrl.isNotEmpty) 
+          ? envSttUrl 
+          : (Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000');
+      
+      final sttResponse = await _dio.post(
+        '$baseUrl/api/v1/transactions/voice',
+        data: formData,
+        options: dio.Options(
+          receiveTimeout: const Duration(seconds: 30),
+          sendTimeout: const Duration(seconds: 15),
+        )
+      );
+      
+      if (sttResponse.data['status'] == 'success') {
+        final text = sttResponse.data['raw_text_detected'] ?? "";
+        if (text.isEmpty) {
+          throw Exception("Không nghe rõ bạn nói gì.");
+        }
+        return text;
+      } else {
+        throw Exception("Lỗi từ server STT: ${sttResponse.data['message'] ?? ''}");
       }
-      return text;
-    } else {
-      throw Exception("Lỗi từ server STT");
-    }
+    });
   }
 }

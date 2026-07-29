@@ -3,11 +3,10 @@ import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
-import 'package:appintern/domain/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/services/budget_service.dart';
-
 
 class BudgetDistributionGroup {
   final String typeId;
@@ -60,7 +59,8 @@ class BudgetDistributionController extends BaseController {
 
     final result = await ErrorHandler.execute(() async {
       // 1. Đồng bộ tổng ngân sách từ BudgetService (Nguồn chân lý duy nhất)
-      totalWalletBalance.value = Get.find<BudgetService>().totalWalletBalance.value;
+      totalWalletBalance.value =
+          Get.find<BudgetService>().totalWalletBalance.value;
 
       final types = await categoryRepository.getCategoryTypes(userId);
 
@@ -75,9 +75,11 @@ class BudgetDistributionController extends BaseController {
         final categories = await categoryRepository.getCategories(typeIds);
 
         for (var category in categories) {
-          final mb = Get.find<BudgetService>().getBudgetForCategory(category.id);
-          double remaining = mb != null 
-              ? (mb.budgetedAmount + mb.rolloverAmount) - mb.spentAmount 
+          final mb = Get.find<BudgetService>().getBudgetForCategory(
+            category.id,
+          );
+          double remaining = mb != null
+              ? (mb.budgetedAmount + mb.rolloverAmount) - mb.spentAmount
               : category.remaining;
 
           // Format số tiền (vd: 500000 -> "500.000") để nhét vào TextField
@@ -105,9 +107,9 @@ class BudgetDistributionController extends BaseController {
         for (var type in types) {
           List<CategoryModel> categoriesInGroup = [];
 
-          // Đi tìm các hạng mục con có ID nhóm trùng với ID của nhóm hiện tại
+          // Đi tìm các hạng mục con có ID nhóm trùng với ID của nhóm hiện tại và đang active
           for (var category in categories) {
-            if (category.categoryTypeId == type.id) {
+            if (category.categoryTypeId == type.id && category.isActive) {
               categoriesInGroup.add(category);
             }
           }
@@ -241,7 +243,10 @@ class BudgetDistributionController extends BaseController {
             if (mb != null) {
               // Đã có → chỉ update budgetedAmount
               if (mb.budgetedAmount != newBudgetedAmount) {
-                await categoryRepository.updateMonthlyBudget(mb.id, newBudgetedAmount);
+                await categoryRepository.updateMonthlyBudget(
+                  mb.id,
+                  newBudgetedAmount,
+                );
               }
             } else {
               // Chưa có → tạo mới row MonthlyBudget cho tháng hiện tại

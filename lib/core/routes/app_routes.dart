@@ -15,8 +15,9 @@ abstract class Routes {
   static const SMART_INPUT = '/smart-input';
   static const VOICE_INPUT = '/voice-input';
   static const TRANSACTION_DETAIL = '/transaction-detail';
-  static const ROLLOVER_REPORT = '/rollover_report';
+  static const MONTH_END_REPORT = '/month_end_report';
   static const ROLLOVER_DECISION = '/rollover_decision';
-  static const ROLLOVER_NEW_MONTH = '/rollover_new_month';
-  static const ROLLOVER_GAP = '/rollover_gap';
+  static const NEW_MONTH_SETUP = '/new_month_setup';
+  static const OFFLINE_QUEUE = '/offline_queue';
+  static const MULTI_MONTH_GAP = '/multi_month_gap';
 }

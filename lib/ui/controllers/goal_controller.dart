@@ -2,9 +2,9 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/data/models/goal_model.dart';
-import 'package:appintern/domain/repositories/goal_repository.dart';
-import 'package:appintern/domain/repositories/category_repository.dart';
-import 'package:appintern/domain/repositories/transfer_log_repository.dart';
+import 'package:appintern/data/repositories/goal_repository.dart';
+import 'package:appintern/data/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/transfer_log_repository.dart';
 import 'package:appintern/data/models/transfer_log_model.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
@@ -13,10 +13,11 @@ import 'package:appintern/data/models/budget_category.dart';
 
 class GoalController extends BaseController with BudgetAware {
   final CategoryRepository _categoryRepo = Get.find<CategoryRepository>();
-  final TransferLogRepository _transferLogRepo = Get.find<TransferLogRepository>();
+  final TransferLogRepository _transferLogRepo =
+      Get.find<TransferLogRepository>();
   final StorageService _storage = Get.find<StorageService>();
   // Không cần GoalRepository nữa vì BudgetService đã quản lý
-  
+
   // Proxy state từ BudgetService sang Controller
   List<GoalModel> get goals => budgetService.goals;
 
@@ -68,9 +69,12 @@ class GoalController extends BaseController with BudgetAware {
     showLoading();
     final result = await ErrorHandler.execute(() async {
       final now = budgetService.currentTrackingMonth.value;
-      final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
+      final monthYearStr =
+          "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-      final mbTarget = budgetService.getBudgetForCategory(category.categoryModel.id);
+      final mbTarget = budgetService.getBudgetForCategory(
+        category.categoryModel.id,
+      );
       if (mbTarget != null) {
         await _categoryRepo.updateMonthlyBudget(mbTarget.id, newBudget);
       } else {
@@ -93,7 +97,10 @@ class GoalController extends BaseController with BudgetAware {
           final sourceCat = sourceCatList.first.categoryModel;
           final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
           if (mbSource != null) {
-            await _categoryRepo.updateMonthlyBudget(mbSource.id, sourceCategoryNewBudget);
+            await _categoryRepo.updateMonthlyBudget(
+              mbSource.id,
+              sourceCategoryNewBudget,
+            );
           } else {
             await _categoryRepo.createMonthlyBudget(
               categoryId: sourceCat.id,
@@ -106,7 +113,8 @@ class GoalController extends BaseController with BudgetAware {
 
       // Ghi log chuyển ngân sách
       String userId = _storage.read<String>(AppKeys.userId) ?? '';
-      double amountMoved = (newBudget - category.categoryModel.defaultBudget).abs();
+      double amountMoved = (newBudget - category.categoryModel.defaultBudget)
+          .abs();
       String fromCat = sourceCategoryId ?? 'unallocated';
       String toCat = category.categoryModel.id;
 
@@ -130,12 +138,11 @@ class GoalController extends BaseController with BudgetAware {
     }, tag: "UPDATE_GOAL_BUDGET");
 
     hideLoading();
-    result.fold(
-      (failure) => showErrorMessage('Lỗi', failure.message),
-      (_) async {
-        await budgetService.refreshData();
-        showSuccessMessage('Thành công', 'Đã nạp tiền vào mục tiêu!');
-      }
-    );
+    result.fold((failure) => showErrorMessage('Lỗi', failure.message), (
+      _,
+    ) async {
+      await budgetService.refreshData();
+      showSuccessMessage('Thành công', 'Đã nạp tiền vào mục tiêu!');
+    });
   }
 }

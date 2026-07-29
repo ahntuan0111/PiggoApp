@@ -18,7 +18,8 @@ class GoalRepository with AppwriteErrorHandler {
         ],
       );
 
-      return response.rows.map((e) => GoalModel.fromMap(e.data)).toList();
+      return response.rows.map((e) => GoalModel.fromMap(
+          Map<String, dynamic>.from(e.data)..['\$id'] = e.$id)).toList();
     });
   }
 
@@ -30,7 +31,8 @@ class GoalRepository with AppwriteErrorHandler {
         rowId: ID.unique(),
         data: goal.toMap(),
       );
-      return GoalModel.fromMap(response.data);
+      return GoalModel.fromMap(
+          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
     });
   }
 
@@ -42,7 +44,8 @@ class GoalRepository with AppwriteErrorHandler {
         rowId: goal.id,
         data: goal.toMap(),
       );
-      return GoalModel.fromMap(response.data);
+      return GoalModel.fromMap(
+          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
     });
   }
 

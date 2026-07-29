@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/compensation_source.dart';
-import 'package:appintern/domain/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/select_source_bottom_sheet.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +13,7 @@ class OverspentCompensationController extends BaseController with BudgetAware {
 
   late CategoryModel targetCategory;
   final sources = <CompensationSource>[].obs;
-  
+
   // Quản lý TextEditingController cho mỗi nguồn
   final textControllers = <int, TextEditingController>{};
 
@@ -107,7 +107,7 @@ class OverspentCompensationController extends BaseController with BudgetAware {
     if (index >= 0 && index < sources.length) {
       sources.removeAt(index);
       textControllers[index]?.dispose();
-      
+
       // Shift controllers down
       for (int i = index; i < sources.length; i++) {
         textControllers[i] = textControllers[i + 1]!;
@@ -140,7 +140,8 @@ class OverspentCompensationController extends BaseController with BudgetAware {
     showLoading();
     final result = await ErrorHandler.execute(() async {
       final now = budgetService.currentTrackingMonth.value;
-      final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
+      final monthYearStr =
+          "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
       final mbTarget = budgetService.getBudgetForCategory(targetCategory.id);
       if (mbTarget != null) {
@@ -165,13 +166,18 @@ class OverspentCompensationController extends BaseController with BudgetAware {
             final sourceCat = sourceCatList.first.categoryModel;
             final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
             if (mbSource != null) {
-              double newSourceBudget = mbSource.budgetedAmount - source.amountToCompensate;
-              await _categoryRepo.updateMonthlyBudget(mbSource.id, newSourceBudget);
+              double newSourceBudget =
+                  mbSource.budgetedAmount - source.amountToCompensate;
+              await _categoryRepo.updateMonthlyBudget(
+                mbSource.id,
+                newSourceBudget,
+              );
             } else {
               await _categoryRepo.createMonthlyBudget(
                 categoryId: sourceCat.id,
                 monthYear: monthYearStr,
-                budgetedAmount: sourceCat.defaultBudget - source.amountToCompensate,
+                budgetedAmount:
+                    sourceCat.defaultBudget - source.amountToCompensate,
               );
             }
           }

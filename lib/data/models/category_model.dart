@@ -5,6 +5,7 @@ class CategoryModel {
   final String color;
   final String iconName;
   final double defaultBudget;
+  final bool isActive;
   double spent; // Thêm trường spent để sửa lỗi UI
 
   double get remaining => defaultBudget - spent; // Getter tính số tiền còn lại
@@ -16,12 +17,13 @@ class CategoryModel {
     required this.color,
     required this.iconName,
     this.defaultBudget = 0.0,
+    this.isActive = true,
     this.spent = 0.0,
   });
 
   factory CategoryModel.fromMap(Map<String, dynamic> map) {
     return CategoryModel(
-      id: map['\$id'] ?? '',
+      id: map['\$id'] ?? map['id'] ?? '',
       categoryTypeId: map['categoryTypes'] is Map
           ? map['categoryTypes']['\$id']
           : (map['categoryTypes'] ?? map['categoryTypeId'] ?? ''),
@@ -29,17 +31,20 @@ class CategoryModel {
       color: map['color'] ?? '',
       iconName: map['iconName'] ?? '',
       defaultBudget: (map['defaultBudget'] ?? 0).toDouble(),
+      isActive: map['isActive'] ?? true, // Fallback true cho dữ liệu cũ (NULL)
       spent: (map['spent'] ?? 0).toDouble(), // Parse spent nếu có
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'categoryTypes': categoryTypeId,
       'name': name,
       'color': color,
       'iconName': iconName,
       'defaultBudget': defaultBudget,
+      'isActive': isActive,
     };
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
@@ -5,12 +6,14 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:record/record.dart';
 import 'package:appintern/core/base/base_controller.dart';
+import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/domain/services/i_ai_service.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/confirm_multiple_transactions_bottom_sheet.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/domain/repositories/transaction_repository.dart';
+import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 
 enum VoiceInputState { idle, recording, sttProcessing, aiProcessing }
@@ -18,6 +21,7 @@ enum VoiceInputState { idle, recording, sttProcessing, aiProcessing }
 class VoiceInputController extends BaseController
     with BudgetAware, GetSingleTickerProviderStateMixin {
   final IAIService aiService = Get.find<IAIService>();
+  final OfflineSyncService offlineSyncService = Get.find<OfflineSyncService>();
   final TransactionRepository _transactionRepository =
       Get.find<TransactionRepository>();
   final AudioRecorder _audioRecorder = AudioRecorder();
@@ -50,20 +54,30 @@ class VoiceInputController extends BaseController
       Get.dialog(
         AlertDialog(
           backgroundColor: Colors.white,
-          title: const Text("Quyền truy cập Micro bị từ chối", style: TextStyle(fontWeight: FontWeight.bold)),
-          content: const Text("Vui lòng vào Cài đặt để cấp quyền truy cập Micro cho ứng dụng để sử dụng tính năng nhận diện giọng nói."),
+          title: const Text(
+            "Quyền truy cập Micro bị từ chối",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            "Vui lòng vào Cài đặt để cấp quyền truy cập Micro cho ứng dụng để sử dụng tính năng nhận diện giọng nói.",
+          ),
           actions: [
             TextButton(
               onPressed: () => Get.back(),
               child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+              ),
               onPressed: () {
                 Get.back();
                 openAppSettings();
               },
-              child: const Text("Cài đặt", style: TextStyle(color: Colors.white)),
+              child: const Text(
+                "Cài đặt",
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -139,7 +153,20 @@ class VoiceInputController extends BaseController
       (path) async {
         if (path != null) {
           _audioPath = path;
-          await _processAudioToText();
+
+          final handled = await offlineSyncService.handleOfflineAction(
+            'VOICE',
+            path,
+            successMessage: 'Giọng nói đã được đưa vào hàng chờ đồng bộ',
+            isFile: true,
+          );
+          
+          if (handled) {
+            currentState.value = VoiceInputState.idle;
+            Get.back(); // Đóng bottom sheet
+          } else {
+            await _processAudioToText();
+          }
         } else {
           currentState.value = VoiceInputState.idle;
         }
@@ -190,12 +217,21 @@ class VoiceInputController extends BaseController
       (failure) {
         Get.dialog(
           AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 28,
+                ),
                 SizedBox(width: 8),
-                Text("Không thể phân tích", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  "Không thể phân tích",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             content: const Text(
@@ -205,7 +241,13 @@ class VoiceInputController extends BaseController
             actions: [
               TextButton(
                 onPressed: () => Get.back(),
-                child: const Text("Đã hiểu", style: TextStyle(color: Color(0xFFEBC14F), fontWeight: FontWeight.bold)),
+                child: const Text(
+                  "Đã hiểu",
+                  style: TextStyle(
+                    color: Color(0xFFEBC14F),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -218,7 +260,8 @@ class VoiceInputController extends BaseController
             aiParsedDataList: data,
             availableCategories: validCategoryNames,
             unallocatedAmount: budgetService.unallocatedAmount.value,
-            onConfirmAll: (confirmedDataList) => _saveTransaction(confirmedDataList, text),
+            onConfirmAll: (confirmedDataList) =>
+                _saveTransaction(confirmedDataList, text),
           ),
           isScrollControlled: true,
         );
@@ -233,7 +276,6 @@ class VoiceInputController extends BaseController
     showLoading();
 
     final saveResult = await ErrorHandler.execute(() async {
-
       for (var confirmedData in confirmedDataList) {
         final catName = confirmedData['categoryName'];
         CategoryModel? category;

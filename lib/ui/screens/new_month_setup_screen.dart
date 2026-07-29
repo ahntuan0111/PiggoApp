@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:appintern/ui/controllers/rollover_controller.dart';
+import 'package:appintern/ui/controllers/new_month_setup_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
-class NewMonthSetupScreen extends GetView<RolloverController> {
+class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
   const NewMonthSetupScreen({super.key});
 
   @override

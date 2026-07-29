@@ -30,6 +30,7 @@ class MonthlyBudgetModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'categories': categoryId,
       'monthYear': monthYear,
       'budgetedAmount': budgetedAmount,

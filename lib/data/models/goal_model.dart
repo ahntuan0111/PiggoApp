@@ -37,6 +37,7 @@ class GoalModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'name': name,
       'targetAmount': targetAmount,
       'deadline': deadline?.toIso8601String(),

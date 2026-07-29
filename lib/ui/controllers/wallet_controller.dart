@@ -4,7 +4,7 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
-import 'package:appintern/domain/repositories/transaction_repository.dart';
+import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/core/constants/app_keys.dart';

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:appintern/ui/controllers/rollover_controller.dart';
+import 'package:appintern/ui/controllers/month_end_report_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
-class MonthEndReportScreen extends GetView<RolloverController> {
+class MonthEndReportScreen extends GetView<MonthEndReportController> {
   const MonthEndReportScreen({super.key});
 
   @override
@@ -112,7 +112,7 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                         child: Column(
                           children: [
                             Text(
-                              "SỐ DƯ THÁNG QUA",
+                              "TỔNG TIỀN HIỆN CÓ",
                               style: TextStyle(
                                 fontSize: 13.sp,
                                 fontWeight: FontWeight.w700,
@@ -122,13 +122,11 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                             ),
                             SizedBox(height: 12.h),
                             Text(
-                              "${controller.isSurplus.value ? '+' : '-'}${formatter.format(controller.balance.value)}đ",
+                              "${formatter.format(controller.budgetService.totalWalletBalance.value)}đ",
                               style: TextStyle(
                                 fontSize: 36.sp,
                                 fontWeight: FontWeight.w900,
-                                color: controller.isSurplus.value
-                                    ? const Color(0xFF369B56)
-                                    : Colors.red[600], // Xanh lá
+                                color: const Color(0xFF1B4332), // Xanh đậm sang trọng
                               ),
                             ),
                             SizedBox(height: 32.h),
@@ -147,17 +145,12 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                                       CircularProgressIndicator(
                                         value: 1.0,
                                         strokeWidth: 8.r,
-                                        color: const Color(
-                                          0xFF0B4A3A,
-                                        ), // Xanh rêu (Chi)
+                                        color: const Color(0xFF0B4A3A), // Xanh rêu (Chi)
                                       ),
                                       CircularProgressIndicator(
-                                        value:
-                                            0.7, // 70% income remaining? Just dummy
+                                        value: 0.7, // 70% income remaining? Just dummy
                                         strokeWidth: 8.r,
-                                        color: const Color(
-                                          0xFF369B56,
-                                        ), // Xanh lá (Thu)
+                                        color: const Color(0xFF369B56), // Xanh lá (Thu)
                                       ),
                                       Center(
                                         child: Icon(
@@ -176,18 +169,23 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                                   children: [
                                     _buildStatRow(
                                       Icons.circle,
-                                      const Color(0xFF369B56),
-                                      "Tổng thu",
-                                      formatter.format(controller.income.value),
+                                      const Color(0xFF1B4332),
+                                      "Dư từ tháng ${controller.prevMonthName.value}",
+                                      "+${formatter.format(controller.carriedOverBalance.value)}",
                                     ),
                                     SizedBox(height: 12.h),
                                     _buildStatRow(
                                       Icons.circle,
-                                      const Color(0xFF0B4A3A),
+                                      const Color(0xFF369B56),
+                                      "Tổng thu",
+                                      "+${formatter.format(controller.income.value)}",
+                                    ),
+                                    SizedBox(height: 12.h),
+                                    _buildStatRow(
+                                      Icons.circle,
+                                      const Color(0xFFE53935),
                                       "Tổng chi",
-                                      formatter.format(
-                                        controller.expense.value,
-                                      ),
+                                      "-${formatter.format(controller.expense.value)}",
                                     ),
                                     SizedBox(height: 16.h),
                                     Row(
@@ -201,9 +199,9 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                                         ),
                                         SizedBox(width: 16.w),
                                         Text(
-                                          "+${controller.efficiency.value.toStringAsFixed(1)}%",
+                                          "${controller.isSurplus.value ? '+' : ''}${controller.efficiency.value.toStringAsFixed(1)}%",
                                           style: TextStyle(
-                                            color: const Color(0xFF369B56),
+                                            color: controller.isSurplus.value ? const Color(0xFF369B56) : Colors.red[600],
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14.sp,
                                           ),
@@ -268,7 +266,7 @@ class MonthEndReportScreen extends GetView<RolloverController> {
                     shadowColor: const Color(0xFF0B4A3A).withValues(alpha: 0.5),
                   ),
                   onPressed: () {
-                    controller.onStartRolloverDecision();
+                    controller.onNext();
                   },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,

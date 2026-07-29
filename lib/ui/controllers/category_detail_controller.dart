@@ -4,10 +4,11 @@ import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/domain/repositories/transaction_repository.dart';
+import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/core/constants/app_keys.dart';
-import 'package:appintern/domain/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
+
 class CategoryDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
       Get.find<TransactionRepository>();
@@ -53,7 +54,14 @@ class CategoryDetailController extends BaseController with BudgetAware {
       // 2. Lấy top 5 giao dịch
       final currentMonth = budgetService.currentTrackingMonth.value;
       final start = DateTime(currentMonth.year, currentMonth.month, 1);
-      final end = DateTime(currentMonth.year, currentMonth.month + 1, 0, 23, 59, 59);
+      final end = DateTime(
+        currentMonth.year,
+        currentMonth.month + 1,
+        0,
+        23,
+        59,
+        59,
+      );
 
       final rawHistory = await _transactionRepo.getHistoryByCategory(
         category.id,
@@ -134,7 +142,8 @@ class CategoryDetailController extends BaseController with BudgetAware {
 
     final result = await ErrorHandler.execute(() async {
       final now = budgetService.currentTrackingMonth.value;
-      final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
+      final monthYearStr =
+          "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
       await _categoryRepo.updateCategory(
         category.id,
@@ -173,7 +182,10 @@ class CategoryDetailController extends BaseController with BudgetAware {
           );
           final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
           if (mbSource != null) {
-            await _categoryRepo.updateMonthlyBudget(mbSource.id, sourceCategoryNewBudget);
+            await _categoryRepo.updateMonthlyBudget(
+              mbSource.id,
+              sourceCategoryNewBudget,
+            );
           } else {
             await _categoryRepo.createMonthlyBudget(
               categoryId: sourceCat.id,

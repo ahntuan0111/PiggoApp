@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:appintern/ui/controllers/rollover_controller.dart';
+import 'package:appintern/ui/controllers/rollover_decision_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
@@ -8,7 +8,7 @@ import 'package:appintern/ui/widgets/dialogs/rollover_explanation_dialog.dart';
 import 'package:appintern/ui/widgets/dialogs/confirm_dialog_widget.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 
-class RolloverDecisionScreen extends GetView<RolloverController> {
+class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
   const RolloverDecisionScreen({super.key});
 
   @override

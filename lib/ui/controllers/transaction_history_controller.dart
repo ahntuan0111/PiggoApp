@@ -1,18 +1,22 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/domain/repositories/transaction_repository.dart';
+import 'package:appintern/data/models/transaction_model.dart';
+import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class TransactionHistoryController extends BaseController with BudgetAware {
-  final TransactionRepository _transactionRepo = Get.find<TransactionRepository>();
+  final TransactionRepository _transactionRepo =
+      Get.find<TransactionRepository>();
 
   // Filter States
   final selectedMonth = DateTime.now().obs;
-  final sortAscending = false.obs; // false = Mới nhất (Giảm dần), true = Cũ nhất (Tăng dần)
+  final sortAscending =
+      false.obs; // false = Mới nhất (Giảm dần), true = Cũ nhất (Tăng dần)
   final selectedCategory = Rxn<CategoryModel>();
   final selectedType = Rxn<String>(); // 'EXPENSE' or 'INCOME'
 
@@ -23,7 +27,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
 
   // Data States
   final transactionsList = <Map<String, dynamic>>[].obs;
-  
+
   // Pagination States
   final isFetchingMore = false.obs;
   final hasReachedMax = false.obs;
@@ -32,7 +36,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   @override
   void onInit() {
     super.onInit();
-    
+
     // Đọc arguments nếu có truyền từ màn hình khác
     if (Get.arguments != null) {
       if (Get.arguments is Map) {
@@ -92,8 +96,19 @@ class TransactionHistoryController extends BaseController with BudgetAware {
 
     final result = await ErrorHandler.execute(() async {
       // Tính start/end cho selectedMonth
-      final start = DateTime(selectedMonth.value.year, selectedMonth.value.month, 1);
-      final end = DateTime(selectedMonth.value.year, selectedMonth.value.month + 1, 0, 23, 59, 59);
+      final start = DateTime(
+        selectedMonth.value.year,
+        selectedMonth.value.month,
+        1,
+      );
+      final end = DateTime(
+        selectedMonth.value.year,
+        selectedMonth.value.month + 1,
+        0,
+        23,
+        59,
+        59,
+      );
 
       String? lastDocId;
       if (!isRefresh && transactionsList.isNotEmpty) {
@@ -116,8 +131,32 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     isFetchingMore.value = false;
 
     result.fold(
-      (failure) {
-        showErrorMessage('Lỗi', 'Không thể tải lịch sử giao dịch: ${failure.message}');
+      (failure) async {
+        // THỬ LOAD TỪ CACHE KHI LỖI (OFFLINE/RỚT MẠNG)
+        if (isRefresh) {
+          String monthYearStr =
+              "${selectedMonth.value.month.toString().padLeft(2, '0')}-${selectedMonth.value.year}";
+          try {
+            final cachedTxs = await Get.find<LocalDatabaseService>()
+                .getTransactionsByMonth(monthYearStr);
+            if (cachedTxs.isNotEmpty) {
+              hasReachedMax.value = true; // Cache hiện tại trả về full tháng
+              transactionsList.assignAll(
+                cachedTxs
+                    .map((e) => {'transaction': e, 'detail': null})
+                    .toList(),
+              );
+              // Nếu đang offline thì không cần hiện lỗi, chỉ báo nhẹ (tuỳ chọn)
+              return;
+            }
+          } catch (e) {
+            // Lỗi DB local, bỏ qua
+          }
+        }
+        showErrorMessage(
+          'Lỗi',
+          'Không thể tải lịch sử giao dịch: ${failure.message}',
+        );
       },
       (data) {
         if (data.isEmpty || data.length < pageSize) {
@@ -125,8 +164,25 @@ class TransactionHistoryController extends BaseController with BudgetAware {
         }
         if (isRefresh) {
           transactionsList.assignAll(data);
+          // GHI VÀO LOCAL DATABASE (CACHE)
+          try {
+            final models = data
+                .map((e) => e['transaction'] as TransactionModel)
+                .toList();
+            Get.find<LocalDatabaseService>().saveTransactions(models);
+          } catch (e) {
+            // Ignore cache error
+          }
         } else {
           transactionsList.addAll(data);
+          try {
+            final models = data
+                .map((e) => e['transaction'] as TransactionModel)
+                .toList();
+            Get.find<LocalDatabaseService>().saveTransactions(models);
+          } catch (e) {
+            // Ignore cache error
+          }
         }
       },
     );
@@ -137,17 +193,20 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     final map = <String, List<Map<String, dynamic>>>{};
     for (var item in transactionsList) {
       final tx = item['transaction'];
-      final dateKey = "${tx.transactionDate.day.toString().padLeft(2, '0')}/${tx.transactionDate.month.toString().padLeft(2, '0')}/${tx.transactionDate.year}";
-      
+      final dateKey =
+          "${tx.transactionDate.day.toString().padLeft(2, '0')}/${tx.transactionDate.month.toString().padLeft(2, '0')}/${tx.transactionDate.year}";
+
       if (!map.containsKey(dateKey)) {
         map[dateKey] = [];
       }
-      
+
       // Bổ sung các trường UI hiển thị
       final detail = item['detail'];
       final walletName = 'Ngân sách';
-      final category = budgetService.categories.firstWhereOrNull((c) => c.categoryModel.id == tx.categoryId);
-      
+      final category = budgetService.categories.firstWhereOrNull(
+        (c) => c.categoryModel.id == tx.categoryId,
+      );
+
       map[dateKey]!.add({
         'transaction': tx,
         'detail': detail,
@@ -191,7 +250,6 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   }
 
   void clearFilters() {
-
     selectedCategory.value = null;
     selectedType.value = null;
     searchController.clear();

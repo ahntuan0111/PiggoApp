@@ -97,7 +97,9 @@ class RolloverRepository with AppwriteErrorHandler {
 
       MonthlySummaryModel? summary;
       if (summaryResponse.rows.isNotEmpty) {
-        summary = MonthlySummaryModel.fromMap(summaryResponse.rows.first.data);
+        final summaryRow = summaryResponse.rows.first;
+        summary = MonthlySummaryModel.fromMap(
+            Map<String, dynamic>.from(summaryRow.data)..['\$id'] = summaryRow.$id);
       }
 
       // 2. Fetch Budgets
@@ -108,7 +110,8 @@ class RolloverRepository with AppwriteErrorHandler {
       );
 
       List<MonthlyBudgetModel> budgets = budgetsResponse.rows
-          .map((r) => MonthlyBudgetModel.fromMap(r.data))
+          .map((r) => MonthlyBudgetModel.fromMap(
+              Map<String, dynamic>.from(r.data)..['\$id'] = r.$id))
           .toList();
 
       // 3. Fetch Categories
@@ -128,7 +131,8 @@ class RolloverRepository with AppwriteErrorHandler {
             queries: [Query.equal('categoryTypes', typeId)],
           );
           categories.addAll(
-            cats.rows.map((r) => CategoryModel.fromMap(r.data)).toList(),
+            cats.rows.map((r) => CategoryModel.fromMap(
+                Map<String, dynamic>.from(r.data)..['\$id'] = r.$id)).toList(),
           );
         }
       }
@@ -174,8 +178,9 @@ class RolloverRepository with AppwriteErrorHandler {
 
       for (var catRow in categories) {
         final catId = catRow.$id;
-        final defaultBudget = (catRow.data['defaultBudget'] ?? 0).toDouble();
-
+        
+        // Cố tình không lấy defaultBudget mà gán bằng 0.0
+        // Để tổng phân bổ là 0, và Chưa phân bổ không bị âm.
         await _appwrite.tables.createRow(
           databaseId: _appwrite.databaseId,
           tableId: _appwrite.monthlyBudgetsTableId,
@@ -183,7 +188,7 @@ class RolloverRepository with AppwriteErrorHandler {
           data: {
             'categories': catId,
             'monthYear': currentMonthStr,
-            'budgetedAmount': defaultBudget,
+            'budgetedAmount': 0.0,
             'rolloverAmount': 0.0,
             'spentAmount': 0.0,
           },

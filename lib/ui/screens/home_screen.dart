@@ -8,6 +8,8 @@ import 'package:appintern/ui/controllers/wallet_controller.dart';
 import 'package:appintern/ui/widgets/budget_category_item.dart';
 import 'package:appintern/ui/widgets/empty_category_suggestion_widget.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
+import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends GetView<HomeController> {
@@ -42,10 +44,13 @@ class HomeScreen extends GetView<HomeController> {
                           children: [
                             IconButton(
                               icon: const Icon(
-                                Icons.savings,
+                                Icons.edit,
                                 color: Colors.white,
                               ),
-                              onPressed: () => Get.toNamed(Routes.GOAL),
+                              onPressed: () async {
+                                await Get.toNamed(Routes.CATEGORY);
+                                controller.fetchData();
+                              },
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),
@@ -91,15 +96,67 @@ class HomeScreen extends GetView<HomeController> {
                                     ],
                                   ),
                                 ),
+                                Obx(() {
+                                  final network = Get.find<NetworkService>();
+                                  if (network.isOffline.value) {
+                                    return Padding(
+                                      padding: EdgeInsets.only(top: 4.h),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.cloud_off, color: Colors.white70, size: 12.sp),
+                                          SizedBox(width: 4.w),
+                                          Text(
+                                            '(Ngoại tuyến)',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 10.sp,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                }),
                               ],
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.white),
-                              onPressed: () async {
-                                await Get.toNamed(Routes.CATEGORY);
-                                controller.fetchData();
-                              },
-                            ),
+                            Obx(() {
+                              final offlineSyncService = Get.find<OfflineSyncService>();
+                              final queueCount = offlineSyncService.aiQueueCount.value;
+                              
+                              return IconButton(
+                                icon: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    const Icon(Icons.notifications, color: Colors.white),
+                                    if (queueCount > 0)
+                                      Positioned(
+                                        right: -4,
+                                        top: -4,
+                                        child: Container(
+                                          padding: EdgeInsets.all(4.w),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Text(
+                                            queueCount.toString(),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10.sp,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                onPressed: () {
+                                  Get.toNamed(Routes.OFFLINE_QUEUE);
+                                },
+                              );
+                            }),
                           ],
                         ),
                       ],

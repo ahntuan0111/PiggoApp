@@ -15,7 +15,10 @@ import 'package:appintern/ui/bindings/transaction_create_binding.dart';
 import 'package:appintern/ui/bindings/transaction_detail_binding.dart';
 import 'package:appintern/ui/bindings/transaction_history_binding.dart';
 import 'package:appintern/ui/bindings/voice_input_binding.dart';
-import 'package:appintern/ui/bindings/rollover_binding.dart';
+import 'package:appintern/ui/bindings/month_end_report_binding.dart';
+import 'package:appintern/ui/bindings/rollover_decision_binding.dart';
+import 'package:appintern/ui/bindings/new_month_setup_binding.dart';
+import 'package:appintern/ui/bindings/multi_month_gap_binding.dart';
 import 'package:appintern/ui/screens/budget_distribution_screen.dart';
 import 'package:appintern/ui/screens/category_detail_screen.dart';
 import 'package:appintern/ui/screens/category_screen.dart';
@@ -36,6 +39,8 @@ import 'package:appintern/ui/screens/month_end_report_screen.dart';
 import 'package:appintern/ui/screens/rollover_decision_screen.dart';
 import 'package:appintern/ui/screens/new_month_setup_screen.dart';
 import 'package:appintern/ui/screens/multi_month_gap_screen.dart';
+import 'package:appintern/ui/screens/offline_queue_screen.dart';
+import 'package:appintern/ui/bindings/offline_queue_binding.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'app_routes.dart';
@@ -145,28 +150,34 @@ class AppPages {
       transition: Transition.rightToLeft,
     ),
     GetPage(
-      name: Routes.ROLLOVER_REPORT,
+      name: Routes.MONTH_END_REPORT,
       page: () => const MonthEndReportScreen(),
-      binding: RolloverBinding(),
+      binding: MonthEndReportBinding(),
       transition: Transition.downToUp,
     ),
     GetPage(
       name: Routes.ROLLOVER_DECISION,
       page: () => const RolloverDecisionScreen(),
-      binding: RolloverBinding(),
+      binding: RolloverDecisionBinding(),
       transition: Transition.rightToLeft,
     ),
     GetPage(
-      name: Routes.ROLLOVER_NEW_MONTH,
+      name: Routes.NEW_MONTH_SETUP,
       page: () => const NewMonthSetupScreen(),
-      binding: RolloverBinding(),
+      binding: NewMonthSetupBinding(),
       transition: Transition.rightToLeft,
     ),
     GetPage(
-      name: Routes.ROLLOVER_GAP,
+      name: Routes.MULTI_MONTH_GAP,
       page: () => const MultiMonthGapScreen(),
-      binding: RolloverBinding(),
+      binding: MultiMonthGapBinding(),
       transition: Transition.downToUp,
+    ),
+    GetPage(
+      name: Routes.OFFLINE_QUEUE,
+      page: () => const OfflineQueueScreen(),
+      binding: OfflineQueueBinding(),
+      transition: Transition.rightToLeft,
     ),
   ];
 }

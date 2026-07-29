@@ -35,4 +35,21 @@ class StorageRepository with AppwriteErrorHandler {
       });
     });
   }
+  Future<List<int>> getFileView(String fileId) async {
+    return handleAppwriteError(() async {
+      String bucketId =
+          dotenv.env['APPWRITE_RECEIPT_BUCKET_ID'] ?? _appwrite.avatarBucketId;
+      return await _appwrite.storage.getFileView(
+        bucketId: bucketId,
+        fileId: fileId,
+      );
+    });
+  }
+
+  String getImageUrl(String fileId) {
+    final bucketId =
+        dotenv.env['APPWRITE_RECEIPT_BUCKET_ID'] ?? _appwrite.avatarBucketId;
+    final projectId = _appwrite.projectId;
+    return '${_appwrite.client.endPoint}/storage/buckets/$bucketId/files/$fileId/view?project=$projectId';
+  }
 }

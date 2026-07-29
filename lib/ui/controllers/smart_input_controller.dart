@@ -12,13 +12,18 @@ import 'package:appintern/ui/widgets/dialogs/loading_dialog_widget.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/domain/repositories/transaction_repository.dart';
-import 'package:appintern/domain/repositories/storage_repository.dart';
+import 'package:appintern/data/repositories/transaction_repository.dart';
+import 'package:appintern/data/repositories/storage_repository.dart';
+import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:path_provider/path_provider.dart';
 
 class SmartInputController extends BaseController with BudgetAware {
   final IAIService aiService = Get.find<IAIService>();
+  final OfflineSyncService offlineSyncService = Get.find<OfflineSyncService>();
   final StorageRepository storageRepository = Get.find<StorageRepository>();
-  final TransactionRepository transactionRepository = Get.find<TransactionRepository>();
+  final TransactionRepository transactionRepository =
+      Get.find<TransactionRepository>();
 
   final textController = TextEditingController();
   final isProcessing = false.obs;
@@ -42,6 +47,18 @@ class SmartInputController extends BaseController with BudgetAware {
   Future<void> submitTextInput() async {
     final text = textController.text.trim();
     if (text.isEmpty) return;
+
+    final handled = await offlineSyncService.handleOfflineAction(
+      'TEXT',
+      text,
+      successMessage: 'Đoạn chat đã được đưa vào hàng chờ đồng bộ',
+      isFile: false,
+    );
+    
+    if (handled) {
+      textController.clear();
+      return;
+    }
 
     isProcessing.value = true;
 
@@ -74,7 +91,8 @@ class SmartInputController extends BaseController with BudgetAware {
         Get.dialog(
           ConfirmDialogWidget(
             title: "Không thể phân tích",
-            content: "Nội dung bạn nhập có thể không rõ ràng, chứa từ ngữ không phù hợp hoặc kết nối mạng bị gián đoạn. Vui lòng thử lại.",
+            content:
+                "Nội dung bạn nhập có thể không rõ ràng, chứa từ ngữ không phù hợp hoặc kết nối mạng bị gián đoạn. Vui lòng thử lại.",
             cancelText: "Đóng",
             confirmText: "Thử lại",
             onConfirm: () => Get.back(),
@@ -103,12 +121,24 @@ class SmartInputController extends BaseController with BudgetAware {
         await submitImageInput(imageFile);
       }
     } catch (e) {
-      showErrorMessage("Lỗi chọn ảnh", "Không thể mở camera hoặc thư viện ảnh: $e");
+      showErrorMessage(
+        "Lỗi chọn ảnh",
+        "Không thể mở camera hoặc thư viện ảnh: $e",
+      );
     }
   }
 
   /// Xử lý phân tích ảnh hóa đơn qua AI (Lazy Input Vision)
   Future<void> submitImageInput(File imageFile) async {
+    final handled = await offlineSyncService.handleOfflineAction(
+      'IMAGE',
+      imageFile.path,
+      successMessage: 'Ảnh hóa đơn đã được đưa vào hàng chờ đồng bộ',
+      isFile: true,
+    );
+    
+    if (handled) return;
+
     isProcessing.value = true;
 
     // Hiển thị Dialog Loading chặn người dùng thao tác khi đang bóc tách ảnh
@@ -180,12 +210,12 @@ class SmartInputController extends BaseController with BudgetAware {
     showLoading();
 
     final saveResult = await ErrorHandler.execute(() async {
-
       // 1. Upload ảnh hóa đơn lên Appwrite Storage Bucket nếu có
       List<String> receiptFileIds = [];
       if (receiptImage != null && await receiptImage.exists()) {
-        final uploadedFileId =
-            await storageRepository.uploadReceiptImage(receiptImage);
+        final uploadedFileId = await storageRepository.uploadReceiptImage(
+          receiptImage,
+        );
         if (uploadedFileId.isNotEmpty) {
           receiptFileIds.add(uploadedFileId);
         }
@@ -195,8 +225,9 @@ class SmartInputController extends BaseController with BudgetAware {
         final catName = confirmedData['categoryName'];
         CategoryModel? category;
         if (catName != null) {
-          final budgetCat = budgetService.categories
-              .firstWhereOrNull((c) => c.name == catName);
+          final budgetCat = budgetService.categories.firstWhereOrNull(
+            (c) => c.name == catName,
+          );
           if (budgetCat != null) {
             category = budgetCat.categoryModel;
           }
@@ -244,7 +275,10 @@ class SmartInputController extends BaseController with BudgetAware {
     hideLoading();
 
     saveResult.fold(
-      (failure) => showErrorMessage("Lỗi", "Không thể lưu giao dịch: ${failure.message}"),
+      (failure) => showErrorMessage(
+        "Lỗi",
+        "Không thể lưu giao dịch: ${failure.message}",
+      ),
       (_) {
         Get.back(); // Đóng Bottom Sheet
         textController.clear();

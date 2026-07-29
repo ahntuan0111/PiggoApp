@@ -56,7 +56,7 @@ class TransactionRepository with AppwriteErrorHandler {
   Future<void> createTransaction({
     required TransactionModel transaction,
     required TransactionDetailModel transactionDetail,
-    required CategoryModel currentCategory,
+    CategoryModel? currentCategory,
   }) async {
     return handleAppwriteError(() async {
       // 1. Tạo bản ghi Transaction
@@ -84,56 +84,58 @@ class TransactionRepository with AppwriteErrorHandler {
       // 3. (REMOVED) Không còn cập nhật số dư Ví (Wallet Balance) ở đây
       // Bảng wallets giờ chỉ lưu số dư ban đầu, Tổng ngân sách được tính động trong BudgetService.
 
-      // 4. Cập nhật số tiền đã tiêu (MonthlyBudgets spentAmount)
-      double amountChange = transaction.type == 'EXPENSE'
-          ? transaction.amount
-          : -transaction.amount;
-
       // Định dạng tháng hiện tại (vd: "07-2026")
       String monthYearStr =
           "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
 
-      // Thử tìm MonthlyBudget của category này trong tháng
-      final budgetResponse = await _appwrite.tables.listRows(
-        databaseId: _appwrite.databaseId,
-        tableId: _appwrite.monthlyBudgetsTableId,
-        queries: [
-          Query.equal('categories', currentCategory.id),
-          Query.equal('monthYear', monthYearStr),
-        ],
-      );
+      // 4. Cập nhật số tiền đã tiêu (MonthlyBudgets spentAmount)
+      if (currentCategory != null) {
+        double amountChange = transaction.type == 'EXPENSE'
+            ? transaction.amount
+            : -transaction.amount;
 
-      if (budgetResponse.rows.isNotEmpty) {
-        // Đã có budget -> Cập nhật spentAmount
-        final existingBudget = budgetResponse.rows.first;
-        double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
-            .toDouble();
-        double newSpent = currentSpent + amountChange;
-        if (newSpent < 0) newSpent = 0;
-
-        await _appwrite.tables.updateRow(
+        // Thử tìm MonthlyBudget của category này trong tháng
+        final budgetResponse = await _appwrite.tables.listRows(
           databaseId: _appwrite.databaseId,
           tableId: _appwrite.monthlyBudgetsTableId,
-          rowId: existingBudget.$id,
-          data: {'spentAmount': newSpent},
+          queries: [
+            Query.equal('categories', currentCategory.id),
+            Query.equal('monthYear', monthYearStr),
+          ],
         );
-      } else {
-        // Chưa có budget -> Tạo mới
-        double newSpent = amountChange;
-        if (newSpent < 0) newSpent = 0;
 
-        await _appwrite.tables.createRow(
-          databaseId: _appwrite.databaseId,
-          tableId: _appwrite.monthlyBudgetsTableId,
-          rowId: ID.unique(),
-          data: {
-            'categories': currentCategory.id,
-            'monthYear': monthYearStr,
-            'budgetedAmount': currentCategory.defaultBudget,
-            'rolloverAmount': 0.0,
-            'spentAmount': newSpent,
-          },
-        );
+        if (budgetResponse.rows.isNotEmpty) {
+          // Đã có budget -> Cập nhật spentAmount
+          final existingBudget = budgetResponse.rows.first;
+          double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
+              .toDouble();
+          double newSpent = currentSpent + amountChange;
+          if (newSpent < 0) newSpent = 0;
+
+          await _appwrite.tables.updateRow(
+            databaseId: _appwrite.databaseId,
+            tableId: _appwrite.monthlyBudgetsTableId,
+            rowId: existingBudget.$id,
+            data: {'spentAmount': newSpent},
+          );
+        } else {
+          // Chưa có budget -> Tạo mới
+          double newSpent = amountChange;
+          if (newSpent < 0) newSpent = 0;
+
+          await _appwrite.tables.createRow(
+            databaseId: _appwrite.databaseId,
+            tableId: _appwrite.monthlyBudgetsTableId,
+            rowId: ID.unique(),
+            data: {
+              'categories': currentCategory.id,
+              'monthYear': monthYearStr,
+              'budgetedAmount': currentCategory.defaultBudget,
+              'rolloverAmount': 0.0,
+              'spentAmount': newSpent,
+            },
+          );
+        }
       }
 
       // 5. Cập nhật MonthlySummary
@@ -179,8 +181,12 @@ class TransactionRepository with AppwriteErrorHandler {
 
       // 5. Cập nhật MonthlySummary
       String monthYearStr = "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
-      double incomeChange = transaction.type == 'INCOME' ? transaction.amount : 0;
-      double expenseChange = transaction.type == 'EXPENSE' ? transaction.amount : 0;
+      double incomeChange = 0;
+      double expenseChange = 0;
+      if (transaction.categoryId != 'SYSTEM_ROLLOVER') {
+        incomeChange = transaction.type == 'INCOME' ? transaction.amount : 0;
+        expenseChange = transaction.type == 'EXPENSE' ? transaction.amount : 0;
+      }
       await _updateMonthlySummary(monthYearStr, incomeChange, expenseChange);
 
       // Thông báo cập nhật
@@ -379,18 +385,20 @@ class TransactionRepository with AppwriteErrorHandler {
       String oldMonthYearStr = "${oldTransaction.transactionDate.month.toString().padLeft(2, '0')}-${oldTransaction.transactionDate.year}";
       String newMonthYearStr = "${newTransaction.transactionDate.month.toString().padLeft(2, '0')}-${newTransaction.transactionDate.year}";
       
-      if (oldMonthYearStr == newMonthYearStr) {
-        double incomeChange = (newTransaction.type == 'INCOME' ? newTransaction.amount : 0) - (oldTransaction.type == 'INCOME' ? oldTransaction.amount : 0);
-        double expenseChange = (newTransaction.type == 'EXPENSE' ? newTransaction.amount : 0) - (oldTransaction.type == 'EXPENSE' ? oldTransaction.amount : 0);
-        await _updateMonthlySummary(oldMonthYearStr, incomeChange, expenseChange);
-      } else {
-        double oldIncomeChange = oldTransaction.type == 'INCOME' ? -oldTransaction.amount : 0;
-        double oldExpenseChange = oldTransaction.type == 'EXPENSE' ? -oldTransaction.amount : 0;
-        await _updateMonthlySummary(oldMonthYearStr, oldIncomeChange, oldExpenseChange);
+      if (newTransaction.categoryId != 'SYSTEM_ROLLOVER' && oldTransaction.categoryId != 'SYSTEM_ROLLOVER') {
+        if (oldMonthYearStr == newMonthYearStr) {
+          double incomeChange = (newTransaction.type == 'INCOME' ? newTransaction.amount : 0) - (oldTransaction.type == 'INCOME' ? oldTransaction.amount : 0);
+          double expenseChange = (newTransaction.type == 'EXPENSE' ? newTransaction.amount : 0) - (oldTransaction.type == 'EXPENSE' ? oldTransaction.amount : 0);
+          await _updateMonthlySummary(oldMonthYearStr, incomeChange, expenseChange);
+        } else {
+          double oldIncomeChange = oldTransaction.type == 'INCOME' ? -oldTransaction.amount : 0;
+          double oldExpenseChange = oldTransaction.type == 'EXPENSE' ? -oldTransaction.amount : 0;
+          await _updateMonthlySummary(oldMonthYearStr, oldIncomeChange, oldExpenseChange);
 
-        double newIncomeChange = newTransaction.type == 'INCOME' ? newTransaction.amount : 0;
-        double newExpenseChange = newTransaction.type == 'EXPENSE' ? newTransaction.amount : 0;
-        await _updateMonthlySummary(newMonthYearStr, newIncomeChange, newExpenseChange);
+          double newIncomeChange = newTransaction.type == 'INCOME' ? newTransaction.amount : 0;
+          double newExpenseChange = newTransaction.type == 'EXPENSE' ? newTransaction.amount : 0;
+          await _updateMonthlySummary(newMonthYearStr, newIncomeChange, newExpenseChange);
+        }
       }
 
       _transactionUpdatedController.add(null);
@@ -430,7 +438,8 @@ class TransactionRepository with AppwriteErrorHandler {
       // 2. Fetch details cho từng transaction
       // Do limit = 5 nên việc query trong vòng lặp (hoặc Future.wait) là chấp nhận được.
       final futures = response.rows.map((row) async {
-        final tx = TransactionModel.fromMap(row.data);
+        final tx = TransactionModel.fromMap(
+            Map<String, dynamic>.from(row.data)..['\$id'] = row.$id);
 
         final detailResponse = await _appwrite.tables.listRows(
           databaseId: _appwrite.databaseId,
@@ -440,8 +449,9 @@ class TransactionRepository with AppwriteErrorHandler {
 
         TransactionDetailModel? detail;
         if (detailResponse.rows.isNotEmpty) {
+          final detailRow = detailResponse.rows.first;
           detail = TransactionDetailModel.fromMap(
-            detailResponse.rows.first.data,
+            Map<String, dynamic>.from(detailRow.data)..['\$id'] = detailRow.$id,
           );
         }
 
@@ -489,7 +499,8 @@ class TransactionRepository with AppwriteErrorHandler {
       List<Map<String, dynamic>> results = [];
 
       final futures = response.rows.map((row) async {
-        final tx = TransactionModel.fromMap(row.data);
+        final tx = TransactionModel.fromMap(
+            Map<String, dynamic>.from(row.data)..['\$id'] = row.$id);
 
         final detailResponse = await _appwrite.tables.listRows(
           databaseId: _appwrite.databaseId,
@@ -499,8 +510,9 @@ class TransactionRepository with AppwriteErrorHandler {
 
         TransactionDetailModel? detail;
         if (detailResponse.rows.isNotEmpty) {
+          final detailRow = detailResponse.rows.first;
           detail = TransactionDetailModel.fromMap(
-            detailResponse.rows.first.data,
+            Map<String, dynamic>.from(detailRow.data)..['\$id'] = detailRow.$id,
           );
         }
 
@@ -575,7 +587,8 @@ class TransactionRepository with AppwriteErrorHandler {
       List<Map<String, dynamic>> results = [];
 
       final futures = response.rows.map((row) async {
-        final tx = TransactionModel.fromMap(row.data);
+        final tx = TransactionModel.fromMap(
+            Map<String, dynamic>.from(row.data)..['\$id'] = row.$id);
 
         // Fetch detail if needed, or if we denormalized note, we might not even need detail for the list!
         // But let's fetch it anyway for completeness (or receipts)
@@ -587,8 +600,9 @@ class TransactionRepository with AppwriteErrorHandler {
 
         TransactionDetailModel? detail;
         if (detailResponse.rows.isNotEmpty) {
+          final detailRow = detailResponse.rows.first;
           detail = TransactionDetailModel.fromMap(
-            detailResponse.rows.first.data,
+            Map<String, dynamic>.from(detailRow.data)..['\$id'] = detailRow.$id,
           );
         }
 
@@ -610,7 +624,8 @@ class TransactionRepository with AppwriteErrorHandler {
         tableId: _appwrite.transactionsTableId,
         rowId: transactionId,
       );
-      return TransactionModel.fromMap(response.data);
+      return TransactionModel.fromMap(
+          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
     });
   }
 
@@ -626,7 +641,9 @@ class TransactionRepository with AppwriteErrorHandler {
       );
 
       if (response.rows.isNotEmpty) {
-        return TransactionDetailModel.fromMap(response.rows.first.data);
+        final detailRow = response.rows.first;
+        return TransactionDetailModel.fromMap(
+            Map<String, dynamic>.from(detailRow.data)..['\$id'] = detailRow.$id);
       }
       return null;
     });
@@ -679,8 +696,12 @@ class TransactionRepository with AppwriteErrorHandler {
 
       // 4. Cập nhật MonthlySummary
       String monthYearStr = "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
-      double incomeChange = transaction.type == 'INCOME' ? -transaction.amount : 0;
-      double expenseChange = transaction.type == 'EXPENSE' ? -transaction.amount : 0;
+      double incomeChange = 0;
+      double expenseChange = 0;
+      if (transaction.categoryId != 'SYSTEM_ROLLOVER') {
+        incomeChange = transaction.type == 'INCOME' ? -transaction.amount : 0;
+        expenseChange = transaction.type == 'EXPENSE' ? -transaction.amount : 0;
+      }
       await _updateMonthlySummary(monthYearStr, incomeChange, expenseChange);
 
       _transactionUpdatedController.add(null);

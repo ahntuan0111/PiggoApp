@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
-import 'package:appintern/domain/repositories/auth_repository.dart';
-import 'package:appintern/domain/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/auth_repository.dart';
+import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
@@ -43,7 +43,10 @@ class OnboardingController extends BaseController {
         await userResult.fold(
           (failure) async {
             hideLoading();
-            showErrorMessage("Lỗi", "Không thể lấy thông tin user: ${failure.message}");
+            showErrorMessage(
+              "Lỗi",
+              "Không thể lấy thông tin user: ${failure.message}",
+            );
           },
           (user) async {
             final categoryRepo = Get.find<CategoryRepository>();

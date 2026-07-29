@@ -37,10 +37,15 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.black54),
-            onPressed: () => controller.onEditTransaction(),
-          ),
+          Obx(() {
+            if (controller.isLoading.value || controller.isSystemRollover) {
+              return const SizedBox.shrink();
+            }
+            return IconButton(
+              icon: const Icon(Icons.edit, color: Colors.black54),
+              onPressed: () => controller.onEditTransaction(),
+            );
+          }),
         ],
       ),
       body: Obx(() {
@@ -277,18 +282,19 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
               SizedBox(height: 40.h),
 
               // 3. Delete Button
-              TextButton(
-                onPressed: controller.onDeleteTransaction,
-                child: Text(
-                  "XÓA GIAO DỊCH",
-                  style: TextStyle(
-                    color: const Color(0xFFE53935),
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
+              if (!controller.isSystemRollover)
+                TextButton(
+                  onPressed: controller.onDeleteTransaction,
+                  child: Text(
+                    "XÓA GIAO DỊCH",
+                    style: TextStyle(
+                      color: const Color(0xFFE53935),
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
-              ),
               SizedBox(height: 20.h),
             ],
           ),

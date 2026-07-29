@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
-import 'package:appintern/domain/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/services/storage_service.dart';
@@ -36,9 +36,10 @@ class CategoryController extends BaseController {
       if (types.isNotEmpty) {
         final typeIds = types.map((e) => e.id).toList();
         final cats = await categoryRepo.getCategories(typeIds);
-        print("DEBUG: Fetched ${cats.length} categories from DB.");
-        categories.assignAll(cats);
-        for (var c in cats) {
+        final activeCats = cats.where((c) => c.isActive).toList();
+        print("DEBUG: Fetched ${activeCats.length} active categories from DB.");
+        categories.assignAll(activeCats);
+        for (var c in activeCats) {
           print(
             "DEBUG: Category ${c.name} has categoryTypeId = ${c.categoryTypeId}",
           );
