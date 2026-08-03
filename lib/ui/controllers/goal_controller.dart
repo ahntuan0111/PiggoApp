@@ -10,6 +10,7 @@ import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:get/get.dart';
 import 'package:appintern/data/models/budget_category.dart';
+import 'package:appintern/core/services/network_service.dart';
 
 class GoalController extends BaseController with BudgetAware {
   final CategoryRepository _categoryRepo = Get.find<CategoryRepository>();
@@ -142,7 +143,12 @@ class GoalController extends BaseController with BudgetAware {
       _,
     ) async {
       await budgetService.refreshData();
-      showSuccessMessage('Thành công', 'Đã nạp tiền vào mục tiêu!');
+      final isOffline = Get.find<NetworkService>().isOffline.value;
+      if (isOffline) {
+        showSuccessMessage('Đã lưu (Ngoại tuyến)', 'Dữ liệu sẽ được đồng bộ khi có mạng');
+      } else {
+        showSuccessMessage('Thành công', 'Đã nạp tiền vào mục tiêu!');
+      }
     });
   }
 }

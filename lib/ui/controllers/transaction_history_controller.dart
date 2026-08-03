@@ -1,13 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
-import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/data/models/category_model.dart';
-import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 class TransactionHistoryController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
@@ -26,7 +24,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   Timer? _debounce;
 
   // Data States
-  final transactionsList = <Map<String, dynamic>>[].obs;
+  List<Map<String, dynamic>> transactionsList = [];
 
   // Pagination States
   final isFetchingMore = false.obs;
@@ -93,6 +91,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     } else {
       isFetchingMore.value = true;
     }
+    update(['tx_list']);
 
     final result = await ErrorHandler.execute(() async {
       // Tính start/end cho selectedMonth
@@ -130,60 +129,23 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     if (isRefresh) hideLoading();
     isFetchingMore.value = false;
 
-    result.fold(
+    await result.fold(
       (failure) async {
-        // THỬ LOAD TỪ CACHE KHI LỖI (OFFLINE/RỚT MẠNG)
-        if (isRefresh) {
-          String monthYearStr =
-              "${selectedMonth.value.month.toString().padLeft(2, '0')}-${selectedMonth.value.year}";
-          try {
-            final cachedTxs = await Get.find<LocalDatabaseService>()
-                .getTransactionsByMonth(monthYearStr);
-            if (cachedTxs.isNotEmpty) {
-              hasReachedMax.value = true; // Cache hiện tại trả về full tháng
-              transactionsList.assignAll(
-                cachedTxs
-                    .map((e) => {'transaction': e, 'detail': null})
-                    .toList(),
-              );
-              // Nếu đang offline thì không cần hiện lỗi, chỉ báo nhẹ (tuỳ chọn)
-              return;
-            }
-          } catch (e) {
-            // Lỗi DB local, bỏ qua
-          }
-        }
         showErrorMessage(
           'Lỗi',
           'Không thể tải lịch sử giao dịch: ${failure.message}',
         );
       },
-      (data) {
+      (data) async {
         if (data.isEmpty || data.length < pageSize) {
           hasReachedMax.value = true;
         }
+        
         if (isRefresh) {
-          transactionsList.assignAll(data);
-          // GHI VÀO LOCAL DATABASE (CACHE)
-          try {
-            final models = data
-                .map((e) => e['transaction'] as TransactionModel)
-                .toList();
-            Get.find<LocalDatabaseService>().saveTransactions(models);
-          } catch (e) {
-            // Ignore cache error
-          }
-        } else {
-          transactionsList.addAll(data);
-          try {
-            final models = data
-                .map((e) => e['transaction'] as TransactionModel)
-                .toList();
-            Get.find<LocalDatabaseService>().saveTransactions(models);
-          } catch (e) {
-            // Ignore cache error
-          }
+          transactionsList.clear();
         }
+        transactionsList.addAll(data);
+        update(['tx_list']);
       },
     );
   }

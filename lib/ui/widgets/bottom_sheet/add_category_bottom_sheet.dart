@@ -10,7 +10,7 @@ class AddCategoryBottomSheet extends StatefulWidget {
   final String initialIcon;
   final String title;
   final String buttonText;
-  final Function(String name, String icon) onSave;
+  final Future<void> Function(String name, String icon) onSave;
 
   const AddCategoryBottomSheet({
     super.key, 
@@ -29,6 +29,7 @@ class AddCategoryBottomSheet extends StatefulWidget {
 class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
   late final TextEditingController nameController;
   late final RxString selectedIcon;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -166,24 +167,36 @@ class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
             width: double.infinity,
             height: 48.h,
             child: ElevatedButton(
-              onPressed: () {
-                widget.onSave(nameController.text, selectedIcon.value);
+              onPressed: _isLoading ? null : () async {
+                setState(() => _isLoading = true);
+                try {
+                  await widget.onSave(nameController.text, selectedIcon.value);
+                } finally {
+                  if (mounted) setState(() => _isLoading = false);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF9C03C), // Màu vàng
+                disabledBackgroundColor: const Color(0xFFF9C03C).withValues(alpha: 0.6),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 elevation: 0,
               ),
-              child: Text(
-                widget.buttonText,
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2E2E2E),
-                ),
-              ),
+              child: _isLoading 
+                ? SizedBox(
+                    height: 24.h, 
+                    width: 24.h, 
+                    child: const CircularProgressIndicator(color: Color(0xFF2E2E2E), strokeWidth: 3)
+                  )
+                : Text(
+                    widget.buttonText,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF2E2E2E),
+                    ),
+                  ),
             ),
           ),
         ],

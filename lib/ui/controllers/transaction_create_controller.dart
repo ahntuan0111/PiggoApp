@@ -1,10 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:appintern/core/services/budget_service.dart';
+import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
+import 'package:appintern/data/models/budget_category.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/services/storage_service.dart';
+import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
@@ -14,6 +21,7 @@ import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:appintern/ui/widgets/dialogs/post_adjustment_warning_dialog.dart';
+import 'package:appintern/ui/widgets/dialogs/permission_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 
@@ -40,8 +48,9 @@ class TransactionCreateController extends BaseController with BudgetAware {
   final isValidAmount = true.obs;
 
   // Category Selection
-  final categories = <CategoryModel>[].obs;
-  final selectedCategory = Rxn<CategoryModel>();
+  // Category Selection
+  final categories = <BudgetCategory>[].obs;
+  final selectedCategory = Rxn<BudgetCategory>();
 
   // Date Selection
   final selectedDate = DateTime.now().obs;
@@ -172,7 +181,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
       final validCategories = budgetService.activeCategoryGroups
           .where((group) => group.typeName != 'Tiết kiệm lâu dài')
           .expand((group) => group.categories)
-          .map((budgetCat) => budgetCat.categoryModel)
           .toList();
 
       categories.value = validCategories;
@@ -206,11 +214,11 @@ class TransactionCreateController extends BaseController with BudgetAware {
           selectedDate.value = editingTransaction!.transactionDate;
 
           final matchedCategory = categories.firstWhereOrNull(
-            (c) => c.id == editingTransaction!.categoryId,
+            (c) => c.categoryModel.id == editingTransaction!.categoryId,
           );
           if (matchedCategory != null) {
             selectedCategory.value = matchedCategory;
-            oldCategory = matchedCategory;
+            oldCategory = matchedCategory.categoryModel;
           }
         }
       }
@@ -218,8 +226,10 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
     hideLoading();
     result.fold(
-      (failure) =>
-          showErrorMessage("Lỗi", "Không thể tải dữ liệu: ${failure.message}"),
+      (failure) {
+        // Không hiển thị lỗi kỹ thuật ra UI, đặc biệt khi Offline
+        AppLogger.error("FETCH_TRANSACTION_CREATE", failure.message);
+      },
       (_) {},
     );
   }
@@ -260,7 +270,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
         }
       } else if (status.isPermanentlyDenied ||
           cameraStatus.isPermanentlyDenied) {
-        _showPermissionDialog(
+        PermissionDialog.show(
           "Quyền truy cập bị từ chối",
           "Vui lòng vào Cài đặt để cấp quyền truy cập Ảnh và Camera cho ứng dụng.",
         );
@@ -273,32 +283,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
     } catch (e) {
       showErrorMessage('Lỗi', 'Không thể chọn ảnh: $e');
     }
-  }
-
-  void _showPermissionDialog(String title, String message) {
-    Get.dialog(
-      AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4CAF50),
-            ),
-            onPressed: () {
-              Get.back();
-              openAppSettings();
-            },
-            child: const Text("Cài đặt", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   void removeImage(int index) {
@@ -319,7 +303,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
   double get currentProgress {
     if (selectedCategory.value == null) return 0.0;
-    double defaultBudget = selectedCategory.value!.defaultBudget;
+    double defaultBudget = selectedCategory.value!.allocated;
     if (defaultBudget == 0) return 0.0;
 
     double spent = selectedCategory.value!.spent + amountValue.value;
@@ -334,23 +318,11 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
   Future<void> addTransaction() async {
     if (!isValidAmount.value || amountValue.value <= 0) {
-      Get.snackbar(
-        "Lỗi",
-        "Vui lòng nhập số tiền hợp lệ",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      showErrorMessage("Lỗi", "Vui lòng nhập số tiền hợp lệ");
       return;
     }
     if (selectedCategory.value == null) {
-      Get.snackbar(
-        "Lỗi",
-        "Vui lòng chọn danh mục",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      showErrorMessage("Lỗi", "Vui lòng chọn danh mục");
       return;
     }
     final selectedDt = selectedDate.value;
@@ -384,39 +356,55 @@ class TransactionCreateController extends BaseController with BudgetAware {
     showLoading();
 
     final result = await ErrorHandler.execute(() async {
-      // 1. Upload ảnh (nếu có)
-      List<String> uploadedFileIds = [];
-      for (String path in imagePaths) {
-        String fileId = await storageRepository.uploadReceiptImage(File(path));
-        uploadedFileIds.add(fileId);
-      }
+      final networkService = Get.find<NetworkService>();
+      final offlineSyncService = Get.find<OfflineSyncService>();
+      final localDb = Get.find<LocalDatabaseService>();
 
-      // 2. Chuẩn bị dữ liệu
+      List<String> uploadedFileIds = imagePaths.toList();
+
+      final tempId = 'offline_\${DateTime.now().millisecondsSinceEpoch}';
       final tx = TransactionModel(
-        id: '', // Sẽ được tự gen ở repo
-        categoryId: selectedCategory.value!.id,
+        id: networkService.isOffline.value ? tempId : '',
+        categoryId: selectedCategory.value!.categoryModel.id,
         amount: amountValue.value,
         type: 'EXPENSE',
         transactionDate: selectedDate.value,
         status: 'COMPLETED',
-        note: noteController.text.trim(), // Thêm trường note (Denormalized)
+        note: noteController.text.trim(),
       );
 
       final detail = TransactionDetailModel(
-        id: '',
-        transactionId: '', // Repo sẽ gắn ID thực tế vào
+        id: networkService.isOffline.value ? tempId : '',
+        transactionId: networkService.isOffline.value ? tempId : '',
         note: noteController.text.trim(),
         receiptFileIds: uploadedFileIds,
         rawInputText: '',
         confidenceScore: 1.0,
       );
 
-      // 3. Gọi repository để lưu
-      await transactionRepository.createTransaction(
-        transaction: tx,
-        transactionDetail: detail,
-        currentCategory: selectedCategory.value!,
-      );
+      if (networkService.isOffline.value) {
+        final payload = jsonEncode({
+          'transaction': tx.toMap(),
+          'detail': detail.toMap(),
+          'category': selectedCategory.value!.categoryModel.toMap(),
+        });
+        await offlineSyncService.queueManualTask('CREATE_MANUAL_TX', payload);
+
+        final monthYearStr =
+            "\${selectedDate.value.month.toString().padLeft(2, '0')}-\${selectedDate.value.year}";
+        await localDb.updateLocalBudgetSpent(
+          tx.categoryId,
+          monthYearStr,
+          tx.amount,
+        );
+        await localDb.updateLocalSummary(monthYearStr, 0, tx.amount);
+      } else {
+        await transactionRepository.createTransaction(
+          transaction: tx,
+          transactionDetail: detail,
+          currentCategory: selectedCategory.value!.categoryModel,
+        );
+      }
     }, tag: "ADD_TRANSACTION");
 
     hideLoading();
@@ -426,14 +414,10 @@ class TransactionCreateController extends BaseController with BudgetAware {
         showErrorMessage("Lỗi", "Không thể thêm giao dịch: ${failure.message}");
       },
       (_) {
-        Get.back(result: true); // Trả về true báo hiệu đã tạo thành công
-        Get.snackbar(
-          "Thành công",
-          "Đã thêm giao dịch",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        if (Get.find<NetworkService>().isOffline.value) {
+          Get.find<BudgetService>().refreshData();
+        }
+        Get.back(result: true);
       },
     );
   }
@@ -443,20 +427,15 @@ class TransactionCreateController extends BaseController with BudgetAware {
     showLoading();
 
     final result = await ErrorHandler.execute(() async {
-      // 1. Upload ảnh mới (nếu có)
-      List<String> uploadedFileIds = [];
-      for (String path in imagePaths) {
-        if (!path.startsWith('http')) {
-          String fileId = await storageRepository.uploadReceiptImage(
-            File(path),
-          );
-          uploadedFileIds.add(fileId);
-        }
-      }
+      final networkService = Get.find<NetworkService>();
+      final offlineSyncService = Get.find<OfflineSyncService>();
+      final localDb = Get.find<LocalDatabaseService>();
+
+      List<String> uploadedFileIds = imagePaths.toList();
 
       final newTx = TransactionModel(
         id: editingTransaction!.id,
-        categoryId: selectedCategory.value!.id,
+        categoryId: selectedCategory.value!.categoryModel.id,
         amount: amountValue.value,
         type: 'EXPENSE',
         transactionDate: selectedDate.value,
@@ -475,13 +454,73 @@ class TransactionCreateController extends BaseController with BudgetAware {
         confidenceScore: editingDetail?.confidenceScore ?? 1.0,
       );
 
-      await transactionRepository.updateTransaction(
-        oldTransaction: editingTransaction!,
-        newTransaction: newTx,
-        newTransactionDetail: newDetail,
-        oldCategory: oldCategory,
-        newCategory: selectedCategory.value!,
-      );
+      if (networkService.isOffline.value) {
+        final payload = jsonEncode({
+          'transaction': newTx.toMap(),
+          'detail': newDetail.toMap(),
+          'oldCategory': oldCategory?.toMap(),
+          'newCategory': selectedCategory.value!.categoryModel.toMap(),
+        });
+        // Sửa từ oldCategory thành oldTransactionModel nếu cần, nhưng SyncEngine đợi oldCategory
+        // Wait, _transactionRepo.updateTransaction requires oldTransaction. SyncEngine currently builds it from payload?
+        // Wait! SyncEngine's UPDATE_MANUAL_TX: `await _transactionRepo.updateTransaction(transaction: tx, transactionDetail: txDetail, oldCategory: oldCategory, newCategory: newCategory);`
+        // However, TransactionRepository.updateTransaction requires `oldTransaction`, not just categories!
+        // Let's pass `oldTransaction` in payload!
+
+        final finalPayload = jsonEncode({
+          'transaction': newTx.toMap(),
+          'detail': newDetail.toMap(),
+          'oldCategory': oldCategory?.toMap(),
+          'newCategory': selectedCategory.value!.categoryModel.toMap(),
+          'oldTransaction': editingTransaction!.toMap(),
+        });
+        await offlineSyncService.queueManualTask(
+          'UPDATE_MANUAL_TX',
+          finalPayload,
+        );
+
+        final oldMonthYear =
+            "\${editingTransaction!.transactionDate.month.toString().padLeft(2, '0')}-\${editingTransaction!.transactionDate.year}";
+        final newMonthYear =
+            "\${selectedDate.value.month.toString().padLeft(2, '0')}-\${selectedDate.value.year}";
+
+        if (editingTransaction!.categoryId == newTx.categoryId &&
+            oldMonthYear == newMonthYear) {
+          double diff = newTx.amount - editingTransaction!.amount;
+          await localDb.updateLocalBudgetSpent(
+            newTx.categoryId,
+            newMonthYear,
+            diff,
+          );
+          await localDb.updateLocalSummary(newMonthYear, 0, diff);
+        } else {
+          await localDb.updateLocalBudgetSpent(
+            editingTransaction!.categoryId,
+            oldMonthYear,
+            -editingTransaction!.amount,
+          );
+          await localDb.updateLocalSummary(
+            oldMonthYear,
+            0,
+            -editingTransaction!.amount,
+          );
+
+          await localDb.updateLocalBudgetSpent(
+            newTx.categoryId,
+            newMonthYear,
+            newTx.amount,
+          );
+          await localDb.updateLocalSummary(newMonthYear, 0, newTx.amount);
+        }
+      } else {
+        await transactionRepository.updateTransaction(
+          oldTransaction: editingTransaction!,
+          newTransaction: newTx,
+          newTransactionDetail: newDetail,
+          oldCategory: oldCategory,
+          newCategory: selectedCategory.value!.categoryModel,
+        );
+      }
     }, tag: "UPDATE_TRANSACTION");
 
     hideLoading();
@@ -495,7 +534,6 @@ class TransactionCreateController extends BaseController with BudgetAware {
       },
       (_) {
         Get.back(result: true);
-        showSuccessMessage("Thành công", "Đã cập nhật giao dịch thành công");
       },
     );
   }

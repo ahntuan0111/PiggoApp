@@ -175,8 +175,8 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                       itemBuilder: (context, index) {
                         final cat = controller.categories[index];
                         final isSelected =
-                            selectedCat?.id ==
-                            cat.id; // Sử dụng biến đã lấy ở trên
+                            selectedCat?.categoryModel.id ==
+                            cat.categoryModel.id;
 
                         return GestureDetector(
                           behavior: HitTestBehavior
@@ -201,7 +201,7 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                                             ) // Nền cam nhạt hơn
                                           : Color(
                                               int.parse(
-                                                '0xFF${cat.color.toUpperCase().replaceAll('0XFF', '').replaceAll('#', '')}',
+                                                '0xFF${cat.categoryModel.color.toUpperCase().replaceAll('0XFF', '').replaceAll('#', '')}',
                                               ),
                                             ).withValues(alpha: 0.15),
                                       shape: BoxShape.circle,
@@ -226,7 +226,7 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                                     ),
                                     child: Center(
                                       child: CustomIconWidget(
-                                        iconName: cat.iconName,
+                                        iconName: cat.icon,
                                         size: isSelected
                                             ? 24.sp
                                             : 20.sp, // Phóng to nhẹ icon bên trong
@@ -594,14 +594,20 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                 borderRadius: BorderRadius.circular(24.r),
               ),
             ),
-            child: Obx(() => Text(
-              controller.isEdit.value ? 'Cập nhật' : 'Thêm',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            )),
+            child: Obx(() => controller.isLoading 
+              ? SizedBox(
+                  width: 24.w,
+                  height: 24.w,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.w),
+                )
+              : Text(
+                  controller.isEdit.value ? 'Cập nhật' : 'Thêm',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                )),
           ),
         ),
       ),

@@ -167,8 +167,8 @@ class CategoryScreen extends GetView<CategoryController> {
         initialIcon: '',
         title: 'Thêm danh mục mới',
         buttonText: 'LƯU',
-        onSave: (name, icon) {
-          controller.createCategory(type.id, name, icon);
+        onSave: (name, icon) async {
+          await controller.createCategory(type.id, name, icon);
         },
       ),
       isScrollControlled: true,

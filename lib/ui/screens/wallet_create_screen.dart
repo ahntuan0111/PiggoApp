@@ -314,8 +314,8 @@ class WalletCreateScreen extends GetView<WalletController> {
           SizedBox(
             width: double.infinity,
             height: 48.h,
-            child: ElevatedButton(
-              onPressed: () => controller.adjustBudget(),
+            child: Obx(() => ElevatedButton(
+              onPressed: controller.isLoading ? null : () => controller.adjustBudget(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF9C03C),
                 shape: RoundedRectangleBorder(
@@ -323,15 +323,21 @@ class WalletCreateScreen extends GetView<WalletController> {
                 ),
                 elevation: 0,
               ),
-              child: Text(
-                "LƯU LẠI",
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2E2E2E),
-                ),
-              ),
-            ),
+              child: controller.isLoading 
+                ? SizedBox(
+                    height: 24.h,
+                    width: 24.h,
+                    child: const CircularProgressIndicator(color: Color(0xFF2E2E2E), strokeWidth: 3),
+                  )
+                : Text(
+                    "LƯU LẠI",
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF2E2E2E),
+                    ),
+                  ),
+            )),
           ),
         ],
       ),

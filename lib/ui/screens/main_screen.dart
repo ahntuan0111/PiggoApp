@@ -8,6 +8,7 @@ import 'package:appintern/ui/screens/home_screen.dart';
 import 'package:appintern/ui/screens/profile_screen.dart';
 import 'package:appintern/ui/screens/wallet_screen.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
+import 'package:appintern/core/services/network_service.dart';
 import 'dart:math' as math;
 
 class MainScreen extends GetView<MainController> {
@@ -164,7 +165,15 @@ class MainScreen extends GetView<MainController> {
                   return;
                 }
 
-                await Get.toNamed(Routes.TRANSACTION_CREATE);
+                final result = await Get.toNamed(Routes.TRANSACTION_CREATE);
+                if (result == true) {
+                  final isOffline = Get.find<NetworkService>().isOffline.value;
+                  if (isOffline) {
+                    controller.showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+                  } else {
+                    controller.showSuccessMessage("Thành công", "Đã lưu giao dịch");
+                  }
+                }
               },
             ),
             _buildChildFab(
@@ -180,7 +189,13 @@ class MainScreen extends GetView<MainController> {
                 // Đợi hiệu ứng đóng FAB hoàn tất rồi mới Push Route
                 await Future.delayed(const Duration(milliseconds: 260));
 
-                await Get.toNamed(Routes.SMART_INPUT);
+                final result = await Get.toNamed(Routes.SMART_INPUT);
+                if (result != null && result is int && result > 0) {
+                  controller.showSuccessMessage(
+                    'Thành công',
+                    'Đã ghi nhận $result giao dịch',
+                  );
+                }
               },
             ),
             _buildChildFab(

@@ -244,10 +244,10 @@ class WalletController extends BaseController with BudgetAware {
         );
       },
       (_) {
-        Get.back(result: true);
-        showSuccessMessage('Thành công', 'Đã cập nhật ngân sách');
         // Không cần fetchData ở đây vì _transactionUpdatedController
         // sẽ báo cho HomeController refreshData tự động
+        Get.back(result: true);
+        // Snackbar do màn hình Caller hiển thị (Caller Pattern)
       },
     );
   }

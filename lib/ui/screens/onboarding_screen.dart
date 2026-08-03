@@ -68,7 +68,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
                   height: 48.h,
                   child: Obx(
                     () => ElevatedButton(
-                      onPressed: controller.isLoading.value
+                      onPressed: controller.isLoading
                           ? null
                           : () => controller.loginWithGoogle(),
                       style: ElevatedButton.styleFrom(
@@ -82,7 +82,7 @@ class OnboardingScreen extends GetView<OnboardingController> {
                           0xFF4285F4,
                         ).withValues(alpha: 0.6),
                       ),
-                      child: controller.isLoading.value
+                      child: controller.isLoading
                           ? SizedBox(
                               width: 24.w,
                               height: 24.h,

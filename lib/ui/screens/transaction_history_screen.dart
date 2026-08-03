@@ -6,6 +6,7 @@ import 'package:appintern/core/constants/app_assets.dart';
 import 'package:appintern/ui/controllers/transaction_history_controller.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/routes/app_routes.dart';
+import 'package:appintern/core/services/network_service.dart';
 
 class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
   TransactionHistoryScreen({super.key});
@@ -56,8 +57,10 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
           _buildSearchBar(),
           _buildFiltersRow(),
           Expanded(
-            child: Obx(() {
-              if (controller.isLoading.value &&
+            child: GetBuilder<TransactionHistoryController>(
+              id: 'tx_list',
+              builder: (_) {
+              if (controller.isLoading &&
                   controller.transactionsList.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -81,13 +84,25 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
                     vertical: 12.h,
                   ),
                   itemCount:
-                      dates.length + (controller.isFetchingMore.value ? 1 : 0),
+                      dates.length + (controller.isFetchingMore.value || (controller.hasReachedMax.value && Get.find<NetworkService>().isOffline.value) ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == dates.length) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16.h),
-                        child: const Center(child: CircularProgressIndicator()),
-                      );
+                      if (controller.isFetchingMore.value) {
+                        return Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          child: const Center(child: CircularProgressIndicator()),
+                        );
+                      } else {
+                        return Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          child: Center(
+                            child: Text(
+                              "Vui lòng kết nối mạng để xem các giao dịch cũ hơn",
+                              style: TextStyle(fontSize: 13.sp, color: Colors.grey[500], fontStyle: FontStyle.italic),
+                            ),
+                          ),
+                        );
+                      }
                     }
 
                     final dateKey = dates[index];
@@ -412,15 +427,20 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
   }
 
   Widget _buildEmptyState() {
+    final isOffline = Get.find<NetworkService>().isOffline.value;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 64.sp, color: Colors.grey[300]),
+          Icon(isOffline ? Icons.wifi_off : Icons.search_off, size: 64.sp, color: Colors.grey[300]),
           SizedBox(height: 16.h),
-          Text(
-            "Không tìm thấy giao dịch nào.",
-            style: TextStyle(fontSize: 16.sp, color: Colors.grey[500]),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24.w),
+            child: Text(
+              isOffline ? "Vui lòng kết nối mạng để xem lịch sử giao dịch tháng này." : "Không tìm thấy giao dịch nào.",
+              style: TextStyle(fontSize: 16.sp, color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),

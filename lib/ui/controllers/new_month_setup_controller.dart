@@ -1,3 +1,4 @@
+import 'package:appintern/core/enums/rollover_option.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';

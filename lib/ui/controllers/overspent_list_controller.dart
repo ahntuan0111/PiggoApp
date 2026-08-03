@@ -11,8 +11,14 @@ class OverspentListController extends BaseController with BudgetAware {
     return budgetService.categories.where((cat) => cat.remaining < 0).toList();
   }
 
-  void navigateToCompensation(CategoryModel category) {
-    Get.toNamed(Routes.OVERSPENT_COMPENSATION, arguments: category);
+  Future<void> navigateToCompensation(CategoryModel category) async {
+    final result = await Get.toNamed(
+      Routes.OVERSPENT_COMPENSATION,
+      arguments: category,
+    );
+    if (result == true) {
+      showSuccessMessage('Thành công', 'Đã bù đắp chi tiêu thành công.');
+    }
   }
 
   /// Pull-to-Refresh: reload dữ liệu các danh mục từ BudgetService

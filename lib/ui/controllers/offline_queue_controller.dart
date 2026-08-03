@@ -33,7 +33,7 @@ class OfflineQueueController extends BaseController {
   }
 
   Future<void> fetchTasks() async {
-    isLoading.value = true;
+    showLoading();
     final result = await ErrorHandler.execute(() async {
       final db = await _localDb.database;
       return await db.query(
@@ -50,7 +50,7 @@ class OfflineQueueController extends BaseController {
         queueTasks.assignAll(maps);
       },
     );
-    isLoading.value = false;
+    hideLoading();
   }
 
   List<String> get _validCategoryNames {
@@ -94,7 +94,7 @@ class OfflineQueueController extends BaseController {
             availableCategories: _validCategoryNames,
             unallocatedAmount: budgetService.unallocatedAmount.value,
             receiptImage: receiptImage,
-            onConfirmAll: (confirmedDataList) => _saveTransactions(
+            onConfirmAll: (confirmedDataList) async => await _saveTransactions(
               taskId,
               confirmedDataList,
               rawText: rawText,

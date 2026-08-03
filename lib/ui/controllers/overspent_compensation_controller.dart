@@ -187,9 +187,8 @@ class OverspentCompensationController extends BaseController with BudgetAware {
 
     hideLoading();
     result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) {
-      refreshBudget(); // Tải lại toàn bộ dữ liệu Budget
-      Get.back(); // Đóng màn hình
-      showSuccessMessage('Thành công', 'Đã bù đắp chi tiêu thành công.');
+      refreshBudget(); // Tải lại dữ liệu Budget (fire-and-forget qua BudgetService)
+      Get.back(result: true); // Caller sẽ hiển thị Snackbar
     });
   }
 }

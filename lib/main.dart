@@ -24,6 +24,8 @@ import 'core/services/sync_engine_service.dart';
 import 'core/services/background_worker.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'package:flutter/foundation.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -31,11 +33,15 @@ void main() async {
   // Khởi tạo WorkManager
   Workmanager().initialize(
     callbackDispatcher,
-    isInDebugMode: true, // Nhớ tắt (false) khi build Production
+    isInDebugMode: kDebugMode, // Tự động false khi build Production
   );
 
   await Get.putAsync(() => StorageService().init());
   await Get.putAsync(() => AppwriteService().init());
+
+  // Services (Nên khởi tạo Data Sources trước)
+  Get.put(LocalDatabaseService());
+  Get.put(NetworkService());
 
   final appwriteService = Get.find<AppwriteService>();
   Get.put(AuthRepository(appwriteService));
@@ -45,13 +51,11 @@ void main() async {
   Get.put(GoalRepository(appwriteService));
   Get.put(TransferLogRepository(appwriteService));
   Get.put(RolloverRepository(appwriteService));
-
-  // Services
-  Get.put(LocalDatabaseService());
-  Get.put(NetworkService());
-  Get.put(BudgetService());
   Get.put(AppwriteAIServiceImpl());
   Get.put<IAIService>(Get.find<AppwriteAIServiceImpl>());
+
+  // BudgetService phụ thuộc vào Repositories nên phải khởi tạo sau
+  Get.put(BudgetService());
 
   // Offline Sync
   Get.put(OfflineSyncService());

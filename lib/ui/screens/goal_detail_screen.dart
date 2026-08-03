@@ -185,7 +185,7 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
                       ),
                     ),
                     Expanded(
-                      child: controller.isLoading.value
+                      child: controller.isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : controller.transactions.isEmpty
                               ? Center(
@@ -239,17 +239,26 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
             onPressed: () => Get.back(),
             child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              controller.deleteGoal();
+          Obx(() => ElevatedButton(
+            onPressed: controller.isLoading ? null : () async {
+              final success = await controller.deleteGoal();
+              if (success) {
+                if (Get.isDialogOpen == true) Get.back(); // Close dialog
+                Get.back(result: true); // Close screen
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
-            child: const Text("Xóa", style: TextStyle(color: Colors.white)),
-          ),
+            child: controller.isLoading
+              ? SizedBox(
+                  width: 20.w,
+                  height: 20.w,
+                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text("Xóa", style: TextStyle(color: Colors.white)),
+          )),
         ],
       ),
     );
@@ -351,23 +360,31 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
               SizedBox(
                 width: double.infinity,
                 height: 50.h,
-                child: ElevatedButton(
-                  onPressed: () {
+                child: Obx(() => ElevatedButton(
+                  onPressed: controller.isLoading ? null : () async {
                     final name = nameController.text.trim();
                     final target = double.tryParse(targetController.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
                     if (name.isEmpty || target <= 0) {
                       Get.snackbar("Lỗi", "Vui lòng nhập tên và số tiền hợp lệ");
                       return;
                     }
-                    Get.back();
-                    controller.updateGoal(name, target, deadlineObx.value, iconObx.value);
+                    final success = await controller.updateGoal(name, target, deadlineObx.value, iconObx.value);
+                    if (success) {
+                      if (Get.isBottomSheetOpen == true) Get.back();
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0B4A3A),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                   ),
-                  child: const Text("Lưu thay đổi", style: TextStyle(color: Colors.white)),
-                ),
+                  child: controller.isLoading
+                    ? SizedBox(
+                        width: 24.h,
+                        height: 24.h,
+                        child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                      )
+                    : const Text("Lưu thay đổi", style: TextStyle(color: Colors.white)),
+                )),
               ),
             ],
           ),

@@ -188,8 +188,8 @@ class CategoryGroupWidget extends GetView<CategoryController> {
                               initialIcon: cat.iconName,
                               title: 'Cập nhật danh mục',
                               buttonText: 'CẬP NHẬT',
-                              onSave: (name, icon) {
-                                controller.updateCategory(
+                              onSave: (name, icon) async {
+                                await controller.updateCategory(
                                   cat.id,
                                   name,
                                   icon,
@@ -198,7 +198,12 @@ class CategoryGroupWidget extends GetView<CategoryController> {
                               },
                             ),
                             isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
+                            backgroundColor: const Color.fromARGB(
+                              0,
+                              12,
+                              10,
+                              10,
+                            ),
                           );
                         },
                         child: Icon(Icons.menu, color: Colors.grey, size: 24.r),

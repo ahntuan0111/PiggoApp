@@ -23,14 +23,14 @@ class GoalModel {
       name: map['name'] ?? '',
       targetAmount: (map['targetAmount'] ?? 0.0).toDouble(),
       deadline: map['deadline'] != null
-          ? DateTime.parse(map['deadline'])
+          ? DateTime.tryParse(map['deadline'])?.toLocal()
           : null,
       categoryId: map['categories'] is Map
           ? (map['categories']['\$id'] ?? '')
           : (map['categories'] ?? ''),
       status: map['status'] ?? 'ACTIVE',
       createdAt: map['\$createdAt'] != null
-          ? DateTime.parse(map['\$createdAt'])
+          ? DateTime.tryParse(map['\$createdAt'])?.toLocal()
           : null,
     );
   }
@@ -40,7 +40,7 @@ class GoalModel {
       'id': id,
       'name': name,
       'targetAmount': targetAmount,
-      'deadline': deadline?.toIso8601String(),
+      'deadline': deadline?.toUtc().toIso8601String(),
       'categories': categoryId,
       'status': status,
     };

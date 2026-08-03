@@ -52,4 +52,15 @@ class StorageRepository with AppwriteErrorHandler {
     final projectId = _appwrite.projectId;
     return '${_appwrite.client.endPoint}/storage/buckets/$bucketId/files/$fileId/view?project=$projectId';
   }
+
+  Future<void> deleteFile(String fileId) async {
+    return handleAppwriteError(() async {
+      String bucketId =
+          dotenv.env['APPWRITE_RECEIPT_BUCKET_ID'] ?? _appwrite.avatarBucketId;
+      await _appwrite.storage.deleteFile(
+        bucketId: bucketId,
+        fileId: fileId,
+      );
+    });
+  }
 }

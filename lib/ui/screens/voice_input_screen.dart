@@ -1,3 +1,4 @@
+import 'package:appintern/core/enums/voice_input_state.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -31,37 +32,37 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
       body: SafeArea(
         child: Obx(() {
           final state = controller.currentState.value;
-          
+
           return Column(
             children: [
               const Spacer(flex: 1),
-              
+
               // ── Trung tâm: Sóng âm thanh ──
               _buildWaveform(state),
-              
+
               const Spacer(flex: 1),
-              
+
               // ── Text Output ──
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
                 child: _buildTextOutput(state),
               ),
-              
+
               SizedBox(height: 40.h),
-              
+
               // ── Nút Bấm Thu Âm (Nhấn giữ) ──
               _buildRecordButton(state),
-              
+
               SizedBox(height: 24.h),
-              
+
               // Hướng dẫn
               Text(
-                state == VoiceInputState.recording 
-                    ? "Nhả ra để kết thúc" 
+                state == VoiceInputState.recording
+                    ? "Nhả ra để kết thúc"
                     : "Nhấn giữ để nói",
                 style: TextStyle(color: Colors.grey, fontSize: 14.sp),
               ),
-              
+
               SizedBox(height: 32.h),
             ],
           );
@@ -71,7 +72,8 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
   }
 
   Widget _buildWaveform(VoiceInputState state) {
-    if (state == VoiceInputState.recording || state == VoiceInputState.sttProcessing) {
+    if (state == VoiceInputState.recording ||
+        state == VoiceInputState.sttProcessing) {
       return AnimatedBuilder(
         animation: controller.pulseController,
         builder: (context, child) {
@@ -83,8 +85,10 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
               final isRecording = state == VoiceInputState.recording;
               final t = controller.pulseController.value;
               // Hàm sin để tạo độ nhấp nhô ngẫu nhiên dựa trên thời gian và index
-              final heightMultiplier = isRecording ? (math.sin((t * math.pi * 6) + (index * 0.8)).abs()) : 0.2;
-              
+              final heightMultiplier = isRecording
+                  ? (math.sin((t * math.pi * 6) + (index * 0.8)).abs())
+                  : 0.2;
+
               // Cột ở giữa cao nhất, thấp dần sang 2 bên
               final centerDist = (10 - index).abs();
               final baseHeight = 100.h - (centerDist * 8.h);
@@ -104,7 +108,7 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
         },
       );
     }
-    
+
     // Khi đang idle hoặc AI xử lý thì hiện một đường ngang chấm mờ
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -124,35 +128,58 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
 
   Widget _buildTextOutput(VoiceInputState state) {
     if (state == VoiceInputState.sttProcessing) {
-      return Text("Đang chuyển thành văn bản...", 
+      return Text(
+        "Đang chuyển thành văn bản...",
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16.sp, color: Colors.orange, fontWeight: FontWeight.w500));
+        style: TextStyle(
+          fontSize: 16.sp,
+          color: Colors.orange,
+          fontWeight: FontWeight.w500,
+        ),
+      );
     } else if (state == VoiceInputState.aiProcessing) {
       return Column(
         children: [
-          Text("\"${controller.rawText.value}\"", 
+          Text(
+            "\"${controller.rawText.value}\"",
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16.sp, color: Colors.black87, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+              fontSize: 16.sp,
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           SizedBox(height: 16.h),
-          Text("AI đang bóc tách giao dịch...", 
+          Text(
+            "AI đang bóc tách giao dịch...",
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14.sp, color: Colors.green)),
+            style: TextStyle(fontSize: 14.sp, color: Colors.green),
+          ),
         ],
       );
-    } else if (controller.rawText.value.isNotEmpty && state == VoiceInputState.idle) {
-       return Text("\"${controller.rawText.value}\"", 
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16.sp, color: Colors.black87, fontWeight: FontWeight.w600));
-    }
-    
-    return Text("Ví dụ: Sáng đổ xăng 50k", 
+    } else if (controller.rawText.value.isNotEmpty &&
+        state == VoiceInputState.idle) {
+      return Text(
+        "\"${controller.rawText.value}\"",
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16.sp, color: Colors.grey[400]));
+        style: TextStyle(
+          fontSize: 16.sp,
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
+    return Text(
+      "Ví dụ: Sáng đổ xăng 50k",
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 16.sp, color: Colors.grey[400]),
+    );
   }
 
   Widget _buildRecordButton(VoiceInputState state) {
     bool isRecording = state == VoiceInputState.recording;
-    
+
     return GestureDetector(
       onTapDown: (_) => controller.handlePointerDown(),
       onTapUp: (_) => controller.handlePointerUp(),
@@ -162,14 +189,17 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
         width: 80.w,
         height: 80.w,
         decoration: BoxDecoration(
-          color: isRecording ? Colors.orange : const Color(0xFF2C6B4F), // Màu xanh lá đậm giống thiết kế
+          color: isRecording
+              ? Colors.orange
+              : const Color(0xFF2C6B4F), // Màu xanh lá đậm giống thiết kế
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: (isRecording ? Colors.orange : const Color(0xFF2C6B4F)).withValues(alpha: 0.3),
+              color: (isRecording ? Colors.orange : const Color(0xFF2C6B4F))
+                  .withValues(alpha: 0.3),
               blurRadius: 12,
               spreadRadius: isRecording ? 8 : 2,
-            )
+            ),
           ],
         ),
         child: Icon(

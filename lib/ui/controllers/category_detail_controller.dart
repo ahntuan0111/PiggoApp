@@ -8,7 +8,10 @@ import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-
+import 'dart:convert';
+import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
 class CategoryDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
       Get.find<TransactionRepository>();
@@ -106,37 +109,67 @@ class CategoryDetailController extends BaseController with BudgetAware {
 
   Future<void> updateCategory(String name, String icon) async {
     showLoading();
+    final networkService = Get.find<NetworkService>();
+    final offlineSyncService = Get.find<OfflineSyncService>();
+    final localDb = Get.find<LocalDatabaseService>();
 
-    final result = await ErrorHandler.execute(() async {
-      await _categoryRepo.updateCategory(
-        category.id,
-        name,
-        icon,
-        category.color,
-      );
-    }, tag: "UPDATE_CATEGORY");
+    if (networkService.isOffline.value) {
+      final payload = jsonEncode({
+        'id': category.id,
+        'name': name.trim(),
+        'iconName': icon,
+        'color': category.color,
+      });
+      await offlineSyncService.queueManualTask('UPDATE_CATEGORY', payload);
+      await localDb.updateCategory(category.id, name.trim(), icon, category.color);
 
-    hideLoading();
-    result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) {
       category = CategoryModel(
         id: category.id,
         categoryTypeId: category.categoryTypeId,
-        name: name,
+        name: name.trim(),
         color: category.color,
         iconName: icon,
         defaultBudget: category.defaultBudget,
         spent: category.spent,
       );
+      
+      hideLoading();
       update();
       refreshBudget();
-      showSuccessMessage('Thành công', 'Cập nhật danh mục thành công!');
-    });
+      showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+    } else {
+      final result = await ErrorHandler.execute(() async {
+        await _categoryRepo.updateCategory(
+          category.id,
+          name.trim(),
+          icon,
+          category.color,
+        );
+      }, tag: "UPDATE_CATEGORY");
+
+      hideLoading();
+      result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) {
+        category = CategoryModel(
+          id: category.id,
+          categoryTypeId: category.categoryTypeId,
+          name: name.trim(),
+          color: category.color,
+          iconName: icon,
+          defaultBudget: category.defaultBudget,
+          spent: category.spent,
+        );
+        update();
+        refreshBudget();
+        showSuccessMessage('Thành công', 'Cập nhật danh mục thành công!');
+      });
+    }
   }
 
   Future<void> updateBudget(
     double newBudget, {
     String? sourceCategoryId,
     double? sourceCategoryNewBudget,
+    String? note,
   }) async {
     showLoading();
 

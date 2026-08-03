@@ -1,3 +1,4 @@
+import 'package:appintern/core/enums/rollover_option.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/rollover_decision_controller.dart';
@@ -18,17 +19,26 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1), // Nền Kem
       appBar: AppBar(
-        title: Obx(() => Text(
-          "Dọn dẹp sổ sách ${controller.oldMonthName.value}",
-          style: TextStyle(color: const Color(0xFF0B4A3A), fontWeight: FontWeight.bold, fontSize: 16.sp),
-        )),
+        title: Obx(
+          () => Text(
+            "Dọn dẹp sổ sách ${controller.oldMonthName.value}",
+            style: TextStyle(
+              color: const Color(0xFF0B4A3A),
+              fontWeight: FontWeight.bold,
+              fontSize: 16.sp,
+            ),
+          ),
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false, // Ngăn back lại
         backgroundColor: const Color(0xFFF9F7F1),
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline_rounded, color: Color(0xFF0B4A3A)),
+            icon: const Icon(
+              Icons.help_outline_rounded,
+              color: Color(0xFF0B4A3A),
+            ),
             onPressed: () {
               Get.dialog(const RolloverExplanationDialog());
             },
@@ -36,7 +46,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
           IconButton(
             icon: const Icon(Icons.history, color: Color(0xFF0B4A3A)),
             onPressed: () {},
-          )
+          ),
         ],
       ),
       body: Column(
@@ -47,7 +57,10 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
             margin: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFD4AF37), Color(0xFFC49A45)], // Vàng Gold Gradient
+                colors: [
+                  Color(0xFFD4AF37),
+                  Color(0xFFC49A45),
+                ], // Vàng Gold Gradient
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -57,7 +70,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                   color: const Color(0xFFC49A45).withValues(alpha: 0.3),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
-                )
+                ),
               ],
             ),
             child: Material(
@@ -84,7 +97,10 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                   }
                 },
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24.h, horizontal: 20.w),
+                  padding: EdgeInsets.symmetric(
+                    vertical: 24.h,
+                    horizontal: 20.w,
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -93,7 +109,11 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                           color: Colors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.bolt_rounded, color: Colors.white, size: 32.sp),
+                        child: Icon(
+                          Icons.bolt_rounded,
+                          color: Colors.white,
+                          size: 32.sp,
+                        ),
                       ),
                       SizedBox(width: 16.w),
                       Expanded(
@@ -119,7 +139,11 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                           ],
                         ),
                       ),
-                      Icon(Icons.chevron_right_rounded, color: Colors.white, size: 28.sp),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.white,
+                        size: 28.sp,
+                      ),
                     ],
                   ),
                 ),
@@ -130,19 +154,29 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
           // Summary Metrics
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 24.w),
-            child: Obx(() => Row(
-              children: [
-                Expanded(
-                  child: _buildMetricItem("TỔNG DƯ", "+${formatter.format(controller.totalSurplus.value)}đ", const Color(0xFF369B56)),
-                ),
-                Container(width: 1, height: 40.h, color: Colors.black12),
-                Expanded(
-                  child: _buildMetricItem("TỔNG THÂM HỤT", "${formatter.format(controller.totalDeficit.value)}đ", Colors.red[600]!),
-                ),
-              ],
-            )),
+            child: Obx(
+              () => Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricItem(
+                      "TỔNG DƯ",
+                      "+${formatter.format(controller.totalSurplus.value)}đ",
+                      const Color(0xFF369B56),
+                    ),
+                  ),
+                  Container(width: 1, height: 40.h, color: Colors.black12),
+                  Expanded(
+                    child: _buildMetricItem(
+                      "TỔNG THÂM HỤT",
+                      "${formatter.format(controller.totalDeficit.value)}đ",
+                      Colors.red[600]!,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          
+
           SizedBox(height: 24.h),
 
           // Danh sách chi tiết
@@ -150,32 +184,33 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
             padding: EdgeInsets.symmetric(horizontal: 24.w),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Obx(() => Text(
-                "DANH SÁCH CHI TIẾT (${controller.decisionCategories.length})",
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black45,
-                  letterSpacing: 1.0,
+              child: Obx(
+                () => Text(
+                  "DANH SÁCH CHI TIẾT (${controller.decisionCategories.length})",
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black45,
+                    letterSpacing: 1.0,
+                  ),
                 ),
-              )),
+              ),
             ),
           ),
           SizedBox(height: 12.h),
 
           // Danh sách các hũ cần xử lý
           Expanded(
-            child: Obx(() => ListView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
-              itemCount: controller.decisionCategories.length,
-              itemBuilder: (context, index) {
-                final cat = controller.decisionCategories[index];
-                return Obx(() => _buildExpandableCategoryCard(
-                  cat,
-                  index,
-                ));
-              },
-            )),
+            child: Obx(
+              () => ListView.builder(
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
+                itemCount: controller.decisionCategories.length,
+                itemBuilder: (context, index) {
+                  final cat = controller.decisionCategories[index];
+                  return Obx(() => _buildExpandableCategoryCard(cat, index));
+                },
+              ),
+            ),
           ),
 
           // Sticky Bottom Bar
@@ -188,7 +223,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                   color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 15,
                   offset: const Offset(0, -5),
-                )
+                ),
               ],
             ),
             child: SafeArea(
@@ -203,7 +238,11 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                         children: [
                           Text(
                             "TRẠNG THÁI",
-                            style: TextStyle(fontSize: 11.sp, color: Colors.black45, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: Colors.black45,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           SizedBox(height: 4.h),
                           Text(
@@ -222,16 +261,24 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                       height: 50.h,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: pendingCount == 0 ? const Color(0xFF369B56) : Colors.grey[300],
-                          foregroundColor: pendingCount == 0 ? Colors.white : Colors.black45,
+                          backgroundColor: pendingCount == 0
+                              ? const Color(0xFF369B56)
+                              : Colors.grey[300],
+                          foregroundColor: pendingCount == 0
+                              ? Colors.white
+                              : Colors.black45,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25.r),
                           ),
                           elevation: pendingCount == 0 ? 5 : 0,
                         ),
-                        onPressed: pendingCount == 0 
-                          ? () { controller.onFinishRolloverDecision(); } 
-                          : () { controller.onFinishRolloverDecision(); }, // Vẫn gọi hàm nhưng controller sẽ check điều kiện
+                        onPressed: pendingCount == 0
+                            ? () {
+                                controller.onFinishRolloverDecision();
+                              }
+                            : () {
+                                controller.onFinishRolloverDecision();
+                              }, // Vẫn gọi hàm nhưng controller sẽ check điều kiện
                         child: Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16.w),
                           child: Text(
@@ -259,12 +306,21 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 11.sp, color: Colors.black45, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+          style: TextStyle(
+            fontSize: 11.sp,
+            color: Colors.black45,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
         SizedBox(height: 8.h),
         Text(
           value,
-          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: valueColor),
+          style: TextStyle(
+            fontSize: 18.sp,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
         ),
       ],
     );
@@ -280,7 +336,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
     final selectedOption = (cat['selectedOption'] as Rx<RolloverOption>).value;
     final isGoalAvailable = cat['isGoalAvailable'] as bool;
     final isUnallocatedItem = cat['isUnallocatedItem'] as bool;
-    
+
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
@@ -291,7 +347,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
             color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -299,26 +355,42 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
           Material(
             color: Colors.transparent,
             child: ListTile(
-              contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 20.w,
+                vertical: 8.h,
+              ),
               leading: Container(
                 padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
-                  color: isSurplus ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                  color: isSurplus
+                      ? const Color(0xFFE8F5E9)
+                      : const Color(0xFFFFEBEE),
                   shape: BoxShape.circle,
                 ),
                 child: CustomIconWidget(iconName: iconName, size: 20.sp),
               ),
-              title: Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16.sp, color: Colors.black87)),
-              subtitle: Text(
-                isSurplus ? "Còn dư +${formatter.format(balance)}đ" : "Thâm hụt ${formatter.format(balance)}đ", 
+              title: Text(
+                title,
                 style: TextStyle(
-                  color: isSurplus ? const Color(0xFF369B56) : Colors.red, 
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16.sp,
+                  color: Colors.black87,
+                ),
+              ),
+              subtitle: Text(
+                isSurplus
+                    ? "Còn dư +${formatter.format(balance)}đ"
+                    : "Thâm hụt ${formatter.format(balance)}đ",
+                style: TextStyle(
+                  color: isSurplus ? const Color(0xFF369B56) : Colors.red,
                   fontSize: 13.sp,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               trailing: Icon(
-                isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                isExpanded
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
                 color: Colors.black45,
               ),
               onTap: () {
@@ -326,7 +398,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
               },
             ),
           ),
-          
+
           if (isExpanded) ...[
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -350,7 +422,10 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                             "Tiết kiệm",
                             selectedOption == RolloverOption.sweepToSavings,
                             isEnabled: isGoalAvailable,
-                            onTap: () => controller.selectOption(index, RolloverOption.sweepToSavings),
+                            onTap: () => controller.selectOption(
+                              index,
+                              RolloverOption.sweepToSavings,
+                            ),
                           ),
                         ),
                         SizedBox(width: 8.w),
@@ -359,7 +434,10 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                             "Giữ nguyên DP",
                             selectedOption == RolloverOption.sweepToUnallocated,
                             isEnabled: true,
-                            onTap: () => controller.selectOption(index, RolloverOption.sweepToUnallocated),
+                            onTap: () => controller.selectOption(
+                              index,
+                              RolloverOption.sweepToUnallocated,
+                            ),
                           ),
                         ),
                       ],
@@ -372,16 +450,27 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                             "Tiết kiệm",
                             selectedOption == RolloverOption.sweepToSavings,
                             isEnabled: isGoalAvailable && isSurplus,
-                            onTap: () => controller.selectOption(index, RolloverOption.sweepToSavings),
+                            onTap: () => controller.selectOption(
+                              index,
+                              RolloverOption.sweepToSavings,
+                            ),
                           ),
                         ),
                         SizedBox(width: 8.w),
                         Expanded(
                           child: _buildSegmentButton(
                             isSurplus ? "Cộng dồn" : "Giảm ĐM",
-                            selectedOption == (isSurplus ? RolloverOption.rolloverToCategory : RolloverOption.reduceBudget),
+                            selectedOption ==
+                                (isSurplus
+                                    ? RolloverOption.rolloverToCategory
+                                    : RolloverOption.reduceBudget),
                             isEnabled: true,
-                            onTap: () => controller.selectOption(index, isSurplus ? RolloverOption.rolloverToCategory : RolloverOption.reduceBudget),
+                            onTap: () => controller.selectOption(
+                              index,
+                              isSurplus
+                                  ? RolloverOption.rolloverToCategory
+                                  : RolloverOption.reduceBudget,
+                            ),
                           ),
                         ),
                         SizedBox(width: 8.w),
@@ -390,7 +479,10 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                             isSurplus ? "Chuyển DP" : "Trừ DP",
                             selectedOption == RolloverOption.sweepToUnallocated,
                             isEnabled: true,
-                            onTap: () => controller.selectOption(index, RolloverOption.sweepToUnallocated),
+                            onTap: () => controller.selectOption(
+                              index,
+                              RolloverOption.sweepToUnallocated,
+                            ),
                           ),
                         ),
                       ],
@@ -398,31 +490,38 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                   ],
                 ],
               ),
-            )
-          ]
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSegmentButton(String text, bool isSelected, {required bool isEnabled, required VoidCallback onTap}) {
+  Widget _buildSegmentButton(
+    String text,
+    bool isSelected, {
+    required bool isEnabled,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: isEnabled ? onTap : () {
-         Get.snackbar(
-           "Thông báo", 
-           "Vui lòng tạo Mục tiêu tiết kiệm trước", 
-           snackPosition: SnackPosition.BOTTOM,
-           margin: EdgeInsets.all(20.w),
-         );
-      },
+      onTap: isEnabled
+          ? onTap
+          : () {
+              Get.snackbar(
+                "Thông báo",
+                "Vui lòng tạo Mục tiêu tiết kiệm trước",
+                snackPosition: SnackPosition.BOTTOM,
+                margin: EdgeInsets.all(20.w),
+              );
+            },
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 10.h),
         decoration: BoxDecoration(
-          color: isEnabled 
+          color: isEnabled
               ? (isSelected ? const Color(0xFFE8F5E9) : Colors.white)
               : Colors.grey[100],
           border: Border.all(
-            color: isEnabled 
+            color: isEnabled
                 ? (isSelected ? const Color(0xFF369B56) : Colors.grey[300]!)
                 : Colors.grey[200]!,
             width: 1.5,
@@ -435,7 +534,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
           style: TextStyle(
             fontSize: 12.sp,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isEnabled 
+            color: isEnabled
                 ? (isSelected ? const Color(0xFF369B56) : Colors.black54)
                 : Colors.grey[400],
           ),

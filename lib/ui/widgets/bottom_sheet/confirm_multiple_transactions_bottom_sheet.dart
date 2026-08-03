@@ -10,7 +10,7 @@ class ConfirmMultipleTransactionsBottomSheet extends StatefulWidget {
   final List<String> availableCategories;
   final double unallocatedAmount;
   final File? receiptImage;
-  final Function(List<Map<String, dynamic>>) onConfirmAll;
+  final Future<void> Function(List<Map<String, dynamic>>) onConfirmAll;
 
   const ConfirmMultipleTransactionsBottomSheet({
     super.key,
@@ -30,6 +30,7 @@ class _ConfirmMultipleTransactionsBottomSheetState
     extends State<ConfirmMultipleTransactionsBottomSheet> {
   late List<Map<String, dynamic>> transactions;
   final formatter = NumberFormat('#,###', 'vi_VN');
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -88,7 +89,7 @@ class _ConfirmMultipleTransactionsBottomSheetState
     });
   }
 
-  void _onSaveAll() {
+  Future<void> _onSaveAll() async {
     if (transactions.isEmpty) {
       Get.back();
       return;
@@ -127,7 +128,12 @@ class _ConfirmMultipleTransactionsBottomSheetState
       return;
     }
 
-    widget.onConfirmAll(finalData);
+    setState(() => _isLoading = true);
+    try {
+      await widget.onConfirmAll(finalData);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _showFullScreenImage(BuildContext context) {
@@ -337,17 +343,26 @@ class _ConfirmMultipleTransactionsBottomSheetState
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
-                onPressed: _onSaveAll,
-                child: Text(
-                  transactions.isEmpty
-                      ? "Thử lại"
-                      : "Lưu tất cả (${transactions.length})",
-                  style: TextStyle(
-                    color: const Color(0xFF2E2E2E),
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                onPressed: _isLoading ? null : _onSaveAll,
+                child: _isLoading
+                    ? SizedBox(
+                        height: 24.h,
+                        width: 24.h,
+                        child: const CircularProgressIndicator(
+                          color: Color(0xFF2E2E2E),
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : Text(
+                        transactions.isEmpty
+                            ? "Thử lại"
+                            : "Lưu tất cả (${transactions.length})",
+                        style: TextStyle(
+                          color: const Color(0xFF2E2E2E),
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],

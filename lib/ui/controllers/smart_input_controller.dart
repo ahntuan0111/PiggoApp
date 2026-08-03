@@ -71,7 +71,7 @@ class SmartInputController extends BaseController with BudgetAware {
       barrierDismissible: false,
     );
 
-    final currentTime = DateTime.now().toIso8601String();
+    final currentTime = DateTime.now().toUtc().toIso8601String();
 
     final result = await ErrorHandler.execute(() async {
       return await aiService.parseTransactionText(
@@ -150,7 +150,7 @@ class SmartInputController extends BaseController with BudgetAware {
       barrierDismissible: false,
     );
 
-    final currentTime = DateTime.now().toIso8601String();
+    final currentTime = DateTime.now().toUtc().toIso8601String();
 
     final result = await ErrorHandler.execute(() async {
       return await aiService.parseReceiptImage(
@@ -191,7 +191,7 @@ class SmartInputController extends BaseController with BudgetAware {
         availableCategories: _validCategoryNames,
         unallocatedAmount: budgetService.unallocatedAmount.value,
         receiptImage: receiptImage,
-        onConfirmAll: (confirmedDataList) => saveTransactions(
+        onConfirmAll: (confirmedDataList) async => await saveTransactions(
           confirmedDataList,
           rawText: rawText,
           receiptImage: receiptImage,
@@ -280,14 +280,9 @@ class SmartInputController extends BaseController with BudgetAware {
         "Không thể lưu giao dịch: ${failure.message}",
       ),
       (_) {
-        Get.back(); // Đóng Bottom Sheet
+        final count = confirmedDataList.length;
         textController.clear();
-        Get.snackbar(
-          "Thành công",
-          "Đã ghi nhận ${confirmedDataList.length} giao dịch",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        Get.back(result: count); // Trả về số giao dịch - Caller hiển thị Snackbar
       },
     );
   }

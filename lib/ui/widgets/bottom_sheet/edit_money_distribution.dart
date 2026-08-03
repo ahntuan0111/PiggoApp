@@ -12,7 +12,7 @@ import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
 class EditMoneyDistributionBottomSheet extends StatefulWidget {
   final double initialAllocated;
-  final Function(
+  final Future<void> Function(
     double newBudget, {
     String? sourceCategoryId,
     double? sourceCategoryNewBudget,
@@ -54,8 +54,9 @@ class _EditMoneyDistributionBottomSheetState
   String? _selectedSourceName;
   double? _selectedSourceAvailableAmount;
   String? _selectedSourceIconName;
+  bool _isLoading = false;
 
-  void _executeSave(String? note) {
+  Future<void> _executeSave(String? note) async {
     if (_selectedSourceId != null) {
       if (_isAdding &&
           _offsetAmount > _selectedSourceAvailableAmount!) {
@@ -86,14 +87,24 @@ class _EditMoneyDistributionBottomSheetState
       } else {
         newSourceBudget = sourceAllocated + _offsetAmount;
       }
-      widget.onSave(
-        _finalBudget,
-        sourceCategoryId: _selectedSourceId,
-        sourceCategoryNewBudget: newSourceBudget,
-        note: note,
-      );
+      setState(() => _isLoading = true);
+      try {
+        await widget.onSave(
+          _finalBudget,
+          sourceCategoryId: _selectedSourceId,
+          sourceCategoryNewBudget: newSourceBudget,
+          note: note,
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     } else {
-      widget.onSave(_finalBudget, note: note);
+      setState(() => _isLoading = true);
+      try {
+        await widget.onSave(_finalBudget, note: note);
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -494,7 +505,7 @@ class _EditMoneyDistributionBottomSheetState
               width: double.infinity,
               height: 48.h,
               child: ElevatedButton(
-                onPressed: canSave
+                onPressed: (canSave && !_isLoading)
                     ? () {
                         if (widget.isGoal && !_isAdding) {
                           final noteController = TextEditingController();
@@ -534,7 +545,7 @@ class _EditMoneyDistributionBottomSheetState
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                  onPressed: () {
+                                  onPressed: _isLoading ? null : () {
                                     if (noteController.text.trim().isEmpty) {
                                       Get.snackbar("Lỗi", "Vui lòng nhập lý do rút tiền", backgroundColor: Colors.red, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
                                       return;
@@ -561,14 +572,20 @@ class _EditMoneyDistributionBottomSheetState
                   ),
                   elevation: 0,
                 ),
-                child: Text(
-                  "LƯU",
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
-                    color: canSave ? const Color(0xFF2E2E2E) : Colors.white,
-                  ),
-                ),
+                child: _isLoading 
+                  ? SizedBox(
+                      height: 24.h, 
+                      width: 24.h, 
+                      child: const CircularProgressIndicator(color: Color(0xFF2E2E2E), strokeWidth: 3)
+                    )
+                  : Text(
+                      "LƯU",
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: canSave ? const Color(0xFF2E2E2E) : Colors.white,
+                      ),
+                    ),
               ),
             ),
           ],

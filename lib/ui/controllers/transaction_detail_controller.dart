@@ -199,6 +199,7 @@ class TransactionDetailController extends BaseController with BudgetAware {
     }
 
     if (result == true) {
+      showSuccessMessage("Thành công", "Đã cập nhật giao dịch thành công");
       _loadData();
     }
   }

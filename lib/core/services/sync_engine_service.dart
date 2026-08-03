@@ -1,15 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:appwrite/appwrite.dart';
+import 'package:appintern/data/repositories/storage_repository.dart';
+import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/services/budget_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/data/data_sources/remote/appwrite_ai_service_impl.dart';
+import 'package:appintern/data/models/transaction_model.dart';
+import 'package:appintern/data/models/transaction_detail_model.dart';
+import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
+import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/utils/logger.dart';
+import 'package:appintern/core/services/storage_service.dart';
+import 'package:appintern/core/constants/app_keys.dart';
 
 class SyncEngineService extends GetxService {
   final LocalDatabaseService _localDb = Get.find<LocalDatabaseService>();
@@ -17,7 +26,9 @@ class SyncEngineService extends GetxService {
   final AppwriteAIServiceImpl _aiService = Get.find<AppwriteAIServiceImpl>();
   final TransactionRepository _transactionRepo =
       Get.find<TransactionRepository>();
+  final CategoryRepository _categoryRepo = Get.find<CategoryRepository>();
   final BudgetService _budgetService = Get.find<BudgetService>();
+  final StorageRepository _storageRepo = Get.find<StorageRepository>();
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -28,12 +39,66 @@ class SyncEngineService extends GetxService {
   void onInit() {
     super.onInit();
     _initNotifications();
+
+    // Khởi động chạy nền và cache khi mở app
+    if (!_networkService.isOffline.value) {
+      warmUpCache();
+      startForegroundSync();
+    }
+
     // Lắng nghe trạng thái mạng để tự động chạy
     ever(_networkService.isOffline, (isOffline) {
       if (!isOffline) {
+        warmUpCache();
         startForegroundSync();
       }
     });
+  }
+
+  /// Tải ngầm 15 giao dịch mới nhất của tháng hiện tại để sẵn sàng khi Offline
+  Future<void> warmUpCache() async {
+    if (_networkService.isOffline.value) return;
+
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, 1);
+    final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    final txsResult = await ErrorHandler.execute(() async {
+      return await _transactionRepo.getTransactionsByFilters(
+        start: start,
+        end: end,
+        limit: 15,
+        ascending: false,
+      );
+    }, tag: "SYNC_ENGINE_FETCH");
+
+    txsResult.fold(
+      (fail) => AppLogger.error(
+        'SyncEngineService',
+        'Lỗi tải ngầm dữ liệu: ${fail.message}',
+      ),
+      (txs) async {
+        if (txs.isNotEmpty) {
+          final models = txs
+              .map((e) => e['transaction'] as TransactionModel)
+              .toList();
+          final saveResult = await ErrorHandler.execute(() async {
+            await _transactionRepo.saveTransactionsToCache(models);
+          }, tag: "SYNC_ENGINE_CACHE");
+
+          saveResult.fold(
+            (fail) => AppLogger.error(
+              'SyncEngineService',
+              'Lỗi lưu cache ngầm: ${fail.message}',
+            ),
+            (_) => AppLogger.info(
+              'SyncEngineService',
+              'Đã tải ngầm ${models.length} giao dịch vào Cache.',
+            ),
+          );
+        }
+      },
+    );
   }
 
   Future<void> _initNotifications() async {
@@ -96,15 +161,31 @@ class SyncEngineService extends GetxService {
         int retryCount = task['retry_count'] as int;
 
         try {
-          final parsedDataString = await _processTask(type, payload);
-          await _localDb.updateOfflineTaskParsedData(
-            id,
-            parsedDataString,
-            'NEEDS_CONFIRMATION',
-          );
-          successCount++;
-          // Rate Limit delay (3 seconds) between AI calls
-          await Future.delayed(const Duration(seconds: 3));
+          if (type == 'TEXT' || type == 'IMAGE' || type == 'VOICE') {
+            final parsedDataString = await _processTask(type, payload);
+            await _localDb.updateOfflineTaskParsedData(
+              id,
+              parsedDataString,
+              'NEEDS_CONFIRMATION',
+            );
+            successCount++;
+            // Rate Limit delay (3 seconds) between AI calls
+            await Future.delayed(const Duration(seconds: 3));
+          } else {
+            // Manual tasks do not need AI parsing or confirmation
+            await _processManualTask(type, payload);
+            await _localDb.deleteTask(id);
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+        } on AppwriteException catch (e) {
+          AppLogger.error("SYNC_ENGINE", "Task $id AppwriteException: \${e.code} - \${e.message}");
+          if (e.code == 400 || e.code == 403 || e.code == 409) {
+            await _localDb.updateTaskStatus(id, 'FAILED_PERMANENT');
+            await _localDb.rollbackOptimisticTransaction(type, payload);
+            _showNotification("Giao dịch bị từ chối", "Một giao dịch vừa bị hệ thống từ chối. Số dư đã được khôi phục.");
+          } else {
+            rethrow;
+          }
         } catch (e) {
           AppLogger.error("SYNC_ENGINE", "Task $id failed: $e");
           retryCount++;
@@ -151,7 +232,7 @@ class SyncEngineService extends GetxService {
     final availableCategories = _budgetService.activeCategories
         .map((c) => c.name)
         .toList();
-    final currentTime = DateTime.now().toIso8601String();
+    final currentTime = DateTime.now().toUtc().toIso8601String();
 
     List<Map<String, dynamic>> parsedTxs = [];
 
@@ -181,5 +262,134 @@ class SyncEngineService extends GetxService {
     }
 
     throw Exception('Không có dữ liệu hợp lệ trả về từ AI');
+  }
+
+  Future<void> _processManualTask(String type, String payload) async {
+    final Map<String, dynamic> data = jsonDecode(payload);
+
+    if (type == 'CREATE_MANUAL_TX') {
+      final txData = data['transaction'];
+      if (txData['id'] != null &&
+          txData['id'].toString().startsWith('offline_')) {
+        txData.remove('id');
+      }
+      final tx = TransactionModel.fromMap(txData);
+
+      final detailData = data['detail'];
+      if (detailData['id'] != null &&
+          detailData['id'].toString().startsWith('offline_')) {
+        detailData.remove('id');
+      }
+      final txDetail = TransactionDetailModel.fromMap(detailData);
+
+      final categoryData = data['category'];
+      CategoryModel? currentCategory;
+      if (categoryData != null) {
+        currentCategory = CategoryModel.fromMap(categoryData);
+      }
+
+      await _transactionRepo.createTransaction(
+        transaction: tx,
+        transactionDetail: txDetail,
+        currentCategory: currentCategory,
+      );
+    } else if (type == 'UPDATE_MANUAL_TX') {
+      final txData = data['transaction'];
+      final tx = TransactionModel.fromMap(txData);
+
+      final detailData = data['detail'];
+      final txDetail = TransactionDetailModel.fromMap(detailData);
+
+      final oldCategoryData = data['oldCategory'];
+      CategoryModel? oldCategory;
+      if (oldCategoryData != null) {
+        oldCategory = CategoryModel.fromMap(oldCategoryData);
+      }
+
+      final newCategoryData = data['newCategory'];
+      CategoryModel? newCategory;
+      if (newCategoryData != null) {
+        newCategory = CategoryModel.fromMap(newCategoryData);
+      }
+
+      final oldTxData = data['oldTransaction'];
+      final oldTransaction = TransactionModel.fromMap(oldTxData);
+
+      await _transactionRepo.updateTransaction(
+        oldTransaction: oldTransaction,
+        newTransaction: tx,
+        newTransactionDetail: txDetail,
+        oldCategory: oldCategory,
+        newCategory: newCategory,
+      );
+    } else if (type == 'CREATE_CATEGORY_TYPE') {
+      final storage = Get.find<StorageService>();
+      final userId = storage.read<String>(AppKeys.userId) ?? '';
+      await _categoryRepo.createCategoryType(
+        userId,
+        data['name'] as String,
+        data['priority'] as int? ?? 0,
+      );
+      if (data['tempId'] != null) {
+        await _localDb.deleteCategoryType(data['tempId']);
+      }
+    } else if (type == 'CREATE_CATEGORY') {
+      await _categoryRepo.createCategory(
+        data['typeId'],
+        data['name'],
+        data['iconName'],
+        data['color'],
+      );
+      if (data['tempId'] != null) {
+        await _localDb.deleteCategory(data['tempId']);
+      }
+    } else if (type == 'UPDATE_CATEGORY_TYPE') {
+      await _categoryRepo.updateCategoryType(
+        data['id'],
+        data['name'],
+      );
+    } else if (type == 'DELETE_CATEGORY_TYPE') {
+      await _categoryRepo.deleteCategoryType(
+        data['id'],
+      );
+    } else if (type == 'UPDATE_CATEGORY') {
+      await _categoryRepo.updateCategory(
+        data['id'],
+        data['name'],
+        data['iconName'],
+        data['color'],
+      );
+    } else if (type == 'DELETE_CATEGORY') {
+      await _categoryRepo.deleteCategory(
+        data['id'],
+      );
+    } else if (type == 'UPDATE_BUDGET') {
+      final monthYear = data['monthYear'];
+      final allocations = List<Map<String, dynamic>>.from(data['allocations']);
+      for (var alloc in allocations) {
+        final categoryId = alloc['categoryId'];
+        final amount = (alloc['amount'] as num).toDouble();
+
+        final checkBudget = await _categoryRepo.getMonthlyBudgets(monthYear);
+        final existingBudget = checkBudget.firstWhereOrNull(
+          (b) => b.categoryId == categoryId,
+        );
+
+        if (existingBudget != null) {
+          await _categoryRepo.updateMonthlyBudget(existingBudget.id, amount);
+        } else {
+          await _categoryRepo.createMonthlyBudget(
+            categoryId: categoryId,
+            monthYear: monthYear,
+            budgetedAmount: amount,
+          );
+        }
+      }
+    } else if (type == 'DELETE_ORPHANED_FILE') {
+      final fileId = data['fileId'];
+      if (fileId != null) {
+        await _storageRepo.deleteFile(fileId);
+      }
+    }
   }
 }

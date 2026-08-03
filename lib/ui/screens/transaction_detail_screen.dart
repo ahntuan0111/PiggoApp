@@ -38,7 +38,7 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
         centerTitle: true,
         actions: [
           Obx(() {
-            if (controller.isLoading.value || controller.isSystemRollover) {
+            if (controller.isLoading || controller.isSystemRollover) {
               return const SizedBox.shrink();
             }
             return IconButton(
@@ -49,9 +49,6 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
         ],
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
 
         final tx = controller.rxTransaction.value;
         final detail = controller.detail.value;
@@ -283,18 +280,24 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
 
               // 3. Delete Button
               if (!controller.isSystemRollover)
-                TextButton(
-                  onPressed: controller.onDeleteTransaction,
-                  child: Text(
-                    "XÓA GIAO DỊCH",
-                    style: TextStyle(
-                      color: const Color(0xFFE53935),
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
+                Obx(() => TextButton(
+                  onPressed: controller.isLoading ? null : controller.onDeleteTransaction,
+                  child: controller.isLoading
+                    ? SizedBox(
+                        height: 20.h,
+                        width: 20.h,
+                        child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE53935)),
+                      )
+                    : Text(
+                        "XÓA GIAO DỊCH",
+                        style: TextStyle(
+                          color: controller.isLoading ? Colors.grey : const Color(0xFFE53935),
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                )),
               SizedBox(height: 20.h),
             ],
           ),

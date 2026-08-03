@@ -60,7 +60,7 @@ class GoalDetailController extends BaseController with BudgetAware {
     await Future.wait([fetchHistory(), budgetService.refreshData()]);
   }
 
-  Future<void> deleteGoal() async {
+  Future<bool> deleteGoal() async {
     showLoading();
     final result = await ErrorHandler.execute(() async {
       // Xóa Goal trước vì Goal reference tới Category
@@ -71,17 +71,19 @@ class GoalDetailController extends BaseController with BudgetAware {
 
     hideLoading();
 
-    result.fold(
-      (failure) => showErrorMessage("Lỗi khi xóa mục tiêu", failure.message),
+    return result.fold(
+      (failure) {
+        showErrorMessage("Lỗi khi xóa mục tiêu", failure.message);
+        return false;
+      },
       (success) async {
-        Get.back(result: true); // Đóng màn hình chi tiết trước
-        showSuccessMessage("Thành công", "Đã xóa mục tiêu tiết kiệm");
-        await budgetService.refreshData(); // Đồng bộ dữ liệu ngầm
+        await budgetService.refreshData(); // Đồng bộ dữ liệu ngầm trước
+        return true;
       },
     );
   }
 
-  Future<void> updateGoal(
+  Future<bool> updateGoal(
     String newName,
     double newTarget,
     DateTime? newDeadline,
@@ -114,12 +116,15 @@ class GoalDetailController extends BaseController with BudgetAware {
 
     hideLoading();
 
-    result.fold(
-      (failure) =>
-          showErrorMessage("Lỗi khi cập nhật mục tiêu", failure.message),
+    return result.fold(
+      (failure) {
+        showErrorMessage("Lỗi khi cập nhật mục tiêu", failure.message);
+        return false;
+      },
       (success) {
         showSuccessMessage("Thành công", "Đã cập nhật mục tiêu tiết kiệm");
         budgetService.refreshData(); // Đồng bộ lại category thay đổi
+        return true;
       },
     );
   }

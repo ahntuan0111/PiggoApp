@@ -8,8 +8,11 @@ import 'package:workmanager/workmanager.dart';
 
 class OfflineSyncService extends GetxService {
   final LocalDatabaseService _localDb = Get.find<LocalDatabaseService>();
-  
+  static const int MAX_AI_TASKS = 5;
+  static const int MAX_MANUAL_TASKS = 15;
+
   final aiQueueCount = 0.obs;
+  final manualQueueCount = 0.obs;
 
   @override
   void onInit() {
@@ -18,7 +21,9 @@ class OfflineSyncService extends GetxService {
   }
 
   Future<void> refreshQueueCount() async {
-    aiQueueCount.value = await _localDb.getPendingQueueCount();
+    final tasks = await _localDb.getPendingTasks();
+    aiQueueCount.value = tasks.where((t) => t['taskType'].toString().startsWith('AI_')).length;
+    manualQueueCount.value = tasks.where((t) => !t['taskType'].toString().startsWith('AI_')).length;
   }
 
   Future<void> queueTask(String type, String payload) async {
@@ -28,8 +33,9 @@ class OfflineSyncService extends GetxService {
     
     // Đăng ký Background Sync (Sẽ chạy ngay khi có mạng)
     Workmanager().registerOneOffTask(
-      "offlineSyncTask_$id",
+      "global_offline_sync",
       "offlineSyncTask", // Tên task
+      existingWorkPolicy: ExistingWorkPolicy.replace,
       constraints: Constraints(
         networkType: NetworkType.connected, // Bắt buộc phải có mạng mới chạy
       ),
@@ -45,11 +51,11 @@ class OfflineSyncService extends GetxService {
       return false; // Online
     }
 
-    // Giới hạn 5 task AI tổng cộng (vì 1 task có thể sinh nhiều giao dịch)
-    if (aiQueueCount.value >= 5) {
+    // Giới hạn 5 task AI tổng cộng
+    if (aiQueueCount.value >= MAX_AI_TASKS) {
       Get.snackbar(
         "Hàng chờ đầy",
-        "Hàng chờ xử lý AI đã đầy (5/5). Vui lòng kết nối mạng để đồng bộ.",
+        "Hàng chờ xử lý AI đã đầy ($MAX_AI_TASKS/$MAX_AI_TASKS). Vui lòng kết nối mạng để đồng bộ.",
         backgroundColor: Get.theme.colorScheme.error,
         colorText: Get.theme.colorScheme.onError,
       );
@@ -75,6 +81,27 @@ class OfflineSyncService extends GetxService {
       colorText: Get.theme.colorScheme.onSecondary,
     );
     return true; // Đã xử lý (đưa vào queue thành công)
+  }
+
+  /// Đưa tác vụ thủ công (tạo giao dịch, tạo danh mục) vào hàng đợi.
+  Future<void> queueManualTask(String type, String payload) async {
+    if (manualQueueCount.value >= MAX_MANUAL_TASKS) {
+      Get.snackbar(
+        "Hàng chờ đầy",
+        "Hàng chờ tác vụ thủ công đã đầy ($MAX_MANUAL_TASKS/$MAX_MANUAL_TASKS). Vui lòng kết nối mạng trước khi tiếp tục.",
+        backgroundColor: Get.theme.colorScheme.error,
+        colorText: Get.theme.colorScheme.onError,
+      );
+      return;
+    }
+
+    await queueTask(type, payload);
+    Get.snackbar(
+      'Ngoại tuyến',
+      'Đã lưu cục bộ. Tự động đồng bộ khi có mạng.',
+      backgroundColor: Get.theme.colorScheme.secondary,
+      colorText: Get.theme.colorScheme.onSecondary,
+    );
   }
 }
 

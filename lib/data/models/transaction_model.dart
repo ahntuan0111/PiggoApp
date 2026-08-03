@@ -24,7 +24,7 @@ class TransactionModel {
       amount: (map['amount'] ?? 0).toDouble(),
       type: map['type'] ?? 'EXPENSE',
       transactionDate: map['transactionDate'] != null
-          ? DateTime.parse(map['transactionDate'])
+          ? DateTime.tryParse(map['transactionDate'])?.toLocal() ?? DateTime.now()
           : DateTime.now(),
       status: map['status'] ?? 'COMPLETED',
       note: map['note'],
@@ -35,7 +35,7 @@ class TransactionModel {
     final map = <String, dynamic>{
       'amount': amount,
       'type': type,
-      'transactionDate': transactionDate.toIso8601String(),
+      'transactionDate': transactionDate.toUtc().toIso8601String(),
       'status': status,
     };
     if (categoryId.isNotEmpty) {

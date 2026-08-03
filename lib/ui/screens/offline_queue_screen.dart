@@ -16,7 +16,7 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
         foregroundColor: Colors.white,
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
+        if (controller.isLoading) {
           return const Center(child: CircularProgressIndicator(color: Color(0xFF369B56)));
         }
 

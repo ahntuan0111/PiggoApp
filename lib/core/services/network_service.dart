@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get/get.dart';
+import 'package:appintern/core/utils/logger.dart';
 
 class NetworkService extends GetxService {
   final Connectivity _connectivity = Connectivity();
@@ -27,10 +28,19 @@ class NetworkService extends GetxService {
   }
 
   void _updateConnectionStatus(List<ConnectivityResult> result) {
+    bool wasOffline = isOffline.value;
+    
     if (result.isEmpty || (result.length == 1 && result.first == ConnectivityResult.none)) {
       isOffline.value = true;
     } else {
       isOffline.value = false;
+    }
+
+    if (wasOffline != isOffline.value) {
+      AppLogger.info(
+        "NETWORK_SERVICE", 
+        "📡 Trạng thái mạng thay đổi: ${isOffline.value ? '🔴 Đã mất kết nối (Offline)' : '🟢 Đã có kết nối (Online)'}"
+      );
     }
   }
 

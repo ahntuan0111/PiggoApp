@@ -50,6 +50,12 @@ class ErrorHandler {
           Failure(message: e.message, statusCode: e.statusCode, type: e.type),
         );
       }
+    } on CacheException catch (e) {
+      AppLogger.error(tag, e.message);
+      return left(Failure(message: e.message));
+    } on BaseException catch (e) {
+      AppLogger.error(tag, e.message);
+      return left(Failure(message: e.message));
     } catch (e, stack) {
       final message = "Lỗi hệ thống không xác định: ${e.toString()}";
       AppLogger.error(tag, message, stack);

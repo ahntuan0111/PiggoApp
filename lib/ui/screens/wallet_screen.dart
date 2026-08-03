@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
+import 'package:appintern/core/services/network_service.dart';
 
 class WalletScreen extends GetView<WalletController> {
   const WalletScreen({super.key});
@@ -194,7 +195,17 @@ class WalletScreen extends GetView<WalletController> {
                           _buildActionButton(
                             icon: Icons.add,
                             label: "Tạo Giao Dịch",
-                            onTap: () => Get.toNamed(Routes.TRANSACTION_CREATE),
+                            onTap: () async {
+                              final result = await Get.toNamed(Routes.TRANSACTION_CREATE);
+                              if (result == true) {
+                                final isOffline = Get.find<NetworkService>().isOffline.value;
+                                if (isOffline) {
+                                  controller.showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+                                } else {
+                                  controller.showSuccessMessage("Thành công", "Đã lưu giao dịch");
+                                }
+                              }
+                            },
                           ),
                           _buildActionButton(
                             icon: Icons.track_changes,
@@ -204,10 +215,24 @@ class WalletScreen extends GetView<WalletController> {
                           _buildActionButton(
                             icon: Icons.bolt,
                             label: "Điều chỉnh ví",
-                            onTap: () {
+                            onTap: () async {
                               controller.resetFields();
                               controller.isAdjustMode.value = true;
-                              Get.toNamed(Routes.WALLETCREATE);
+                              final result = await Get.toNamed(Routes.WALLETCREATE);
+                              if (result == true) {
+                                final isOffline = Get.find<NetworkService>().isOffline.value;
+                                if (isOffline) {
+                                  controller.showSuccessMessage(
+                                    'Đã lưu (Ngoại tuyến)',
+                                    'Dữ liệu sẽ được đồng bộ khi có mạng',
+                                  );
+                                } else {
+                                  controller.showSuccessMessage(
+                                    'Thành công',
+                                    'Đã cập nhật ngân sách',
+                                  );
+                                }
+                              }
                             },
                           ),
                         ],

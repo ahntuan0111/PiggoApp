@@ -26,58 +26,60 @@ class OnboardingController extends BaseController {
           print(
             "Phát hiện phiên đăng nhập cũ (Google), tự động vào màn chính!",
           );
-          final storage = Get.find<StorageService>();
-          storage.write(AppKeys.isLoggedIn, true);
-          Get.offAllNamed(Routes.MAIN);
+          await _handleSuccessfulLogin();
         } else {
           hideLoading();
           showErrorMessage("Lỗi đăng nhập", failure.message);
         }
       },
       (_) async {
-        final userResult = await ErrorHandler.execute(
-          () => authRepo.getUser(),
-          tag: 'GET_USER',
+        await _handleSuccessfulLogin();
+      },
+    );
+  }
+
+  Future<void> _handleSuccessfulLogin() async {
+    final userResult = await ErrorHandler.execute(
+      () => authRepo.getUser(),
+      tag: 'GET_USER',
+    );
+
+    await userResult.fold(
+      (failure) async {
+        hideLoading();
+        showErrorMessage(
+          "Lỗi",
+          "Không thể lấy thông tin user: ${failure.message}",
+        );
+      },
+      (user) async {
+        final categoryRepo = Get.find<CategoryRepository>();
+        final typeResult = await ErrorHandler.execute(
+          () => categoryRepo.getCategoryTypes(user.$id),
+          tag: 'GET_CATEGORY_TYPES',
         );
 
-        await userResult.fold(
+        await typeResult.fold(
           (failure) async {
-            hideLoading();
-            showErrorMessage(
-              "Lỗi",
-              "Không thể lấy thông tin user: ${failure.message}",
-            );
+            print("Lỗi lấy category types: ${failure.message}");
           },
-          (user) async {
-            final categoryRepo = Get.find<CategoryRepository>();
-            final typeResult = await ErrorHandler.execute(
-              () => categoryRepo.getCategoryTypes(user.$id),
-              tag: 'GET_CATEGORY_TYPES',
-            );
-
-            await typeResult.fold(
-              (failure) async {
-                print("Lỗi lấy category types: ${failure.message}");
-              },
-              (existingTypes) async {
-                if (existingTypes.isEmpty) {
-                  await ErrorHandler.execute(
-                    () => categoryRepo.createDefaultCategoryTypes(user.$id),
-                    tag: 'CREATE_DEFAULT_TYPES',
-                  );
-                }
-              },
-            );
-
-            final storage = Get.find<StorageService>();
-            storage.write(AppKeys.isLoggedIn, true);
-            storage.write(AppKeys.userId, user.$id);
-            storage.write(AppKeys.userName, user.name);
-
-            hideLoading();
-            Get.offAllNamed(Routes.MAIN);
+          (existingTypes) async {
+            if (existingTypes.isEmpty) {
+              await ErrorHandler.execute(
+                () => categoryRepo.createDefaultCategoryTypes(user.$id),
+                tag: 'CREATE_DEFAULT_TYPES',
+              );
+            }
           },
         );
+
+        final storage = Get.find<StorageService>();
+        storage.write(AppKeys.isLoggedIn, true);
+        storage.write(AppKeys.userId, user.$id);
+        storage.write(AppKeys.userName, user.name);
+
+        hideLoading();
+        Get.offAllNamed(Routes.MAIN);
       },
     );
   }

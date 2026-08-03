@@ -87,14 +87,20 @@ class AddCategoryTypeBottomSheet extends GetView<CategoryController> {
                 ),
                 elevation: 0,
               ),
-              child: Text(
-                "LƯU",
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2E2E2E), // Text đen
-                ),
-              ),
+              child: Obx(() => controller.isLoading
+                ? SizedBox(
+                    height: 24.h,
+                    width: 24.h,
+                    child: const CircularProgressIndicator(color: Color(0xFF2E2E2E), strokeWidth: 3),
+                  )
+                : Text(
+                    "LƯU",
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF2E2E2E), // Text đen
+                    ),
+                  )),
             ),
           ),
         ],

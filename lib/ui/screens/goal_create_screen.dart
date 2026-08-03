@@ -234,8 +234,8 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
             SizedBox(
               width: double.infinity,
               height: 56.h,
-              child: ElevatedButton(
-                onPressed: () => controller.createGoal(),
+              child: Obx(() => ElevatedButton(
+                onPressed: controller.isLoading ? null : () => controller.createGoal(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0B4A3A),
                   shape: RoundedRectangleBorder(
@@ -243,15 +243,21 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
                   ),
                   elevation: 0,
                 ),
-                child: Text(
-                  "Tạo mục tiêu",
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFEBC14F),
-                  ),
-                ),
-              ),
+                child: controller.isLoading
+                  ? SizedBox(
+                      height: 24.h,
+                      width: 24.h,
+                      child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                    )
+                  : Text(
+                      "Tạo mục tiêu",
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFEBC14F),
+                      ),
+                    ),
+              )),
             ),
             SizedBox(height: 32.h),
           ],

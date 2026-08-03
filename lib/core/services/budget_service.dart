@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:get/get.dart';
@@ -87,24 +88,35 @@ class BudgetService extends GetxService {
     final localDb = Get.find<LocalDatabaseService>();
     bool hasLoadedFromCache = false;
 
-    // 1. THỬ LOAD TỪ CACHE TRƯỚC TIÊN (ZERO LOADING)
+    // 1. THỬ LOAD TỪ CACHE (STRUCTURED TABLES) TRƯỚC TIÊN (ZERO LOADING)
     try {
-      final cachedData = await localDb.getAppCache('budget_data_\$userId');
-      if (cachedData != null) {
+      final typesData = await localDb.getCategoryTypes();
+      final catsData = await localDb.getCategories();
+
+      String monthYearStr =
+          "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
+      final budgetsData = await localDb.getMonthlyBudgets(monthYearStr);
+      final goalsData = await localDb.getGoals();
+      final summariesData = await localDb.getMonthlySummaries();
+
+      if (typesData.isNotEmpty && catsData.isNotEmpty) {
         _parseAndSetBudgetData(
-          typesData: List<Map<String, dynamic>>.from(cachedData['types']),
-          catsData: List<Map<String, dynamic>>.from(cachedData['cats']),
-          budgetsData: List<Map<String, dynamic>>.from(cachedData['budgets']),
-          goalsData: List<Map<String, dynamic>>.from(cachedData['goals']),
-          summariesData: List<Map<String, dynamic>>.from(
-            cachedData['summaries'],
-          ),
+          typesData: typesData,
+          catsData: catsData,
+          budgetsData: budgetsData,
+          goalsData: goalsData,
+          summariesData: summariesData,
         );
         isDataLoaded.value = true;
         hasLoadedFromCache = true;
       }
     } catch (e) {
       AppLogger.error("CACHE_READ_ERROR", e.toString());
+    }
+
+    final networkService = Get.find<NetworkService>();
+    if (networkService.isOffline.value && hasLoadedFromCache) {
+      return;
     }
 
     // 2. FETCH TỪ APPWRITE (BACKGROUND SYNC)
@@ -161,14 +173,18 @@ class BudgetService extends GetxService {
       // Lấy tất cả MonthlySummaries của user để tính dòng tiền
       final allSummaries = await categoryRepository.getAllMonthlySummaries();
 
-      // GHI CACHE RAW DATA ĐỂ LẦN SAU ĐỌC
-      await localDb.saveAppCache('budget_data_\$userId', {
-        'types': types.map((e) => e.toMap()).toList(),
-        'cats': cats.map((e) => e.toMap()).toList(),
-        'budgets': fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),
-        'goals': fetchedGoals.map((e) => e.toMap()).toList(),
-        'summaries': allSummaries.map((e) => e.toMap()).toList(),
-      });
+      // GHI CACHE RAW DATA VÀO STRUCTURED TABLES
+      await localDb.saveCategoryTypes(types.map((e) => e.toMap()).toList());
+      await localDb.saveCategories(cats.map((e) => e.toMap()).toList());
+      String currentMonthStr = "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
+      await localDb.saveMonthlyBudgets(
+        currentMonthStr,
+        fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),
+      );
+      await localDb.saveGoals(fetchedGoals.map((e) => e.toMap()).toList());
+      await localDb.saveMonthlySummaries(
+        allSummaries.map((e) => e.toMap()).toList(),
+      );
 
       _parseAndSetBudgetData(
         typesData: types.map((e) => e.toMap()).toList(),

@@ -1,3 +1,4 @@
+import 'package:appintern/core/enums/rollover_option.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/routes/app_routes.dart';
@@ -5,13 +6,6 @@ import 'package:appintern/core/services/budget_service.dart';
 import 'package:flutter/material.dart';
 import 'package:appintern/ui/widgets/dialogs/rollover_explanation_dialog.dart';
 import 'package:appintern/data/repositories/rollover_repository.dart';
-
-enum RolloverOption {
-  sweepToSavings, // Tiết kiệm
-  rolloverToCategory, // Cộng dồn
-  reduceBudget, // Giảm ĐM
-  sweepToUnallocated, // Chuyển DP / Trừ DP
-}
 
 class RolloverDecisionController extends BaseController {
   final BudgetService budgetService = Get.find<BudgetService>();

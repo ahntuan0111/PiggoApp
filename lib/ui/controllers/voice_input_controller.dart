@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:appintern/core/enums/voice_input_state.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
@@ -15,8 +16,6 @@ import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-
-enum VoiceInputState { idle, recording, sttProcessing, aiProcessing }
 
 class VoiceInputController extends BaseController
     with BudgetAware, GetSingleTickerProviderStateMixin {
@@ -160,7 +159,7 @@ class VoiceInputController extends BaseController
             successMessage: 'Giọng nói đã được đưa vào hàng chờ đồng bộ',
             isFile: true,
           );
-          
+
           if (handled) {
             currentState.value = VoiceInputState.idle;
             Get.back(); // Đóng bottom sheet
@@ -201,7 +200,7 @@ class VoiceInputController extends BaseController
         .expand((group) => group.categories)
         .map((budgetCat) => budgetCat.name)
         .toList();
-    final currentTime = DateTime.now().toIso8601String();
+    final currentTime = DateTime.now().toUtc().toIso8601String();
 
     final result = await ErrorHandler.execute(() async {
       return await aiService.parseTransactionText(
@@ -260,8 +259,8 @@ class VoiceInputController extends BaseController
             aiParsedDataList: data,
             availableCategories: validCategoryNames,
             unallocatedAmount: budgetService.unallocatedAmount.value,
-            onConfirmAll: (confirmedDataList) =>
-                _saveTransaction(confirmedDataList, text),
+            onConfirmAll: (confirmedDataList) async =>
+                await _saveTransaction(confirmedDataList, text),
           ),
           isScrollControlled: true,
         );

@@ -35,26 +35,30 @@ class BudgetDistributionScreen extends GetView<BudgetDistributionController> {
         ),
         centerTitle: true,
         actions: [
-          TextButton(
-            onPressed: () {
-              controller.saveBudgets();
-            },
-            child: Text(
-              'LƯU',
-              style: TextStyle(
-                color: const Color(0xFFC49A45),
-                fontSize: 16.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          Obx(() => TextButton(
+            onPressed: controller.isLoading 
+              ? null 
+              : () {
+                  controller.saveBudgets();
+                },
+            child: controller.isLoading
+              ? SizedBox(
+                  width: 20.w,
+                  height: 20.w,
+                  child: const CircularProgressIndicator(color: Color(0xFFC49A45), strokeWidth: 2),
+                )
+              : Text(
+                  'LƯU',
+                  style: TextStyle(
+                    color: controller.isLoading ? Colors.grey : const Color(0xFFC49A45),
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+          )),
         ],
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
         return Column(
           children: [
             SizedBox(height: 16.h),

@@ -9,6 +9,7 @@ import 'package:appintern/ui/widgets/budget_category_item.dart';
 import 'package:appintern/ui/widgets/empty_category_suggestion_widget.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'package:appintern/core/services/network_service.dart';
+import 'dart:math' as math;
 import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:intl/intl.dart';
 
@@ -233,10 +234,16 @@ class HomeScreen extends GetView<HomeController> {
                                         SizedBox(height: 12.h),
                                         InkWell(
                                           onTap: () async {
-                                            await Get.toNamed(
+                                            final result = await Get.toNamed(
                                               Routes.WALLETCREATE,
                                               arguments: {'isAdjustMode': true},
                                             );
+                                            if (result == true) {
+                                              controller.showSuccessMessage(
+                                                'Thành công',
+                                                'Đã cập nhật ngân sách',
+                                              );
+                                            }
                                             controller.fetchData();
                                           },
                                           borderRadius: BorderRadius.circular(
@@ -297,9 +304,23 @@ class HomeScreen extends GetView<HomeController> {
                                         showCategoryRequiredDialog(context);
                                         return;
                                       }
-                                      await Get.toNamed(
+                                      final result = await Get.toNamed(
                                         Routes.BUDGET_DISTRIBUTION,
                                       );
+                                      if (result == true) {
+                                        final isOffline = Get.find<NetworkService>().isOffline.value;
+                                        if (isOffline) {
+                                          controller.showSuccessMessage(
+                                            "Đã lưu (Ngoại tuyến)",
+                                            "Dữ liệu sẽ được đồng bộ khi có mạng",
+                                          );
+                                        } else {
+                                          controller.showSuccessMessage(
+                                            "Thành công",
+                                            "Đã lưu cấu hình ngân sách",
+                                          );
+                                        }
+                                      }
                                       controller.fetchData();
                                     },
                                     style: ElevatedButton.styleFrom(
@@ -489,7 +510,7 @@ class HomeScreen extends GetView<HomeController> {
 
             SliverToBoxAdapter(
               child: Obx(() {
-                if (controller.isLoading.value) {
+                if (controller.isLoading) {
                       return Center(
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: 48.h),

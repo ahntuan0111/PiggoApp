@@ -7,7 +7,7 @@ class ConfirmTransactionBottomSheet extends StatefulWidget {
   final Map<String, dynamic> aiParsedData;
   final List<String> availableCategories;
   final double unallocatedAmount;
-  final Function(Map<String, dynamic>) onConfirm;
+  final Future<void> Function(Map<String, dynamic>) onConfirm;
 
   const ConfirmTransactionBottomSheet({
     super.key,
@@ -25,6 +25,7 @@ class _ConfirmTransactionBottomSheetState extends State<ConfirmTransactionBottom
   late TextEditingController amountController;
   late TextEditingController noteController;
   String? selectedCategory;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -175,7 +176,7 @@ class _ConfirmTransactionBottomSheetState extends State<ConfirmTransactionBottom
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
-                onPressed: () {
+                onPressed: _isLoading ? null : () async {
                   final amountStr = amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
                   final amount = double.tryParse(amountStr) ?? 0;
                   
@@ -200,21 +201,32 @@ class _ConfirmTransactionBottomSheetState extends State<ConfirmTransactionBottom
                     }
                   }
 
-                  widget.onConfirm({
-                    'type': widget.aiParsedData['type'],
-                    'amount': amount,
-                    'note': noteController.text,
-                    'categoryName': selectedCategory,
-                  });
+                  setState(() => _isLoading = true);
+                  try {
+                    await widget.onConfirm({
+                      'type': widget.aiParsedData['type'],
+                      'amount': amount,
+                      'note': noteController.text,
+                      'categoryName': selectedCategory,
+                    });
+                  } finally {
+                    if (mounted) setState(() => _isLoading = false);
+                  }
                 },
-                child: Text(
-                  "Xác nhận",
-                  style: TextStyle(
-                    color: const Color(0xFF2E2E2E),
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: _isLoading
+                  ? SizedBox(
+                      height: 24.h,
+                      width: 24.h,
+                      child: const CircularProgressIndicator(color: Color(0xFF2E2E2E), strokeWidth: 3),
+                    )
+                  : Text(
+                      "Xác nhận",
+                      style: TextStyle(
+                        color: const Color(0xFF2E2E2E),
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
               ),
             ),
           ],

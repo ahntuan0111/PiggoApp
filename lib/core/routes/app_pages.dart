@@ -41,6 +41,8 @@ import 'package:appintern/ui/screens/new_month_setup_screen.dart';
 import 'package:appintern/ui/screens/multi_month_gap_screen.dart';
 import 'package:appintern/ui/screens/offline_queue_screen.dart';
 import 'package:appintern/ui/bindings/offline_queue_binding.dart';
+import 'package:appintern/ui/screens/splash_screen.dart';
+import 'package:appintern/ui/bindings/splash_binding.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'app_routes.dart';
@@ -49,10 +51,16 @@ class AppPages {
   static String get INITIAL {
     final storage = Get.find<StorageService>();
     bool isLoggedIn = storage.read<bool>(AppKeys.isLoggedIn) ?? false;
-    return isLoggedIn ? Routes.MAIN : Routes.ONBOARDING;
+    return isLoggedIn ? Routes.SPLASH : Routes.ONBOARDING;
   }
 
   static final pages = [
+    GetPage(
+      name: Routes.SPLASH,
+      page: () => const SplashScreen(),
+      binding: SplashBinding(),
+      transition: Transition.fadeIn,
+    ),
     GetPage(
       name: Routes.ONBOARDING,
       page: () => const OnboardingScreen(),
