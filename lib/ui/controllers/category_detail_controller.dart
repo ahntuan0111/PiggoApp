@@ -7,23 +7,28 @@ import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/data/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/transfer_log_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'dart:convert';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
+
 class CategoryDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
       Get.find<TransactionRepository>();
   final CategoryRepository _categoryRepo = Get.find<CategoryRepository>();
   final StorageService _storage = Get.find<StorageService>();
+  final TransferLogRepository _transferLogRepo = Get.find<TransferLogRepository>();
 
   late CategoryModel category;
   var isLoadingHistory = true.obs;
+  var isLoadingTransferHistory = true.obs;
   var isCategoryDeleted = false.obs;
 
   // Danh sách các map chứa thông tin để hiển thị
   var historyList = <Map<String, dynamic>>[].obs;
+  var transferHistoryList = <Map<String, dynamic>>[].obs;
 
   // --- Proxy Getters từ BudgetService (Tránh Get.find trong Screen) ---
   double get unallocatedAmount => budgetService.unallocatedAmount.value;
@@ -33,6 +38,27 @@ class CategoryDetailController extends BaseController with BudgetAware {
   void onInit() {
     super.onInit();
     category = Get.arguments as CategoryModel;
+
+    // Lắng nghe sự thay đổi của danh mục từ BudgetService để cập nhật UI
+    ever(budgetService.categories, (_) {
+      final updatedCat = budgetService.categories.firstWhereOrNull(
+        (c) => c.categoryModel.id == category.id,
+      );
+      if (updatedCat != null) {
+        category = CategoryModel(
+          id: updatedCat.categoryModel.id,
+          categoryTypeId: updatedCat.categoryModel.categoryTypeId,
+          name: updatedCat.name,
+          color: updatedCat.categoryModel.color,
+          iconName: updatedCat.icon,
+          defaultBudget: updatedCat.allocated,
+          isActive: updatedCat.categoryModel.isActive,
+          spent: updatedCat.spent,
+        );
+        update(); // Cập nhật các UI dùng GetBuilder
+      }
+    });
+
     fetchHistory();
 
     // Lắng nghe sự thay đổi của transaction để cập nhật lại history nếu có thêm mới
@@ -105,6 +131,58 @@ class CategoryDetailController extends BaseController with BudgetAware {
     );
 
     isLoadingHistory.value = false;
+
+    // Lấy lịch sử cân bằng ngân sách
+    isLoadingTransferHistory.value = true;
+    final transferResult = await ErrorHandler.execute(() async {
+      final transferLogs = await _transferLogRepo.getTransferLogsByCategoryId(
+        category.id,
+        limit: 5,
+      );
+
+      List<Map<String, dynamic>> tList = [];
+      for (var log in transferLogs) {
+        bool isOutbound = category.id == log.fromCategoryId;
+        String partnerId = isOutbound ? log.toCategoryId : log.fromCategoryId;
+
+        String partnerName = "Chưa phân bổ";
+        String partnerIcon = "menu";
+        String partnerColor = "#9E9E9E"; // Grey
+
+        if (partnerId.isNotEmpty) {
+          final pList = budgetService.categories
+              .where((c) => c.categoryModel.id == partnerId)
+              .toList();
+          if (pList.isNotEmpty) {
+            partnerName = pList.first.name;
+            partnerIcon = pList.first.icon;
+            partnerColor = pList.first.categoryModel.color;
+          }
+        }
+
+        tList.add({
+          'action': isOutbound ? 'Chuyển sang' : 'Nhận từ',
+          'amount': isOutbound ? -log.amount : log.amount,
+          'partnerName': partnerName,
+          'partnerIcon': partnerIcon,
+          'partnerColor': partnerColor,
+          'date': log.createdAt,
+          'note': log.note,
+        });
+      }
+      return tList;
+    }, tag: 'FETCH_TRANSFER_HISTORY');
+
+    transferResult.fold(
+      (failure) {
+        // Có thể bỏ qua hoặc thông báo
+      },
+      (data) {
+        transferHistoryList.value = data;
+      },
+    );
+
+    isLoadingTransferHistory.value = false;
   }
 
   Future<void> updateCategory(String name, String icon) async {
@@ -121,7 +199,12 @@ class CategoryDetailController extends BaseController with BudgetAware {
         'color': category.color,
       });
       await offlineSyncService.queueManualTask('UPDATE_CATEGORY', payload);
-      await localDb.updateCategory(category.id, name.trim(), icon, category.color);
+      await localDb.updateCategory(
+        category.id,
+        name.trim(),
+        icon,
+        category.color,
+      );
 
       category = CategoryModel(
         id: category.id,
@@ -132,11 +215,14 @@ class CategoryDetailController extends BaseController with BudgetAware {
         defaultBudget: category.defaultBudget,
         spent: category.spent,
       );
-      
+
       hideLoading();
       update();
       refreshBudget();
-      showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+      showSuccessMessage(
+        "Đã lưu (Ngoại tuyến)",
+        "Dữ liệu sẽ được đồng bộ khi có mạng",
+      );
     } else {
       final result = await ErrorHandler.execute(() async {
         await _categoryRepo.updateCategory(
@@ -172,79 +258,109 @@ class CategoryDetailController extends BaseController with BudgetAware {
     String? note,
   }) async {
     showLoading();
+    final networkService = Get.find<NetworkService>();
+    final offlineSyncService = Get.find<OfflineSyncService>();
+    final localDb = Get.find<LocalDatabaseService>();
+    final now = budgetService.currentTrackingMonth.value;
+    final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-    final result = await ErrorHandler.execute(() async {
-      final now = budgetService.currentTrackingMonth.value;
-      final monthYearStr =
-          "${now.month.toString().padLeft(2, '0')}-${now.year}";
+    if (networkService.isOffline.value) {
+      final allocations = [
+        {'categoryId': category.id, 'amount': newBudget},
+        if (sourceCategoryId != null &&
+            sourceCategoryId != 'unallocated' &&
+            sourceCategoryNewBudget != null)
+          {'categoryId': sourceCategoryId, 'amount': sourceCategoryNewBudget},
+      ];
 
-      await _categoryRepo.updateCategory(
-        category.id,
-        category.name,
-        category.iconName,
-        category.color,
-        defaultBudget: newBudget,
-      );
-      final mbTarget = budgetService.getBudgetForCategory(category.id);
-      if (mbTarget != null) {
-        await _categoryRepo.updateMonthlyBudget(mbTarget.id, newBudget);
-      } else {
-        await _categoryRepo.createMonthlyBudget(
-          categoryId: category.id,
-          monthYear: monthYearStr,
-          budgetedAmount: newBudget,
-        );
-      }
+      // Amount transferred is difference between new target budget and old target budget
+      double currentBudget = budgetService.getBudgetForCategory(category.id)?.budgetedAmount ?? category.defaultBudget;
+      double amountChange = newBudget - currentBudget;
 
-      // Cập nhật category nguồn (nếu có và không phải là 'unallocated')
-      if (sourceCategoryId != null &&
-          sourceCategoryId != 'unallocated' &&
-          sourceCategoryNewBudget != null) {
-        final sourceCatList = budgetService.categories
-            .where((c) => c.categoryModel.id == sourceCategoryId)
-            .toList();
-
-        if (sourceCatList.isNotEmpty) {
-          final sourceCat = sourceCatList.first.categoryModel;
-          await _categoryRepo.updateCategory(
-            sourceCat.id,
-            sourceCat.name,
-            sourceCat.iconName,
-            sourceCat.color,
-            defaultBudget: sourceCategoryNewBudget,
-          );
-          final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
-          if (mbSource != null) {
-            await _categoryRepo.updateMonthlyBudget(
-              mbSource.id,
-              sourceCategoryNewBudget,
-            );
-          } else {
-            await _categoryRepo.createMonthlyBudget(
-              categoryId: sourceCat.id,
-              monthYear: monthYearStr,
-              budgetedAmount: sourceCategoryNewBudget,
-            );
+      final transferLogs = [
+        if (amountChange > 0)
+          {
+            'amount': amountChange,
+            'fromCategoryId': sourceCategoryId == 'unallocated' ? null : sourceCategoryId,
+            'toCategoryId': category.id,
+            'note': note ?? 'Cân bằng ngân sách',
           }
-        }
-      }
-    }, tag: "UPDATE_BUDGET");
+      ];
 
-    hideLoading();
-    result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) {
-      category = CategoryModel(
-        id: category.id,
-        categoryTypeId: category.categoryTypeId,
-        name: category.name,
-        color: category.color,
-        iconName: category.iconName,
-        defaultBudget: newBudget,
-        spent: category.spent,
+      final payload = jsonEncode({
+        'monthYear': monthYearStr,
+        'allocations': allocations,
+        'transferLogs': transferLogs,
+      });
+      await offlineSyncService.queueManualTask('UPDATE_BUDGET', payload);
+
+      await localDb.transferBudgetLocal(
+        sourceCategoryId == 'unallocated' ? null : sourceCategoryId,
+        category.id,
+        amountChange,
+        monthYearStr,
       );
-      update();
-      refreshBudget();
-      showSuccessMessage('Thành công', 'Cập nhật số tiền phân bổ thành công!');
-    });
+
+      hideLoading();
+      Get.back(); // close dialog
+      showSuccessMessage(
+        "Đã lưu (Ngoại tuyến)",
+        "Dữ liệu sẽ được đồng bộ khi có mạng",
+      );
+      await budgetService.refreshData(); // Refresh UI
+    } else {
+      final allocations = [
+        {'categoryId': category.id, 'amount': newBudget},
+        if (sourceCategoryId != null &&
+            sourceCategoryId != 'unallocated' &&
+            sourceCategoryNewBudget != null)
+          {'categoryId': sourceCategoryId, 'amount': sourceCategoryNewBudget},
+      ];
+
+      final result = await ErrorHandler.execute(() async {
+        double currentBudget = budgetService.getBudgetForCategory(category.id)?.budgetedAmount ?? category.defaultBudget;
+        double amountChange = newBudget - currentBudget;
+
+        final transferLogs = [
+          if (amountChange > 0)
+            {
+              'amount': amountChange,
+              'fromCategoryId': sourceCategoryId == 'unallocated' ? null : sourceCategoryId,
+              'toCategoryId': category.id,
+              'note': note ?? 'Cân bằng ngân sách',
+            }
+        ];
+
+        await _categoryRepo.transferBudget(monthYearStr, allocations, transferLogs: transferLogs);
+
+        await localDb.transferBudgetLocal(
+          sourceCategoryId == 'unallocated' ? null : sourceCategoryId,
+          category.id,
+          amountChange,
+          monthYearStr,
+          isOffline: false,
+        );
+      }, tag: "UPDATE_BUDGET");
+
+      hideLoading();
+      result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) {
+        category = CategoryModel(
+          id: category.id,
+          categoryTypeId: category.categoryTypeId,
+          name: category.name,
+          color: category.color,
+          iconName: category.iconName,
+          defaultBudget: newBudget,
+          spent: category.spent,
+        );
+        update();
+        refreshBudget();
+        showSuccessMessage(
+          'Thành công',
+          'Cập nhật số tiền phân bổ thành công!',
+        );
+      });
+    }
   }
 
   Future<void> deleteCategory() async {

@@ -57,6 +57,82 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
       );
     }
   }
+  Future<void> transferBudgetLocal(
+    String? fromId,
+    String toId,
+    double amount,
+    String monthYear, {
+    bool isOffline = true,
+  }) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // 1. Update fromId if provided (and not 'unallocated')
+      if (fromId != null && fromId != 'unallocated') {
+        final fromCatResult = await txn.query('categories', where: 'id = ?', whereArgs: [fromId]);
+        if (fromCatResult.isNotEmpty) {
+          double currentDefault = (fromCatResult.first['defaultBudget'] as num?)?.toDouble() ?? 0.0;
+          double newDefault = currentDefault - amount;
+          if (newDefault < 0) newDefault = 0;
+          await txn.update('categories', {'defaultBudget': newDefault}, where: 'id = ?', whereArgs: [fromId]);
+        }
+
+        final fromMbResult = await txn.query('monthly_budgets', where: 'categoryId = ? AND monthYear = ?', whereArgs: [fromId, monthYear]);
+        if (fromMbResult.isNotEmpty) {
+          double currentBudgeted = (fromMbResult.first['budgetedAmount'] as num?)?.toDouble() ?? 0.0;
+          double newBudgeted = currentBudgeted - amount;
+          if (newBudgeted < 0) newBudgeted = 0;
+          await txn.update('monthly_budgets', {'budgetedAmount': newBudgeted}, where: 'id = ?', whereArgs: [fromMbResult.first['id']]);
+        } else {
+          await txn.insert('monthly_budgets', {
+            'id': 'offline_${DateTime.now().millisecondsSinceEpoch}_$fromId',
+            'categoryId': fromId,
+            'monthYear': monthYear,
+            'budgetedAmount': 0.0,
+            'rolloverAmount': 0.0,
+            'spentAmount': 0.0,
+          });
+        }
+      }
+
+      // 2. Update toId
+      final toCatResult = await txn.query('categories', where: 'id = ?', whereArgs: [toId]);
+      if (toCatResult.isNotEmpty) {
+        double currentDefault = (toCatResult.first['defaultBudget'] as num?)?.toDouble() ?? 0.0;
+        double newDefault = currentDefault + amount;
+        await txn.update('categories', {'defaultBudget': newDefault}, where: 'id = ?', whereArgs: [toId]);
+      }
+
+      final toMbResult = await txn.query('monthly_budgets', where: 'categoryId = ? AND monthYear = ?', whereArgs: [toId, monthYear]);
+      if (toMbResult.isNotEmpty) {
+        double currentBudgeted = (toMbResult.first['budgetedAmount'] as num?)?.toDouble() ?? 0.0;
+        double newBudgeted = currentBudgeted + amount;
+        await txn.update('monthly_budgets', {'budgetedAmount': newBudgeted}, where: 'id = ?', whereArgs: [toMbResult.first['id']]);
+      } else {
+        await txn.insert('monthly_budgets', {
+          'id': 'offline_${DateTime.now().millisecondsSinceEpoch}_$toId',
+          'categoryId': toId,
+          'monthYear': monthYear,
+          'budgetedAmount': amount,
+          'rolloverAmount': 0.0,
+          'spentAmount': 0.0,
+        });
+      }
+
+      // 3. Insert into transferlogs
+      if (amount > 0) {
+        await txn.insert('transferlogs', {
+          'id': 'offline_${DateTime.now().microsecondsSinceEpoch}_${fromId ?? "new"}_$toId',
+          'ownerId': '', // Will be set on server or ignored locally
+          'amount': amount,
+          'fromCategoryId': fromId ?? '',
+          'toCategoryId': toId,
+          'note': 'Cân bằng ngân sách',
+          'createdAt': DateTime.now().toIso8601String(),
+        });
+      }
+    });
+  }
+
 
   // ==========================================
   // MONTHLY SUMMARIES
@@ -124,5 +200,19 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
         'unallocatedBalance': 0.0,
       });
     }
+  }
+
+  Future<List<Map<String, dynamic>>> getTransferLogsByCategoryId(
+    String categoryId, {
+    int limit = 5,
+  }) async {
+    final db = await database;
+    return await db.query(
+      'transferlogs',
+      where: 'fromCategoryId = ? OR toCategoryId = ?',
+      whereArgs: [categoryId, categoryId],
+      orderBy: 'createdAt DESC',
+      limit: limit,
+    );
   }
 }

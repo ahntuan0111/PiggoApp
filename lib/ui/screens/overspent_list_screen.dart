@@ -74,7 +74,7 @@ class OverspentListScreen extends GetView<OverspentListController> {
                     itemBuilder: (context, index) {
                       final cat = overspentCats[index];
                       return GestureDetector(
-                        onTap: () => controller.navigateToCompensation(cat.categoryModel),
+                        onTap: () => controller.navigateToCompensation(cat),
                         child: Container(
                           margin: EdgeInsets.only(bottom: 16.h),
                           padding: EdgeInsets.all(16.w),

@@ -56,6 +56,26 @@ mixin LocalDbTransactionMixin on LocalDatabaseBase {
     });
   }
 
+  Future<TransactionModel?> getTransactionById(String transactionId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [transactionId],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return TransactionModel(
+      id: maps[0]['id'] as String,
+      categoryId: maps[0]['categoryId'] as String,
+      amount: maps[0]['amount'] as double,
+      type: maps[0]['type'] as String,
+      transactionDate: DateTime.parse(maps[0]['transactionDate'] as String),
+      status: maps[0]['status'] as String,
+      note: maps[0]['note'] as String?,
+    );
+  }
+
   // ==========================================
   // ROLLBACK (Compensating Transaction)
   // ==========================================

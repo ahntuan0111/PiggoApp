@@ -13,6 +13,19 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     DateTime? start,
     DateTime? end,
   }) async {
+    final network = Get.find<NetworkService>();
+    if (network.isOffline.value) {
+      if (start != null) {
+        String monthYearStr = "${start.month.toString().padLeft(2, '0')}-${start.year}";
+        final cachedTxs = await localDb.getTransactionsByMonth(monthYearStr);
+        final filtered = cachedTxs.where((tx) => tx.categoryId == categoryId).toList();
+        filtered.sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
+        final limited = filtered.take(limit).toList();
+        return limited.map((tx) => {'transaction': tx, 'detail': null}).toList();
+      }
+      return [];
+    }
+
     return handleAppwriteError(() async {
       List<String> queries = [
         Query.equal('categories', categoryId),
@@ -267,6 +280,12 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
   }
 
   Future<TransactionModel?> getTransactionById(String transactionId) async {
+    final network = Get.find<NetworkService>();
+    if (network.isOffline.value) {
+      // Offline fallback: find in all local transactions
+      return await localDb.getTransactionById(transactionId);
+    }
+
     return handleAppwriteError(() async {
       final response = await appwrite.tables.getRow(
         databaseId: appwrite.databaseId,
@@ -282,6 +301,14 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
   Future<TransactionDetailModel?> getTransactionDetail(
     String transactionId,
   ) async {
+    final network = Get.find<NetworkService>();
+    if (network.isOffline.value) {
+      // Offline fallback: return null if not in cache (currently no detail cache)
+      // Actually we can check offline queue for pending CREATE/UPDATE to get detail,
+      // but returning null is safe enough for offline read.
+      return null;
+    }
+
     return handleAppwriteError(() async {
       final response = await appwrite.tables.listRows(
         databaseId: appwrite.databaseId,
@@ -290,9 +317,9 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
       );
 
       if (response.rows.isNotEmpty) {
-        final detailRow = response.rows.first;
+        final row = response.rows.first;
         return TransactionDetailModel.fromMap(
-          Map<String, dynamic>.from(detailRow.data)..['\$id'] = detailRow.$id,
+          Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
         );
       }
       return null;

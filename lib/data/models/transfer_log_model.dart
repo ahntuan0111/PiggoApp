@@ -37,7 +37,7 @@ class TransferLogModel {
       fromCategoryId: map['fromCategoryId'] ?? '',
       toCategoryId: map['toCategoryId'] ?? '',
       note: map['note'],
-      createdAt: DateTime.tryParse(map['\$createdAt'] ?? '')?.toLocal() ?? DateTime.now(),
+      createdAt: DateTime.tryParse(map['\$createdAt'] ?? map['createdAt'] ?? '')?.toLocal() ?? DateTime.now(),
     );
   }
 

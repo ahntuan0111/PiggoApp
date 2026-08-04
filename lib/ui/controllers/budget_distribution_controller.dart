@@ -221,8 +221,8 @@ class BudgetDistributionController extends BaseController {
       await offlineSyncService.queueManualTask('UPDATE_BUDGET', payload);
 
       // Lấy cache cũ ra sửa rồi save đè lên
-      final categoriesDb = await localDb.getCategories();
-      final budgetsDb = await localDb.getMonthlyBudgets(monthYearStr);
+      final categoriesDb = List<Map<String, dynamic>>.from(await localDb.getCategories());
+      final budgetsDb = List<Map<String, dynamic>>.from(await localDb.getMonthlyBudgets(monthYearStr));
 
       for (var alloc in allocations) {
         final catId = alloc['categoryId'];

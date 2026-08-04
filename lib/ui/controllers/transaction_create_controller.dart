@@ -293,12 +293,20 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
   double get currentSpent {
     if (selectedCategory.value == null) return 0.0;
-    return selectedCategory.value!.spent + amountValue.value;
+    double baseSpent = selectedCategory.value!.spent;
+    if (isEdit.value &&
+        editingTransaction != null &&
+        selectedCategory.value!.categoryModel.id ==
+            editingTransaction!.categoryId) {
+      baseSpent -= editingTransaction!.amount;
+    }
+    return baseSpent + amountValue.value;
   }
 
   double get currentRemaining {
     if (selectedCategory.value == null) return 0.0;
-    return selectedCategory.value!.remaining - amountValue.value;
+    double allocated = selectedCategory.value!.allocated;
+    return allocated - currentSpent;
   }
 
   double get currentProgress {
@@ -306,9 +314,9 @@ class TransactionCreateController extends BaseController with BudgetAware {
     double defaultBudget = selectedCategory.value!.allocated;
     if (defaultBudget == 0) return 0.0;
 
-    double spent = selectedCategory.value!.spent + amountValue.value;
-    double ratio = spent / defaultBudget;
+    double ratio = currentSpent / defaultBudget;
     if (ratio > 1.0) ratio = 1.0;
+    if (ratio < 0.0) ratio = 0.0;
     return ratio;
   }
 
@@ -316,7 +324,10 @@ class TransactionCreateController extends BaseController with BudgetAware {
     return currentRemaining < 0;
   }
 
-  Future<void> addTransaction() async {
+  Future<void> addTransaction({bool closeAfterSave = true}) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future.delayed(const Duration(milliseconds: 150));
+    
     if (!isValidAmount.value || amountValue.value <= 0) {
       showErrorMessage("Lỗi", "Vui lòng nhập số tiền hợp lệ");
       return;
@@ -338,21 +349,21 @@ class TransactionCreateController extends BaseController with BudgetAware {
     if (isClosedMonth) {
       PostAdjustmentWarningDialog.show(() {
         if (isEdit.value) {
-          _executeUpdateTransaction();
+          _executeUpdateTransaction(closeAfterSave: closeAfterSave);
         } else {
-          _executeSaveTransaction();
+          _executeSaveTransaction(closeAfterSave: closeAfterSave);
         }
       });
     } else {
       if (isEdit.value) {
-        _executeUpdateTransaction();
+        _executeUpdateTransaction(closeAfterSave: closeAfterSave);
       } else {
-        _executeSaveTransaction();
+        _executeSaveTransaction(closeAfterSave: closeAfterSave);
       }
     }
   }
 
-  Future<void> _executeSaveTransaction() async {
+  Future<void> _executeSaveTransaction({bool closeAfterSave = true}) async {
     showLoading();
 
     final result = await ErrorHandler.execute(() async {
@@ -384,8 +395,8 @@ class TransactionCreateController extends BaseController with BudgetAware {
 
       if (networkService.isOffline.value) {
         final payload = jsonEncode({
-          'transaction': tx.toMap(),
-          'detail': detail.toMap(),
+          'transaction': tx.toMap()..['\$id'] = tx.id,
+          'detail': detail.toMap()..['\$id'] = detail.id,
           'category': selectedCategory.value!.categoryModel.toMap(),
         });
         await offlineSyncService.queueManualTask('CREATE_MANUAL_TX', payload);
@@ -413,16 +424,24 @@ class TransactionCreateController extends BaseController with BudgetAware {
       (failure) {
         showErrorMessage("Lỗi", "Không thể thêm giao dịch: ${failure.message}");
       },
-      (_) {
+      (_) async {
         if (Get.find<NetworkService>().isOffline.value) {
-          Get.find<BudgetService>().refreshData();
+          await Get.find<BudgetService>().refreshData();
+          showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+        } else {
+          showSuccessMessage("Thành công", "Đã lưu giao dịch");
         }
-        Get.back(result: true);
+        
+        if (closeAfterSave) {
+          Get.back(result: true);
+        } else {
+          await _resetFields();
+        }
       },
     );
   }
 
-  Future<void> _executeUpdateTransaction() async {
+  Future<void> _executeUpdateTransaction({bool closeAfterSave = true}) async {
     if (editingTransaction == null) return;
     showLoading();
 
@@ -463,16 +482,12 @@ class TransactionCreateController extends BaseController with BudgetAware {
         });
         // Sửa từ oldCategory thành oldTransactionModel nếu cần, nhưng SyncEngine đợi oldCategory
         // Wait, _transactionRepo.updateTransaction requires oldTransaction. SyncEngine currently builds it from payload?
-        // Wait! SyncEngine's UPDATE_MANUAL_TX: `await _transactionRepo.updateTransaction(transaction: tx, transactionDetail: txDetail, oldCategory: oldCategory, newCategory: newCategory);`
-        // However, TransactionRepository.updateTransaction requires `oldTransaction`, not just categories!
-        // Let's pass `oldTransaction` in payload!
-
         final finalPayload = jsonEncode({
-          'transaction': newTx.toMap(),
-          'detail': newDetail.toMap(),
+          'transaction': newTx.toMap()..['\$id'] = newTx.id,
+          'detail': newDetail.toMap()..['\$id'] = newDetail.id,
           'oldCategory': oldCategory?.toMap(),
           'newCategory': selectedCategory.value!.categoryModel.toMap(),
-          'oldTransaction': editingTransaction!.toMap(),
+          'oldTransaction': editingTransaction!.toMap()..['\$id'] = editingTransaction!.id,
         });
         await offlineSyncService.queueManualTask(
           'UPDATE_MANUAL_TX',
@@ -532,10 +547,39 @@ class TransactionCreateController extends BaseController with BudgetAware {
           "Không thể cập nhật giao dịch: ${failure.message}",
         );
       },
-      (_) {
-        Get.back(result: true);
+      (_) async {
+        if (Get.find<NetworkService>().isOffline.value) {
+          await Get.find<BudgetService>().refreshData();
+          showSuccessMessage("Đã cập nhật (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+        } else {
+          showSuccessMessage("Thành công", "Đã cập nhật giao dịch");
+        }
+        
+        if (closeAfterSave) {
+          Get.back(result: true);
+        } else {
+          await _resetFields();
+        }
       },
     );
+  }
+
+  Future<void> _resetFields() async {
+    amountController.clear();
+    noteController.clear();
+    imagePaths.clear();
+    // Đặt lại các giá trị obs
+    amountValue.value = 0.0;
+    isValidAmount.value = true;
+    selectedCategory.value = null; // Bỏ chọn danh mục để ép chọn lại
+    
+    // Nạp lại data để cập nhật progress cho danh mục
+    await budgetService.refreshData();
+    final validCategories = budgetService.activeCategoryGroups
+        .where((group) => group.typeName != 'Tiết kiệm lâu dài')
+        .expand((group) => group.categories)
+        .toList();
+    categories.value = validCategories;
   }
 
   String formatCurrency(double amount) {

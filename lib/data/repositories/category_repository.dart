@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/category_type_model.dart';
@@ -300,6 +301,26 @@ class CategoryRepository with AppwriteErrorHandler {
         databaseId: _appwrite.databaseId,
         tableId: _appwrite.categoriesTableId,
         rowId: categoryId,
+      );
+    });
+  }
+
+  Future<void> transferBudget(
+    String monthYear,
+    List<Map<String, dynamic>> allocations, {
+    List<Map<String, dynamic>>? transferLogs,
+  }) async {
+    return handleAppwriteError(() async {
+      final payload = {
+        'monthYear': monthYear,
+        'allocations': allocations,
+        if (transferLogs != null) 'transferLogs': transferLogs,
+      };
+
+      await _appwrite.functions.createExecution(
+        functionId: _appwrite.functionTransferBudget,
+        body: jsonEncode(payload),
+        xasync: false,
       );
     });
   }

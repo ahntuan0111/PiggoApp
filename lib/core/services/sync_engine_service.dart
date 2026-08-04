@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:appwrite/appwrite.dart';
 import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
+import 'package:appintern/core/errors/exceptions.dart';
 import 'package:appintern/core/services/budget_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/core/services/network_service.dart';
@@ -178,11 +179,34 @@ class SyncEngineService extends GetxService {
             await Future.delayed(const Duration(milliseconds: 200));
           }
         } on AppwriteException catch (e) {
-          AppLogger.error("SYNC_ENGINE", "Task $id AppwriteException: \${e.code} - \${e.message}");
+          AppLogger.error(
+            "SYNC_ENGINE",
+            "Task $id AppwriteException: \${e.code} - \${e.message}",
+          );
           if (e.code == 400 || e.code == 403 || e.code == 409) {
             await _localDb.updateTaskStatus(id, 'FAILED_PERMANENT');
             await _localDb.rollbackOptimisticTransaction(type, payload);
-            _showNotification("Giao dịch bị từ chối", "Một giao dịch vừa bị hệ thống từ chối. Số dư đã được khôi phục.");
+            _showNotification(
+              "Giao dịch bị từ chối",
+              "Một giao dịch vừa bị hệ thống từ chối. Số dư đã được khôi phục.",
+            );
+          } else {
+            rethrow;
+          }
+        } on ServerException catch (e) {
+          AppLogger.error(
+            "SYNC_ENGINE",
+            "Task $id ServerException: ${e.statusCode} - ${e.message}",
+          );
+          if (e.statusCode == 400 ||
+              e.statusCode == 403 ||
+              e.statusCode == 409) {
+            await _localDb.updateTaskStatus(id, 'FAILED_PERMANENT');
+            await _localDb.rollbackOptimisticTransaction(type, payload);
+            _showNotification(
+              "Giao dịch bị từ chối",
+              "Một giao dịch vừa bị hệ thống từ chối. Số dư đã được khôi phục.",
+            );
           } else {
             rethrow;
           }
@@ -334,7 +358,7 @@ class SyncEngineService extends GetxService {
         await _localDb.deleteCategoryType(data['tempId']);
       }
     } else if (type == 'CREATE_CATEGORY') {
-      await _categoryRepo.createCategory(
+      final newCat = await _categoryRepo.createCategory(
         data['typeId'],
         data['name'],
         data['iconName'],
@@ -342,16 +366,12 @@ class SyncEngineService extends GetxService {
       );
       if (data['tempId'] != null) {
         await _localDb.deleteCategory(data['tempId']);
+        await _localDb.replaceTempIdInTasks(data['tempId'], newCat.id);
       }
     } else if (type == 'UPDATE_CATEGORY_TYPE') {
-      await _categoryRepo.updateCategoryType(
-        data['id'],
-        data['name'],
-      );
+      await _categoryRepo.updateCategoryType(data['id'], data['name']);
     } else if (type == 'DELETE_CATEGORY_TYPE') {
-      await _categoryRepo.deleteCategoryType(
-        data['id'],
-      );
+      await _categoryRepo.deleteCategoryType(data['id']);
     } else if (type == 'UPDATE_CATEGORY') {
       await _categoryRepo.updateCategory(
         data['id'],
@@ -360,31 +380,14 @@ class SyncEngineService extends GetxService {
         data['color'],
       );
     } else if (type == 'DELETE_CATEGORY') {
-      await _categoryRepo.deleteCategory(
-        data['id'],
-      );
-    } else if (type == 'UPDATE_BUDGET') {
+      await _categoryRepo.deleteCategory(data['id']);
+    } else if (type == 'UPDATE_BUDGET' || type == 'TRANSFER_BUDGET') {
       final monthYear = data['monthYear'];
       final allocations = List<Map<String, dynamic>>.from(data['allocations']);
-      for (var alloc in allocations) {
-        final categoryId = alloc['categoryId'];
-        final amount = (alloc['amount'] as num).toDouble();
-
-        final checkBudget = await _categoryRepo.getMonthlyBudgets(monthYear);
-        final existingBudget = checkBudget.firstWhereOrNull(
-          (b) => b.categoryId == categoryId,
-        );
-
-        if (existingBudget != null) {
-          await _categoryRepo.updateMonthlyBudget(existingBudget.id, amount);
-        } else {
-          await _categoryRepo.createMonthlyBudget(
-            categoryId: categoryId,
-            monthYear: monthYear,
-            budgetedAmount: amount,
-          );
-        }
-      }
+      final transferLogs = data['transferLogs'] != null 
+          ? List<Map<String, dynamic>>.from(data['transferLogs'])
+          : null;
+      await _categoryRepo.transferBudget(monthYear, allocations, transferLogs: transferLogs);
     } else if (type == 'DELETE_ORPHANED_FILE') {
       final fileId = data['fileId'];
       if (fileId != null) {

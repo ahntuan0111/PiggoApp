@@ -7,7 +7,6 @@ import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/data/models/budget_category.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
-import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
@@ -15,7 +14,6 @@ import 'package:appintern/data/repositories/goal_repository.dart';
 import 'package:appintern/data/models/goal_model.dart';
 import 'package:appintern/data/models/monthly_budget_model.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'dart:convert';
 
 class BudgetService extends GetxService {
   final StorageService storage = Get.find<StorageService>();
@@ -176,7 +174,8 @@ class BudgetService extends GetxService {
       // GHI CACHE RAW DATA VÀO STRUCTURED TABLES
       await localDb.saveCategoryTypes(types.map((e) => e.toMap()).toList());
       await localDb.saveCategories(cats.map((e) => e.toMap()).toList());
-      String currentMonthStr = "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
+      String currentMonthStr =
+          "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
       await localDb.saveMonthlyBudgets(
         currentMonthStr,
         fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),

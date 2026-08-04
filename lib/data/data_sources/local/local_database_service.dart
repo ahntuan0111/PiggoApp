@@ -29,7 +29,7 @@ class LocalDatabaseService extends LocalDatabaseBase
     String path = join(await getDatabasesPath(), 'appintern_scale.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -145,9 +145,34 @@ class LocalDatabaseService extends LocalDatabaseBase
         status TEXT
       )
     ''');
+    // 9. Transfer Logs
+    await db.execute('''
+      CREATE TABLE transferlogs(
+        id TEXT PRIMARY KEY,
+        ownerId TEXT,
+        amount REAL,
+        fromCategoryId TEXT,
+        toCategoryId TEXT,
+        note TEXT,
+        createdAt TEXT
+      )
+    ''');
   }
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS transferlogs(
+          id TEXT PRIMARY KEY,
+          ownerId TEXT,
+          amount REAL,
+          fromCategoryId TEXT,
+          toCategoryId TEXT,
+          note TEXT,
+          createdAt TEXT
+        )
+      ''');
+    }
     if (oldVersion < 2) {
       await db.execute(
         'ALTER TABLE offline_tasks_queue ADD COLUMN parsed_data TEXT',

@@ -1,17 +1,22 @@
+import 'dart:convert';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
+import 'package:appintern/data/models/budget_category.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/compensation_source.dart';
 import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/select_source_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
 
 class OverspentCompensationController extends BaseController with BudgetAware {
   final CategoryRepository _categoryRepo = Get.find<CategoryRepository>();
 
-  late CategoryModel targetCategory;
+  late BudgetCategory targetBudget;
   final sources = <CompensationSource>[].obs;
 
   // Quản lý TextEditingController cho mỗi nguồn
@@ -21,7 +26,7 @@ class OverspentCompensationController extends BaseController with BudgetAware {
   void onInit() {
     super.onInit();
     // Khởi tạo từ arguments (truyền sang từ HomeScreen)
-    targetCategory = Get.arguments as CategoryModel;
+    targetBudget = Get.arguments as BudgetCategory;
   }
 
   @override
@@ -41,9 +46,7 @@ class OverspentCompensationController extends BaseController with BudgetAware {
   // Lưu ý: targetCategory.remaining có thể tính bằng: targetCategory.defaultBudget - targetCategory.spent
   // Trong model, spent và defaultBudget có sẵn.
   double get newRemaining {
-    double currentRemaining =
-        targetCategory.defaultBudget - targetCategory.spent;
-    return currentRemaining + totalCompensated;
+    return targetBudget.remaining + totalCompensated;
   }
 
   // Đã bù đủ tiền (hết âm)
@@ -51,7 +54,7 @@ class OverspentCompensationController extends BaseController with BudgetAware {
 
   void openSelectSourceBottomSheet({int? indexToReplace}) {
     // Thu thập các ID đã chọn để ẩn đi
-    final excludeIds = [targetCategory.id, ...sources.map((s) => s.sourceId)];
+    final excludeIds = [targetBudget.categoryModel.id, ...sources.map((s) => s.sourceId)];
     // Nếu đang replace, thì không ẩn ID đang bị thay thế
     if (indexToReplace != null) {
       excludeIds.remove(sources[indexToReplace].sourceId);
@@ -61,7 +64,7 @@ class OverspentCompensationController extends BaseController with BudgetAware {
       SelectSourceBottomSheet(
         unallocatedAmount: budgetService.unallocatedAmount.value,
         categoryGroups: budgetService.categoryGroups,
-        currentCategoryId: targetCategory.id,
+        currentCategoryId: targetBudget.categoryModel.id,
         excludeCategoryIds: excludeIds,
         onSelected: (id, name, availableAmount, icon) {
           if (indexToReplace != null) {
@@ -138,49 +141,79 @@ class OverspentCompensationController extends BaseController with BudgetAware {
     }
 
     showLoading();
-    final result = await ErrorHandler.execute(() async {
-      final now = budgetService.currentTrackingMonth.value;
-      final monthYearStr =
-          "${now.month.toString().padLeft(2, '0')}-${now.year}";
+    final networkService = Get.find<NetworkService>();
+    final offlineSyncService = Get.find<OfflineSyncService>();
+    final localDb = Get.find<LocalDatabaseService>();
+    final now = budgetService.currentTrackingMonth.value;
+    final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-      final mbTarget = budgetService.getBudgetForCategory(targetCategory.id);
-      if (mbTarget != null) {
-        double newTargetBudget = mbTarget.budgetedAmount + totalCompensated;
-        await _categoryRepo.updateMonthlyBudget(mbTarget.id, newTargetBudget);
-      } else {
-        await _categoryRepo.createMonthlyBudget(
-          categoryId: targetCategory.id,
-          monthYear: monthYearStr,
-          budgetedAmount: targetCategory.defaultBudget + totalCompensated,
-        );
+    // Calculate new budgeted amounts for the payload
+    final List<Map<String, dynamic>> allocations = [];
+    final mbTarget = budgetService.getBudgetForCategory(targetBudget.categoryModel.id);
+    double targetNewBudget = (mbTarget?.budgetedAmount ?? targetBudget.categoryModel.defaultBudget) + totalCompensated;
+    allocations.add({'categoryId': targetBudget.categoryModel.id, 'amount': targetNewBudget});
+
+    for (var source in sources) {
+      if (source.amountToCompensate > 0 && source.sourceId != 'unallocated') {
+        final sourceCatList = budgetService.categories.where((c) => c.categoryModel.id == source.sourceId).toList();
+        if (sourceCatList.isNotEmpty) {
+          final sourceCat = sourceCatList.first.categoryModel;
+          final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
+          double sourceNewBudget = (mbSource?.budgetedAmount ?? sourceCat.defaultBudget) - source.amountToCompensate;
+          allocations.add({'categoryId': sourceCat.id, 'amount': sourceNewBudget});
+        }
+      }
+    }
+
+    final transferLogs = sources
+        .where((s) => s.amountToCompensate > 0)
+        .map((s) => {
+              'amount': s.amountToCompensate,
+              'fromCategoryId': s.sourceId == 'unallocated' ? null : s.sourceId,
+              'toCategoryId': targetBudget.categoryModel.id,
+              'note': 'Bù đắp chi tiêu vượt mức',
+            })
+        .toList();
+
+    if (networkService.isOffline.value) {
+      final payload = jsonEncode({
+        'monthYear': monthYearStr,
+        'allocations': allocations,
+        'transferLogs': transferLogs,
+      });
+      await offlineSyncService.queueManualTask('TRANSFER_BUDGET', payload);
+
+      for (var source in sources) {
+        if (source.amountToCompensate > 0) {
+          await localDb.transferBudgetLocal(
+            source.sourceId == 'unallocated' ? null : source.sourceId,
+            targetBudget.categoryModel.id,
+            source.amountToCompensate,
+            monthYearStr,
+          );
+        }
       }
 
-      // 2. Cập nhật các nguồn bị lấy tiền (Trừ tiền)
-      for (var source in sources) {
-        if (source.amountToCompensate > 0 && source.sourceId != 'unallocated') {
-          final sourceCatList = budgetService.categories
-              .where((c) => c.categoryModel.id == source.sourceId)
-              .toList();
+      hideLoading();
+      showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+      budgetService.refreshData(); // Refresh UI
+      Get.back(result: true);
+      return;
+    }
 
-          if (sourceCatList.isNotEmpty) {
-            final sourceCat = sourceCatList.first.categoryModel;
-            final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
-            if (mbSource != null) {
-              double newSourceBudget =
-                  mbSource.budgetedAmount - source.amountToCompensate;
-              await _categoryRepo.updateMonthlyBudget(
-                mbSource.id,
-                newSourceBudget,
-              );
-            } else {
-              await _categoryRepo.createMonthlyBudget(
-                categoryId: sourceCat.id,
-                monthYear: monthYearStr,
-                budgetedAmount:
-                    sourceCat.defaultBudget - source.amountToCompensate,
-              );
-            }
-          }
+    final result = await ErrorHandler.execute(() async {
+      await _categoryRepo.transferBudget(monthYearStr, allocations, transferLogs: transferLogs);
+      
+      // Update local db directly for fast UI sync
+      for (var source in sources) {
+        if (source.amountToCompensate > 0) {
+          await localDb.transferBudgetLocal(
+            source.sourceId == 'unallocated' ? null : source.sourceId,
+            targetBudget.categoryModel.id,
+            source.amountToCompensate,
+            monthYearStr,
+            isOffline: false,
+          );
         }
       }
     }, tag: "SAVE_COMPENSATION");

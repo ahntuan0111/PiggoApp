@@ -24,6 +24,7 @@ class AppwriteService extends GetxService {
   String get databaseId => dotenv.env['APPWRITE_DATABASE_ID']!;
   String get projectId => dotenv.env['APPWRITE_PROJECT_ID']!;
   String get avatarBucketId => dotenv.env['APPWRITE_AVATAR_BUCKET_ID']!;
+  String get functionTransferBudget => dotenv.env['APPWRITE_FUNCTION_TRANSFER_BUDGET'] ?? 'transfer_budget';
 
   // Constants for table IDs
   final String categoriesTypeTableId = 'categorytypes';

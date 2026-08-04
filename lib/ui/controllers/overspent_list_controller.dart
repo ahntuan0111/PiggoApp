@@ -11,7 +11,7 @@ class OverspentListController extends BaseController with BudgetAware {
     return budgetService.categories.where((cat) => cat.remaining < 0).toList();
   }
 
-  Future<void> navigateToCompensation(CategoryModel category) async {
+  Future<void> navigateToCompensation(BudgetCategory category) async {
     final result = await Get.toNamed(
       Routes.OVERSPENT_COMPENSATION,
       arguments: category,

@@ -159,12 +159,12 @@ class OverspentCompensationScreen
             mainAxisSize: MainAxisSize.min,
             children: [
               CustomIconWidget(
-                iconName: controller.targetCategory.iconName,
+                iconName: controller.targetBudget.categoryModel.iconName,
                 size: 20.sp,
               ),
               SizedBox(width: 8.w),
               Text(
-                controller.targetCategory.name,
+                controller.targetBudget.categoryModel.name,
                 style: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w500,

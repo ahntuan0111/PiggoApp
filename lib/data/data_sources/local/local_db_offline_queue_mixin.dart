@@ -73,6 +73,14 @@ mixin LocalDbOfflineQueueMixin on LocalDatabaseBase {
     await db.delete('offline_tasks_queue', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> replaceTempIdInTasks(String tempId, String realId) async {
+    final db = await database;
+    await db.execute(
+      "UPDATE offline_tasks_queue SET payload = REPLACE(payload, ?, ?)",
+      [tempId, realId],
+    );
+  }
+
   Future<int> getPendingQueueCount() async {
     final db = await database;
     final count = Sqflite.firstIntValue(

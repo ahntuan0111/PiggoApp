@@ -583,33 +583,91 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
       bottomSheet: Container(
         color: const Color(0xFFF9F7F1),
         padding: EdgeInsets.all(16.w),
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => controller.addTransaction(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC49A45), // Màu vàng giống ảnh
-              padding: EdgeInsets.symmetric(vertical: 14.h),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24.r),
-              ),
-            ),
-            child: Obx(() => controller.isLoading 
-              ? SizedBox(
-                  width: 24.w,
-                  height: 24.w,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.w),
-                )
-              : Text(
-                  controller.isEdit.value ? 'Cập nhật' : 'Thêm',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
+        child: Obx(() {
+          if (controller.isEdit.value) {
+            return SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: controller.isLoading ? null : () => controller.addTransaction(closeAfterSave: true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC49A45),
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24.r),
                   ),
-                )),
-          ),
-        ),
+                ),
+                child: controller.isLoading
+                    ? SizedBox(
+                        width: 24.w,
+                        height: 24.w,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.w),
+                      )
+                    : Text(
+                        'Cập nhật',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            );
+          } else {
+            return Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: controller.isLoading ? null : () => controller.addTransaction(closeAfterSave: false),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFC49A45)),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24.r),
+                      ),
+                    ),
+                    child: Text(
+                      'Lưu & Tiếp tục',
+                      style: TextStyle(
+                        color: const Color(0xFFC49A45),
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: controller.isLoading ? null : () => controller.addTransaction(closeAfterSave: true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFC49A45),
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24.r),
+                      ),
+                    ),
+                    child: controller.isLoading
+                        ? SizedBox(
+                            width: 24.w,
+                            height: 24.w,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.w),
+                          )
+                        : Text(
+                            'Lưu',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            );
+          }
+        }),
       ),
     );
   }

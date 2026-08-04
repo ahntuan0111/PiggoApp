@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
@@ -22,15 +21,19 @@ class OfflineSyncService extends GetxService {
 
   Future<void> refreshQueueCount() async {
     final tasks = await _localDb.getPendingTasks();
-    aiQueueCount.value = tasks.where((t) => t['taskType'].toString().startsWith('AI_')).length;
-    manualQueueCount.value = tasks.where((t) => !t['taskType'].toString().startsWith('AI_')).length;
+    aiQueueCount.value = tasks
+        .where((t) => t['taskType'].toString().startsWith('AI_'))
+        .length;
+    manualQueueCount.value = tasks
+        .where((t) => !t['taskType'].toString().startsWith('AI_'))
+        .length;
   }
 
   Future<void> queueTask(String type, String payload) async {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     await _localDb.addOfflineTask(id: id, taskType: type, payload: payload);
     await refreshQueueCount();
-    
+
     // Đăng ký Background Sync (Sẽ chạy ngay khi có mạng)
     Workmanager().registerOneOffTask(
       "global_offline_sync",
@@ -45,7 +48,12 @@ class OfflineSyncService extends GetxService {
   /// Xử lý hành động ngoại tuyến (Lazy Input)
   /// Trả về true nếu đang offline (đã đưa vào hàng chờ hoặc báo lỗi quá tải)
   /// Trả về false nếu đang online (để tiếp tục xử lý online)
-  Future<bool> handleOfflineAction(String type, String payload, {required String successMessage, bool isFile = false}) async {
+  Future<bool> handleOfflineAction(
+    String type,
+    String payload, {
+    required String successMessage,
+    bool isFile = false,
+  }) async {
     final networkService = Get.find<NetworkService>();
     if (!networkService.isOffline.value) {
       return false; // Online
@@ -66,8 +74,9 @@ class OfflineSyncService extends GetxService {
     if (isFile) {
       final docDir = await getApplicationDocumentsDirectory();
       final extension = payload.split('.').last;
-      final fileName = '${type.toLowerCase()}_offline_${DateTime.now().millisecondsSinceEpoch}.$extension';
-      
+      final fileName =
+          '${type.toLowerCase()}_offline_${DateTime.now().millisecondsSinceEpoch}.$extension';
+
       final savedFile = await File(payload).copy('${docDir.path}/$fileName');
       finalPayload = savedFile.path;
     }
@@ -96,12 +105,5 @@ class OfflineSyncService extends GetxService {
     }
 
     await queueTask(type, payload);
-    Get.snackbar(
-      'Ngoại tuyến',
-      'Đã lưu cục bộ. Tự động đồng bộ khi có mạng.',
-      backgroundColor: Get.theme.colorScheme.secondary,
-      colorText: Get.theme.colorScheme.onSecondary,
-    );
   }
 }
-

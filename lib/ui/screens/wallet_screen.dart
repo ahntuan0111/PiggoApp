@@ -197,14 +197,6 @@ class WalletScreen extends GetView<WalletController> {
                             label: "Tạo Giao Dịch",
                             onTap: () async {
                               final result = await Get.toNamed(Routes.TRANSACTION_CREATE);
-                              if (result == true) {
-                                final isOffline = Get.find<NetworkService>().isOffline.value;
-                                if (isOffline) {
-                                  controller.showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
-                                } else {
-                                  controller.showSuccessMessage("Thành công", "Đã lưu giao dịch");
-                                }
-                              }
                             },
                           ),
                           _buildActionButton(

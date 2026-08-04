@@ -8,6 +8,7 @@ import 'package:appintern/data/data_sources/remote/appwrite_ai_service_impl.dart
 import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/data/repositories/goal_repository.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
+import 'package:appintern/data/repositories/transfer_log_repository.dart';
 import 'package:appintern/domain/services/i_ai_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -35,17 +36,18 @@ void callbackDispatcher() {
         return Future.value(false); // WorkManager sẽ retry sau
       }
 
-      // 3. Repositories
-      Get.put(CategoryRepository(appwriteService));
-      Get.put(TransactionRepository(appwriteService));
-      Get.put(GoalRepository(appwriteService));
-
-      // 4. Services
+      // 3. Services (Phải khởi tạo trước Repositories)
       Get.put(LocalDatabaseService());
       Get.put(NetworkService());
       Get.put(BudgetService());
       Get.put(AppwriteAIServiceImpl());
       Get.put<IAIService>(Get.find<AppwriteAIServiceImpl>());
+
+      // 4. Repositories
+      Get.put(CategoryRepository(appwriteService));
+      Get.put(TransactionRepository(appwriteService));
+      Get.put(GoalRepository(appwriteService));
+      Get.put(TransferLogRepository(appwriteService));
 
       // Load data for BudgetService to have categories
       final budgetService = Get.find<BudgetService>();

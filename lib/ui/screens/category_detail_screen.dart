@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:appintern/ui/controllers/category_detail_controller.dart';
 import 'package:appintern/ui/widgets/history_transaction_item.dart';
+import 'package:appintern/ui/widgets/history_transfer_item.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/edit_money_distribution.dart';
 import 'package:appintern/core/routes/app_routes.dart';
@@ -116,7 +117,8 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16.r),
                   ),
-                  child: Column(
+                  child: GetBuilder<CategoryDetailController>(
+                    builder: (controller) => Column(
                     children: [
                       _buildMoneyRow(
                         'Số tiền đã phân bổ',
@@ -194,6 +196,7 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                       ),
                     ],
                   ),
+                  ),
                 ),
                 SizedBox(height: 24.h),
 
@@ -209,7 +212,7 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Lịch sử',
+                        'Lịch sử giao dịch',
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.w500,
@@ -277,6 +280,70 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24.h),
+
+                // Card 3: Lịch sử cân bằng ngân sách
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Lịch sử cân bằng ngân sách',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF1E1E1E),
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+                      Obx(() {
+                        if (controller.isLoadingTransferHistory.value) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (controller.transferHistoryList.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20.h),
+                              child: Text(
+                                'Chưa có hoạt động cân bằng nào',
+                                style: TextStyle(
+                                  color: const Color(0xFF757575),
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: List.generate(
+                            controller.transferHistoryList.length,
+                            (index) {
+                              final item = controller.transferHistoryList[index];
+                              return HistoryTransferItem(
+                                action: item['action'],
+                                partnerName: item['partnerName'],
+                                partnerIcon: item['partnerIcon'],
+                                partnerColor: item['partnerColor'],
+                                amount: item['amount'],
+                                note: item['note'] ?? '',
+                                date: item['date'] as DateTime,
+                              );
+                            },
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ),
