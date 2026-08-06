@@ -39,10 +39,7 @@ void showCategoryRequiredDialog(BuildContext context) {
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: Text(
-                      '😅',
-                      style: TextStyle(fontSize: 40.sp),
-                    ),
+                    child: Text('😅', style: TextStyle(fontSize: 40.sp)),
                   ),
                 ),
                 SizedBox(height: 16.h),
@@ -116,10 +113,7 @@ void showCategoryRequiredDialog(BuildContext context) {
         scale: Tween<double>(begin: 0.8, end: 1.0).animate(
           CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
         ),
-        child: FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
+        child: FadeTransition(opacity: animation, child: child),
       );
     },
   );

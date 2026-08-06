@@ -59,7 +59,9 @@ class GoalModel {
       id: id ?? this.id,
       name: name ?? this.name,
       targetAmount: targetAmount ?? this.targetAmount,
-      deadline: deadline ?? this.deadline, // Giữ null nếu không truyền, hoặc giữ cũ nếu không truyền (cần handle null tường minh, nhưng để tạm thế này)
+      deadline:
+          deadline ??
+          this.deadline, // Giữ null nếu không truyền, hoặc giữ cũ nếu không truyền (cần handle null tường minh, nhưng để tạm thế này)
       categoryId: categoryId ?? this.categoryId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,

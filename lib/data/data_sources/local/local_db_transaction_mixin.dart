@@ -56,6 +56,31 @@ mixin LocalDbTransactionMixin on LocalDatabaseBase {
     });
   }
 
+  Future<List<TransactionModel>> getTransactionsByDateRange(
+    DateTime start,
+    DateTime end,
+  ) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'transactions',
+      where: 'transactionDate >= ? AND transactionDate <= ?',
+      whereArgs: [start.toIso8601String(), end.toIso8601String()],
+      orderBy: 'transactionDate DESC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return TransactionModel(
+        id: maps[i]['id'] as String,
+        categoryId: maps[i]['categoryId'] as String,
+        amount: maps[i]['amount'] as double,
+        type: maps[i]['type'] as String,
+        transactionDate: DateTime.parse(maps[i]['transactionDate'] as String),
+        status: maps[i]['status'] as String,
+        note: maps[i]['note'] as String?,
+      );
+    });
+  }
+
   Future<TransactionModel?> getTransactionById(String transactionId) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -96,6 +121,22 @@ mixin LocalDbTransactionMixin on LocalDatabaseBase {
             whereArgs: [transactionId],
           );
         }
+      } else if (type == 'CREATE_GOAL') {
+        final Map<String, dynamic> data = jsonDecode(payload);
+        final String? tempGoalId = data['goal']?['id'];
+        final String? tempCatId = data['category']?['id'];
+        if (tempGoalId != null) {
+          await db.delete('goals', where: 'id = ?', whereArgs: [tempGoalId]);
+        }
+        if (tempCatId != null) {
+          await db.delete('categories', where: 'id = ?', whereArgs: [tempCatId]);
+        }
+      } else if (type == 'UPDATE_GOAL') {
+        // Optimistic rollback is more complex, typically we just fetch remote again
+        // For now, no-op since offline update failures usually mean we should just sync down
+      } else if (type == 'DELETE_GOAL') {
+        // Rollback a delete means restoring it, which is hard without the full object
+        // Usually handled by fetching again from Appwrite
       }
     } catch (e) {
       print("Rollback Error: $e");

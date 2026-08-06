@@ -4,6 +4,9 @@ import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/rollover_decision_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
+
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 import 'package:appintern/ui/widgets/dialogs/rollover_explanation_dialog.dart';
 import 'package:appintern/ui/widgets/dialogs/confirm_dialog_widget.dart';
@@ -14,8 +17,6 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1), // Nền Kem
       appBar: AppBar(
@@ -160,7 +161,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                   Expanded(
                     child: _buildMetricItem(
                       "TỔNG DƯ",
-                      "+${formatter.format(controller.totalSurplus.value)}đ",
+                      '+${CurrencyFormatter.format(controller.totalSurplus.value)}',
                       const Color(0xFF369B56),
                     ),
                   ),
@@ -168,7 +169,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                   Expanded(
                     child: _buildMetricItem(
                       "TỔNG THÂM HỤT",
-                      "${formatter.format(controller.totalDeficit.value)}đ",
+                      CurrencyFormatter.format(controller.totalDeficit.value),
                       Colors.red[600]!,
                     ),
                   ),
@@ -327,7 +328,6 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
   }
 
   Widget _buildExpandableCategoryCard(Map<String, dynamic> cat, int index) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
     final title = cat['title'] as String;
     final iconName = cat['icon'] as String;
     final balance = (cat['balance'] as num).toDouble();
@@ -379,8 +379,8 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
               ),
               subtitle: Text(
                 isSurplus
-                    ? "Còn dư +${formatter.format(balance)}đ"
-                    : "Thâm hụt ${formatter.format(balance)}đ",
+                    ? "Còn dư +${CurrencyFormatter.format(balance)}"
+                    : "Thâm hụt ${CurrencyFormatter.format(balance)}",
                 style: TextStyle(
                   color: isSurplus ? const Color(0xFF369B56) : Colors.red,
                   fontSize: 13.sp,

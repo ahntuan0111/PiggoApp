@@ -23,8 +23,17 @@ class AppwriteService extends GetxService {
 
   String get databaseId => dotenv.env['APPWRITE_DATABASE_ID']!;
   String get projectId => dotenv.env['APPWRITE_PROJECT_ID']!;
-  String get avatarBucketId => dotenv.env['APPWRITE_AVATAR_BUCKET_ID']!;
-  String get functionTransferBudget => dotenv.env['APPWRITE_FUNCTION_TRANSFER_BUDGET'] ?? 'transfer_budget';
+  String get avatarBucketId => dotenv.env['APPWRITE_AVATAR_BUCKET_ID'] ?? '';
+  String get functionTransferBudget =>
+      dotenv.env['APPWRITE_FUNCTION_TRANSFER_BUDGET']!;
+  String get functionStatisticsInsight =>
+      dotenv.env['APPWRITE_FUNCTION_STATISTICS_INSIGHT']!;
+  String get functionGoogleSignIn =>
+      dotenv.env['APPWRITE_FUNCTION_GOOGLE_SIGN_IN']!;
+  String get functionParseTransaction =>
+      dotenv.env['APPWRITE_FUNCTION_PARSE_TRANSACTION']!;
+  String get functionParseReceiptVision =>
+      dotenv.env['APPWRITE_FUNCTION_PARSE_RECEIPT_VISION']!;
 
   // Constants for table IDs
   final String categoriesTypeTableId = 'categorytypes';

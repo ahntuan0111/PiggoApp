@@ -6,7 +6,8 @@ class RolloverExplanationDialog extends StatefulWidget {
   const RolloverExplanationDialog({super.key});
 
   @override
-  State<RolloverExplanationDialog> createState() => _RolloverExplanationDialogState();
+  State<RolloverExplanationDialog> createState() =>
+      _RolloverExplanationDialogState();
 }
 
 class _RolloverExplanationDialogState extends State<RolloverExplanationDialog> {
@@ -155,7 +156,8 @@ class _RolloverExplanationDialogState extends State<RolloverExplanationDialog> {
       icon: Icons.account_balance_wallet_rounded,
       iconColor: const Color(0xFF369B56),
       title: "Cộng dồn / Giảm ĐM",
-      description: "Tác động trực tiếp vào Hũ (Danh mục):\n\n"
+      description:
+          "Tác động trực tiếp vào Hũ (Danh mục):\n\n"
           "• Cộng dồn: Tiền thừa tháng cũ sẽ được cộng dồn vào ngân sách Hũ tháng mới (bạn được tiêu nhiều hơn).\n\n"
           "• Giảm ĐM (Giảm Định Mức): Tiền tiêu lố tháng cũ sẽ trừ trực tiếp vào ngân sách Hũ tháng mới (bạn phải thắt lưng buộc bụng).",
     );
@@ -166,7 +168,8 @@ class _RolloverExplanationDialogState extends State<RolloverExplanationDialog> {
       icon: Icons.shield_rounded,
       iconColor: const Color(0xFFC49A45),
       title: "Chuyển DP / Trừ DP",
-      description: "Tác động vào Quỹ Chưa Phân Bổ (Dự Phòng):\n\n"
+      description:
+          "Tác động vào Quỹ Chưa Phân Bổ (Dự Phòng):\n\n"
           "• Chuyển DP: Rút số tiền thừa về Quỹ Chưa Phân Bổ.\n\n"
           "• Trừ DP: Lấy tiền nhàn rỗi trong Quỹ Chưa Phân Bổ ra để trả nợ cho khoản tiêu lố.\n\n"
           "• Giữ nguyên DP: Bảo toàn số tiền nhàn rỗi trong Quỹ Chưa Phân Bổ sang tháng sau.",
@@ -178,7 +181,8 @@ class _RolloverExplanationDialogState extends State<RolloverExplanationDialog> {
       icon: Icons.savings_rounded,
       iconColor: Colors.blue.shade700,
       title: "Tiết kiệm",
-      description: "Chuyển tiền vào Mục tiêu tiết kiệm:\n\n"
+      description:
+          "Chuyển tiền vào Mục tiêu tiết kiệm:\n\n"
           "Toàn bộ số dư thừa sẽ được gửi vào một Mục Tiêu Tiết Kiệm (Goal) mà bạn đã thiết lập. "
           "Số tiền này sẽ được tách biệt và không dùng để chi tiêu hàng ngày.",
     );
@@ -228,7 +232,11 @@ class _RolloverExplanationDialogState extends State<RolloverExplanationDialog> {
             physics: const BouncingScrollPhysics(),
             child: Text(
               description,
-              style: TextStyle(fontSize: 14.sp, color: Colors.black87, height: 1.5),
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: Colors.black87,
+                height: 1.5,
+              ),
             ),
           ),
         ),

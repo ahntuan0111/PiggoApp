@@ -169,7 +169,7 @@ class NewMonthSetupController extends BaseController {
       String incomeStr = expectedIncomeText.value
           .replaceAll('.', '')
           .replaceAll(',', '')
-          .replaceAll('đ', '')
+          
           .trim();
       double expectedIncome = double.tryParse(incomeStr) ?? 0.0;
 

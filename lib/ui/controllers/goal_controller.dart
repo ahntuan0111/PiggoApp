@@ -23,7 +23,7 @@ class GoalController extends BaseController with BudgetAware {
   List<GoalModel> get goals => budgetService.goals;
 
   // Tổng quan tiết kiệm
-  RxDouble get totalSaved {
+  double get totalSaved {
     double total = 0.0;
     for (var goal in goals) {
       final category = _getCategoryForGoal(goal.categoryId);
@@ -32,7 +32,7 @@ class GoalController extends BaseController with BudgetAware {
         total += category.remaining ?? 0.0;
       }
     }
-    return total.obs;
+    return total;
   }
 
   // Hàm reload (chỉ gọi proxy tới BudgetService)
@@ -145,7 +145,10 @@ class GoalController extends BaseController with BudgetAware {
       await budgetService.refreshData();
       final isOffline = Get.find<NetworkService>().isOffline.value;
       if (isOffline) {
-        showSuccessMessage('Đã lưu (Ngoại tuyến)', 'Dữ liệu sẽ được đồng bộ khi có mạng');
+        showSuccessMessage(
+          'Đã lưu (Ngoại tuyến)',
+          'Dữ liệu sẽ được đồng bộ khi có mạng',
+        );
       } else {
         showSuccessMessage('Thành công', 'Đã nạp tiền vào mục tiêu!');
       }

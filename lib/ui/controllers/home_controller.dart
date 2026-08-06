@@ -7,6 +7,7 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/data/models/budget_category.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
 
 class HomeController extends BaseController with BudgetAware {
   final storage = Get.find<StorageService>();
@@ -63,12 +64,7 @@ class HomeController extends BaseController with BudgetAware {
 
   // Hàm tiện ích format tiền tệ (thay cho thư viện intl để giữ app nhẹ)
   String formatCurrency(double amount) {
-    String numStr = amount.toStringAsFixed(0);
-    return numStr.replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]}.',
-        ) +
-        'đ';
+    return CurrencyFormatter.format(amount);
   }
 
   void showWarningDialog() {

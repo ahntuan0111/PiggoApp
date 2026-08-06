@@ -4,11 +4,12 @@ import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:get/get.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:appintern/ui/widgets/dialogs/offline_queue_full_dialog.dart';
 
 class OfflineSyncService extends GetxService {
   final LocalDatabaseService _localDb = Get.find<LocalDatabaseService>();
-  static const int MAX_AI_TASKS = 5;
-  static const int MAX_MANUAL_TASKS = 15;
+  static const int MAX_AI_TASKS = 3;
+  static const int MAX_MANUAL_TASKS = 7;
 
   final aiQueueCount = 0.obs;
   final manualQueueCount = 0.obs;
@@ -22,10 +23,10 @@ class OfflineSyncService extends GetxService {
   Future<void> refreshQueueCount() async {
     final tasks = await _localDb.getPendingTasks();
     aiQueueCount.value = tasks
-        .where((t) => t['taskType'].toString().startsWith('AI_'))
+        .where((t) => t['task_type'] == 'TEXT' || t['task_type'] == 'IMAGE')
         .length;
     manualQueueCount.value = tasks
-        .where((t) => !t['taskType'].toString().startsWith('AI_'))
+        .where((t) => t['task_type'] != 'TEXT' && t['task_type'] != 'IMAGE')
         .length;
   }
 
@@ -61,11 +62,10 @@ class OfflineSyncService extends GetxService {
 
     // Giới hạn 5 task AI tổng cộng
     if (aiQueueCount.value >= MAX_AI_TASKS) {
-      Get.snackbar(
-        "Hàng chờ đầy",
-        "Hàng chờ xử lý AI đã đầy ($MAX_AI_TASKS/$MAX_AI_TASKS). Vui lòng kết nối mạng để đồng bộ.",
-        backgroundColor: Get.theme.colorScheme.error,
-        colorText: Get.theme.colorScheme.onError,
+      OfflineQueueFullDialog.show(
+        currentCount: aiQueueCount.value,
+        maxCount: MAX_AI_TASKS,
+        isAiTask: true,
       );
       return true; // Đã xử lý (Offline nhưng đầy)
     }
@@ -95,11 +95,10 @@ class OfflineSyncService extends GetxService {
   /// Đưa tác vụ thủ công (tạo giao dịch, tạo danh mục) vào hàng đợi.
   Future<void> queueManualTask(String type, String payload) async {
     if (manualQueueCount.value >= MAX_MANUAL_TASKS) {
-      Get.snackbar(
-        "Hàng chờ đầy",
-        "Hàng chờ tác vụ thủ công đã đầy ($MAX_MANUAL_TASKS/$MAX_MANUAL_TASKS). Vui lòng kết nối mạng trước khi tiếp tục.",
-        backgroundColor: Get.theme.colorScheme.error,
-        colorText: Get.theme.colorScheme.onError,
+      OfflineQueueFullDialog.show(
+        currentCount: manualQueueCount.value,
+        maxCount: MAX_MANUAL_TASKS,
+        isAiTask: false,
       );
       return;
     }

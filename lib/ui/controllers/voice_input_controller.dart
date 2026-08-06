@@ -7,7 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:record/record.dart';
 import 'package:appintern/core/base/base_controller.dart';
-import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/domain/services/i_ai_service.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/confirm_multiple_transactions_bottom_sheet.dart';

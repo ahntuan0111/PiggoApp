@@ -14,8 +14,9 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F7F1),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -23,7 +24,7 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios,
-            color: const Color(0xFF0B4A3A),
+            color: theme.colorScheme.primary,
             size: 20.sp,
           ),
           onPressed: () => Get.back(),
@@ -33,7 +34,7 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
           style: TextStyle(
             fontSize: 18.sp,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF0B4A3A),
+            color: theme.colorScheme.primary,
           ),
         ),
         actions: [
@@ -109,14 +110,14 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF0B4A3A),
+                color: theme.colorScheme.primary,
               ),
               decoration: InputDecoration(
-                prefixText: "đ ",
+                prefixText: "${CurrencyFormatter.symbol} ",
                 prefixStyle: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF0B4A3A),
+                  color: theme.colorScheme.primary,
                 ),
                 filled: true,
                 fillColor: Colors.white,
@@ -162,7 +163,7 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
                         ),
                       ),
                     ),
-                    Icon(Icons.calendar_month, color: const Color(0xFF0B4A3A)),
+                    Icon(Icons.calendar_month, color: theme.colorScheme.primary),
                   ],
                 ),
               ),
@@ -234,30 +235,37 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
             SizedBox(
               width: double.infinity,
               height: 56.h,
-              child: Obx(() => ElevatedButton(
-                onPressed: controller.isLoading ? null : () => controller.createGoal(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B4A3A),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28.r),
-                  ),
-                  elevation: 0,
-                ),
-                child: controller.isLoading
-                  ? SizedBox(
-                      height: 24.h,
-                      width: 24.h,
-                      child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                    )
-                  : Text(
-                      "Tạo mục tiêu",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFEBC14F),
-                      ),
+              child: Obx(
+                () => ElevatedButton(
+                  onPressed: controller.isLoading
+                      ? null
+                      : () => controller.createGoal(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28.r),
                     ),
-              )),
+                    elevation: 0,
+                  ),
+                  child: controller.isLoading
+                      ? SizedBox(
+                          height: 24.h,
+                          width: 24.h,
+                          child: const CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : Text(
+                          "Tạo mục tiêu",
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFEBC14F),
+                          ),
+                        ),
+                ),
+              ),
             ),
             SizedBox(height: 32.h),
           ],

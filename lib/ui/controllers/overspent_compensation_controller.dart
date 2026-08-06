@@ -54,7 +54,10 @@ class OverspentCompensationController extends BaseController with BudgetAware {
 
   void openSelectSourceBottomSheet({int? indexToReplace}) {
     // Thu thập các ID đã chọn để ẩn đi
-    final excludeIds = [targetBudget.categoryModel.id, ...sources.map((s) => s.sourceId)];
+    final excludeIds = [
+      targetBudget.categoryModel.id,
+      ...sources.map((s) => s.sourceId),
+    ];
     // Nếu đang replace, thì không ẩn ID đang bị thay thế
     if (indexToReplace != null) {
       excludeIds.remove(sources[indexToReplace].sourceId);
@@ -149,30 +152,46 @@ class OverspentCompensationController extends BaseController with BudgetAware {
 
     // Calculate new budgeted amounts for the payload
     final List<Map<String, dynamic>> allocations = [];
-    final mbTarget = budgetService.getBudgetForCategory(targetBudget.categoryModel.id);
-    double targetNewBudget = (mbTarget?.budgetedAmount ?? targetBudget.categoryModel.defaultBudget) + totalCompensated;
-    allocations.add({'categoryId': targetBudget.categoryModel.id, 'amount': targetNewBudget});
+    final mbTarget = budgetService.getBudgetForCategory(
+      targetBudget.categoryModel.id,
+    );
+    double targetNewBudget =
+        (mbTarget?.budgetedAmount ?? targetBudget.categoryModel.defaultBudget) +
+        totalCompensated;
+    allocations.add({
+      'categoryId': targetBudget.categoryModel.id,
+      'amount': targetNewBudget,
+    });
 
     for (var source in sources) {
       if (source.amountToCompensate > 0 && source.sourceId != 'unallocated') {
-        final sourceCatList = budgetService.categories.where((c) => c.categoryModel.id == source.sourceId).toList();
+        final sourceCatList = budgetService.categories
+            .where((c) => c.categoryModel.id == source.sourceId)
+            .toList();
         if (sourceCatList.isNotEmpty) {
           final sourceCat = sourceCatList.first.categoryModel;
           final mbSource = budgetService.getBudgetForCategory(sourceCat.id);
-          double sourceNewBudget = (mbSource?.budgetedAmount ?? sourceCat.defaultBudget) - source.amountToCompensate;
-          allocations.add({'categoryId': sourceCat.id, 'amount': sourceNewBudget});
+          double sourceNewBudget =
+              (mbSource?.budgetedAmount ?? sourceCat.defaultBudget) -
+              source.amountToCompensate;
+          allocations.add({
+            'categoryId': sourceCat.id,
+            'amount': sourceNewBudget,
+          });
         }
       }
     }
 
     final transferLogs = sources
         .where((s) => s.amountToCompensate > 0)
-        .map((s) => {
-              'amount': s.amountToCompensate,
-              'fromCategoryId': s.sourceId == 'unallocated' ? null : s.sourceId,
-              'toCategoryId': targetBudget.categoryModel.id,
-              'note': 'Bù đắp chi tiêu vượt mức',
-            })
+        .map(
+          (s) => {
+            'amount': s.amountToCompensate,
+            'fromCategoryId': s.sourceId == 'unallocated' ? null : s.sourceId,
+            'toCategoryId': targetBudget.categoryModel.id,
+            'note': 'Bù đắp chi tiêu vượt mức',
+          },
+        )
         .toList();
 
     if (networkService.isOffline.value) {
@@ -195,15 +214,22 @@ class OverspentCompensationController extends BaseController with BudgetAware {
       }
 
       hideLoading();
-      showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+      showSuccessMessage(
+        "Đã lưu (Ngoại tuyến)",
+        "Dữ liệu sẽ được đồng bộ khi có mạng",
+      );
       budgetService.refreshData(); // Refresh UI
       Get.back(result: true);
       return;
     }
 
     final result = await ErrorHandler.execute(() async {
-      await _categoryRepo.transferBudget(monthYearStr, allocations, transferLogs: transferLogs);
-      
+      await _categoryRepo.transferBudget(
+        monthYearStr,
+        allocations,
+        transferLogs: transferLogs,
+      );
+
       // Update local db directly for fast UI sync
       for (var source in sources) {
         if (source.amountToCompensate > 0) {

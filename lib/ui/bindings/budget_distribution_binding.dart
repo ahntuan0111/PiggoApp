@@ -4,6 +4,8 @@ import 'package:appintern/ui/controllers/budget_distribution_controller.dart';
 class BudgetDistributionBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<BudgetDistributionController>(() => BudgetDistributionController());
+    Get.lazyPut<BudgetDistributionController>(
+      () => BudgetDistributionController(),
+    );
   }
 }

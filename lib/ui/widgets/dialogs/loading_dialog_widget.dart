@@ -16,7 +16,9 @@ class LoadingDialogWidget extends StatelessWidget {
     return PopScope(
       canPop: false, // Chặn bấm phím Back trên Android khi đang Loading
       child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 10,
@@ -34,7 +36,9 @@ class LoadingDialogWidget extends StatelessWidget {
                     height: 64.r,
                     child: const CircularProgressIndicator(
                       strokeWidth: 3.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEBC14F)),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFFEBC14F),
+                      ),
                       backgroundColor: Color(0xFFFDEBB2),
                     ),
                   ),
@@ -61,10 +65,7 @@ class LoadingDialogWidget extends StatelessWidget {
                 Text(
                   subMessage!,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 13.sp, color: Colors.grey[600]),
                 ),
               ],
             ],

@@ -9,7 +9,11 @@ class ServerException implements Exception {
   final String message;
   final int? statusCode;
   final String? type;
-  ServerException([this.message = "Lỗi máy chủ nội bộ.", this.statusCode, this.type]);
+  ServerException([
+    this.message = "Lỗi máy chủ nội bộ.",
+    this.statusCode,
+    this.type,
+  ]);
 }
 
 class NetworkException implements Exception {

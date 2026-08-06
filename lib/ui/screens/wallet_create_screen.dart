@@ -54,7 +54,7 @@ class WalletCreateScreen extends GetView<WalletController> {
             final newTotal = controller.newTotalBalance;
             final isAdding = controller.isAdding.value;
             final amount = controller.inputAmount.value;
-            final formatter = NumberFormat('#,###', 'vi_VN');
+            
 
             return Container(
               width: double.infinity,
@@ -85,7 +85,7 @@ class WalletCreateScreen extends GetView<WalletController> {
                         ),
                       ),
                       Text(
-                        '${formatter.format(current)} đ',
+                        CurrencyFormatter.format(current),
                         style: TextStyle(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.bold,
@@ -121,7 +121,7 @@ class WalletCreateScreen extends GetView<WalletController> {
                         ],
                       ),
                       Text(
-                        '${formatter.format(newTotal)} đ',
+                        CurrencyFormatter.format(newTotal),
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
@@ -140,8 +140,8 @@ class WalletCreateScreen extends GetView<WalletController> {
                       alignment: Alignment.centerRight,
                       child: Text(
                         isAdding
-                            ? '(+ ${formatter.format(amount)} đ)'
-                            : '(- ${formatter.format(amount)} đ)',
+                            ? '(+ ${CurrencyFormatter.format(amount)} đ)'
+                            : '(- ${CurrencyFormatter.format(amount)} đ)',
                         style: TextStyle(
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w500,
@@ -314,30 +314,37 @@ class WalletCreateScreen extends GetView<WalletController> {
           SizedBox(
             width: double.infinity,
             height: 48.h,
-            child: Obx(() => ElevatedButton(
-              onPressed: controller.isLoading ? null : () => controller.adjustBudget(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF9C03C),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                elevation: 0,
-              ),
-              child: controller.isLoading 
-                ? SizedBox(
-                    height: 24.h,
-                    width: 24.h,
-                    child: const CircularProgressIndicator(color: Color(0xFF2E2E2E), strokeWidth: 3),
-                  )
-                : Text(
-                    "LƯU LẠI",
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF2E2E2E),
-                    ),
+            child: Obx(
+              () => ElevatedButton(
+                onPressed: controller.isLoading
+                    ? null
+                    : () => controller.adjustBudget(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF9C03C),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-            )),
+                  elevation: 0,
+                ),
+                child: controller.isLoading
+                    ? SizedBox(
+                        height: 24.h,
+                        width: 24.h,
+                        child: const CircularProgressIndicator(
+                          color: Color(0xFF2E2E2E),
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : Text(
+                        "LƯU LẠI",
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2E2E2E),
+                        ),
+                      ),
+              ),
+            ),
           ),
         ],
       ),

@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:appintern/core/constants/app_assets.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
 
 class BudgetWarningDialog extends StatefulWidget {
   final double unallocatedAmount;
@@ -210,7 +212,7 @@ class _BudgetWarningDialogState extends State<BudgetWarningDialog> {
   }
 
   Widget _buildPage1() {
-    final formatCurrency = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    
     return Column(
       children: [
         Container(
@@ -246,7 +248,7 @@ class _BudgetWarningDialogState extends State<BudgetWarningDialog> {
               ),
               SizedBox(height: 8.h),
               Text(
-                formatCurrency.format(widget.unallocatedAmount),
+                CurrencyFormatter.format(widget.unallocatedAmount),
                 style: TextStyle(
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,

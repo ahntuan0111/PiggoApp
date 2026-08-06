@@ -7,8 +7,8 @@ import "package:get/get.dart";
 import 'package:appintern/ui/screens/home_screen.dart';
 import 'package:appintern/ui/screens/profile_screen.dart';
 import 'package:appintern/ui/screens/wallet_screen.dart';
+import 'package:appintern/ui/screens/statistics_screen.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
-import 'package:appintern/core/services/network_service.dart';
 import 'dart:math' as math;
 
 class MainScreen extends GetView<MainController> {
@@ -17,7 +17,7 @@ class MainScreen extends GetView<MainController> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const WalletScreen(),
-    const Text("Phân tích"),
+    const StatisticsScreen(),
     const ProfileScreen(),
   ];
 

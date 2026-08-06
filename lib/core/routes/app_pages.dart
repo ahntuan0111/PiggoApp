@@ -43,6 +43,10 @@ import 'package:appintern/ui/screens/offline_queue_screen.dart';
 import 'package:appintern/ui/bindings/offline_queue_binding.dart';
 import 'package:appintern/ui/screens/splash_screen.dart';
 import 'package:appintern/ui/bindings/splash_binding.dart';
+import 'package:appintern/ui/screens/statistics_screen.dart';
+import 'package:appintern/ui/bindings/statistics_binding.dart';
+import 'package:appintern/ui/screens/budget_settings_screen.dart';
+import 'package:appintern/ui/bindings/budget_settings_binding.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'app_routes.dart';
@@ -185,6 +189,18 @@ class AppPages {
       name: Routes.OFFLINE_QUEUE,
       page: () => const OfflineQueueScreen(),
       binding: OfflineQueueBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.STATISTICS,
+      page: () => const StatisticsScreen(),
+      binding: StatisticsBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.BUDGET_SETTINGS,
+      page: () => const BudgetSettingsScreen(),
+      binding: BudgetSettingsBinding(),
       transition: Transition.rightToLeft,
     ),
   ];

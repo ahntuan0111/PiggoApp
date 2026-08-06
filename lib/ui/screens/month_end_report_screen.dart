@@ -3,14 +3,14 @@ import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/month_end_report_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
 
 class MonthEndReportScreen extends GetView<MonthEndReportController> {
   const MonthEndReportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1), // Màu Kem sáng từ home_screen
       body: SafeArea(
@@ -122,11 +122,18 @@ class MonthEndReportScreen extends GetView<MonthEndReportController> {
                             ),
                             SizedBox(height: 12.h),
                             Text(
-                              "${formatter.format(controller.budgetService.totalWalletBalance.value)}đ",
+                              CurrencyFormatter.format(
+                                controller
+                                    .budgetService
+                                    .totalWalletBalance
+                                    .value,
+                              ),
                               style: TextStyle(
                                 fontSize: 36.sp,
                                 fontWeight: FontWeight.w900,
-                                color: const Color(0xFF1B4332), // Xanh đậm sang trọng
+                                color: const Color(
+                                  0xFF1B4332,
+                                ), // Xanh đậm sang trọng
                               ),
                             ),
                             SizedBox(height: 32.h),
@@ -145,12 +152,17 @@ class MonthEndReportScreen extends GetView<MonthEndReportController> {
                                       CircularProgressIndicator(
                                         value: 1.0,
                                         strokeWidth: 8.r,
-                                        color: const Color(0xFF0B4A3A), // Xanh rêu (Chi)
+                                        color: const Color(
+                                          0xFF0B4A3A,
+                                        ), // Xanh rêu (Chi)
                                       ),
                                       CircularProgressIndicator(
-                                        value: 0.7, // 70% income remaining? Just dummy
+                                        value:
+                                            0.7, // 70% income remaining? Just dummy
                                         strokeWidth: 8.r,
-                                        color: const Color(0xFF369B56), // Xanh lá (Thu)
+                                        color: const Color(
+                                          0xFF369B56,
+                                        ), // Xanh lá (Thu)
                                       ),
                                       Center(
                                         child: Icon(
@@ -171,21 +183,21 @@ class MonthEndReportScreen extends GetView<MonthEndReportController> {
                                       Icons.circle,
                                       const Color(0xFF1B4332),
                                       "Dư từ tháng ${controller.prevMonthName.value}",
-                                      "+${formatter.format(controller.carriedOverBalance.value)}",
+                                      "+${CurrencyFormatter.format(controller.carriedOverBalance.value)}",
                                     ),
                                     SizedBox(height: 12.h),
                                     _buildStatRow(
                                       Icons.circle,
                                       const Color(0xFF369B56),
                                       "Tổng thu",
-                                      "+${formatter.format(controller.income.value)}",
+                                      "+${CurrencyFormatter.format(controller.income.value)}",
                                     ),
                                     SizedBox(height: 12.h),
                                     _buildStatRow(
                                       Icons.circle,
                                       const Color(0xFFE53935),
                                       "Tổng chi",
-                                      "-${formatter.format(controller.expense.value)}",
+                                      "-${CurrencyFormatter.format(controller.expense.value)}",
                                     ),
                                     SizedBox(height: 16.h),
                                     Row(
@@ -201,7 +213,9 @@ class MonthEndReportScreen extends GetView<MonthEndReportController> {
                                         Text(
                                           "${controller.isSurplus.value ? '+' : ''}${controller.efficiency.value.toStringAsFixed(1)}%",
                                           style: TextStyle(
-                                            color: controller.isSurplus.value ? const Color(0xFF369B56) : Colors.red[600],
+                                            color: controller.isSurplus.value
+                                                ? const Color(0xFF369B56)
+                                                : Colors.red[600],
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14.sp,
                                           ),
@@ -228,8 +242,9 @@ class MonthEndReportScreen extends GetView<MonthEndReportController> {
                               icon: Icons.trending_up,
                               iconColor: const Color(0xFF369B56),
                               title: controller.biggestSavingTitle.value,
-                              value:
-                                  "${formatter.format(controller.biggestSavingAmount.value)}đ",
+                              value: CurrencyFormatter.format(
+                                controller.biggestSavingAmount.value,
+                              ),
                             ),
                           ),
                           SizedBox(width: 16.w),

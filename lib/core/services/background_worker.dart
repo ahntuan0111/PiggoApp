@@ -63,7 +63,9 @@ void callbackDispatcher() {
       return Future.value(true);
     } catch (e) {
       debugPrint("Background Task Failed: $e");
-      return Future.value(false); // Nếu fail thì WorkManager sẽ retry theo chính sách của nó
+      return Future.value(
+        false,
+      ); // Nếu fail thì WorkManager sẽ retry theo chính sách của nó
     }
   });
 }

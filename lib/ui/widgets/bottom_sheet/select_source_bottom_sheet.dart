@@ -1,3 +1,4 @@
+import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -10,6 +11,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
   final List<BudgetCategoryGroup> categoryGroups;
   final String currentCategoryId;
   final List<String> excludeCategoryIds;
+  final bool showRemainingAmount;
   final Function(String sourceId, String sourceName, double availableAmount, String iconName) onSelected;
 
   const SelectSourceBottomSheet({
@@ -18,12 +20,13 @@ class SelectSourceBottomSheet extends StatelessWidget {
     required this.categoryGroups,
     required this.currentCategoryId,
     this.excludeCategoryIds = const [],
+    this.showRemainingAmount = true,
     required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
+    
 
     return Container(
       height: Get.height * 0.85,
@@ -128,7 +131,7 @@ class SelectSourceBottomSheet extends StatelessWidget {
                 if (!excludeCategoryIds.contains('unallocated'))
                   GestureDetector(
                   onTap: () {
-                    onSelected('unallocated', 'Tiền chưa có việc', unallocatedAmount, '💰');
+                    onSelected('unallocated', 'Tiền chưa phân bổ', unallocatedAmount, 'icon_wallet.png');
                     Get.back();
                   },
                   child: Container(
@@ -149,10 +152,10 @@ class SelectSourceBottomSheet extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            CustomIconWidget(iconName: '💰', size: 24.sp),
+                            CustomIconWidget(iconName: 'icon_wallet.png', size: 24.sp),
                             SizedBox(width: 12.w),
                             Text(
-                              "Tiền chưa có việc",
+                              "Tiền chưa phân bổ",
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.w500,
@@ -161,7 +164,8 @@ class SelectSourceBottomSheet extends StatelessWidget {
                             ),
                           ],
                         ),
-                        _buildMoneyText(unallocatedAmount, formatter),
+                        if (showRemainingAmount)
+                          _buildMoneyText(unallocatedAmount),
                       ],
                     ),
                   ),
@@ -190,13 +194,14 @@ class SelectSourceBottomSheet extends StatelessWidget {
                               color: const Color(0xFF1E1E1E),
                             ),
                           ),
-                          Text(
-                            "Còn lại",
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: const Color(0xFF757575),
+                          if (showRemainingAmount)
+                            Text(
+                              "Còn lại",
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: const Color(0xFF757575),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       SizedBox(height: 12.h),
@@ -239,7 +244,8 @@ class SelectSourceBottomSheet extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                                _buildMoneyText(remaining, formatter),
+                                if (showRemainingAmount)
+                                  _buildMoneyText(remaining),
                               ],
                             ),
                           ),
@@ -257,26 +263,16 @@ class SelectSourceBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildMoneyText(double amount, NumberFormat formatter) {
+  Widget _buildMoneyText(double amount) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          formatter.format(amount),
+          CurrencyFormatter.format(amount),
           style: TextStyle(
             fontSize: 16.sp,
             fontWeight: FontWeight.bold,
             color: const Color(0xFF1E1E1E),
-          ),
-        ),
-        SizedBox(width: 2.w),
-        Text(
-          "đ",
-          style: TextStyle(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1E1E1E),
-            decoration: TextDecoration.underline,
           ),
         ),
       ],

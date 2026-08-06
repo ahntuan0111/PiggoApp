@@ -70,10 +70,16 @@ class SmartInputScreen extends GetView<SmartInputController> {
                     keyboardType: TextInputType.multiline,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => controller.submitTextInput(),
-                    style: TextStyle(fontSize: 16.sp, color: const Color(0xFF1E1E1E)),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      color: const Color(0xFF1E1E1E),
+                    ),
                     decoration: InputDecoration(
                       hintText: "VD: Đổ xăng hết 50 cành...",
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16.sp),
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 16.sp,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16.r),
                         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -84,11 +90,17 @@ class SmartInputScreen extends GetView<SmartInputController> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16.r),
-                        borderSide: const BorderSide(color: Color(0xFFEBC14F), width: 2),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFEBC14F),
+                          width: 2,
+                        ),
                       ),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 16.h,
+                      ),
                     ),
                   ),
                 ),
@@ -102,7 +114,9 @@ class SmartInputScreen extends GetView<SmartInputController> {
                           : () => controller.submitTextInput(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFF9C03C),
-                        disabledBackgroundColor: const Color(0xFFF9C03C).withValues(alpha: 0.5),
+                        disabledBackgroundColor: const Color(
+                          0xFFF9C03C,
+                        ).withValues(alpha: 0.5),
 
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16.r),
@@ -121,7 +135,10 @@ class SmartInputScreen extends GetView<SmartInputController> {
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.send, color: Color(0xFF2E2E2E)),
+                                const Icon(
+                                  Icons.send,
+                                  color: Color(0xFF2E2E2E),
+                                ),
                                 SizedBox(width: 8.w),
                                 Text(
                                   "Gửi",

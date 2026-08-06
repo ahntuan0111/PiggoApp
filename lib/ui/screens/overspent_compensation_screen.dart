@@ -137,7 +137,7 @@ class OverspentCompensationScreen
   }
 
   Widget _buildStatusBanner() {
-    final formatter = NumberFormat('#,###', 'vi_VN');
+    
     final isFullyCompensated = controller.isFullyCompensated;
     final bgColor = isFullyCompensated
         ? const Color(0xFFC8E6C9)
@@ -176,23 +176,12 @@ class OverspentCompensationScreen
           SizedBox(height: 16.h),
           RichText(
             text: TextSpan(
-              text: formatter.format(controller.newRemaining),
+              text: CurrencyFormatter.format(controller.newRemaining),
               style: TextStyle(
                 fontSize: 36.sp,
                 fontWeight: FontWeight.bold,
                 color: textColor,
               ),
-              children: [
-                TextSpan(
-                  text: 'đ',
-                  style: TextStyle(
-                    fontSize: 36.sp,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ],
             ),
           ),
           SizedBox(height: 16.h),
@@ -219,13 +208,13 @@ class OverspentCompensationScreen
   }
 
   Widget _buildSourceCard(int index) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
+    
     final source = controller.sources[index];
     final textController = controller.textControllers[index]!;
 
     // Khởi tạo text ban đầu nếu controller trống và có amount
     if (textController.text.isEmpty && source.amountToCompensate > 0) {
-      textController.text = formatter.format(source.amountToCompensate);
+      textController.text = CurrencyFormatter.format(source.amountToCompensate);
     }
 
     return Container(
@@ -290,7 +279,7 @@ class OverspentCompensationScreen
                 // Giới hạn không cho nhập lố số tiền khả dụng
                 if (parsed > source.availableAmount) {
                   parsed = source.availableAmount;
-                  String formatted = formatter.format(parsed);
+                  String formatted = CurrencyFormatter.format(parsed);
                   textController.value = TextEditingValue(
                     text: formatted,
                     selection: TextSelection.collapsed(
@@ -347,7 +336,7 @@ class OverspentCompensationScreen
                         children: [
                           TextSpan(
                             text:
-                                '${formatter.format(source.availableAmount - source.amountToCompensate)}đ',
+                                CurrencyFormatter.format(source.availableAmount - source.amountToCompensate),
                             style: TextStyle(
                               fontSize: 12.sp,
                               fontWeight: FontWeight.bold,

@@ -13,7 +13,7 @@ class AddCategoryBottomSheet extends StatefulWidget {
   final Future<void> Function(String name, String icon) onSave;
 
   const AddCategoryBottomSheet({
-    super.key, 
+    super.key,
     required this.isUpdate,
     required this.initialName,
     required this.initialIcon,
@@ -46,7 +46,6 @@ class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       padding: EdgeInsets.only(
         left: 16.w,
@@ -99,7 +98,10 @@ class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
                     border: Border.all(color: const Color(0xFFC49A45)),
                   ),
                   child: Center(
-                    child: CustomIconWidget(iconName: selectedIcon.value, size: 24.sp),
+                    child: CustomIconWidget(
+                      iconName: selectedIcon.value,
+                      size: 24.sp,
+                    ),
                   ),
                 ),
               ),
@@ -167,36 +169,46 @@ class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
             width: double.infinity,
             height: 48.h,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : () async {
-                setState(() => _isLoading = true);
-                try {
-                  await widget.onSave(nameController.text, selectedIcon.value);
-                } finally {
-                  if (mounted) setState(() => _isLoading = false);
-                }
-              },
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      setState(() => _isLoading = true);
+                      try {
+                        await widget.onSave(
+                          nameController.text,
+                          selectedIcon.value,
+                        );
+                      } finally {
+                        if (mounted) setState(() => _isLoading = false);
+                      }
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF9C03C), // Màu vàng
-                disabledBackgroundColor: const Color(0xFFF9C03C).withValues(alpha: 0.6),
+                disabledBackgroundColor: const Color(
+                  0xFFF9C03C,
+                ).withValues(alpha: 0.6),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 elevation: 0,
               ),
-              child: _isLoading 
-                ? SizedBox(
-                    height: 24.h, 
-                    width: 24.h, 
-                    child: const CircularProgressIndicator(color: Color(0xFF2E2E2E), strokeWidth: 3)
-                  )
-                : Text(
-                    widget.buttonText,
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF2E2E2E),
+              child: _isLoading
+                  ? SizedBox(
+                      height: 24.h,
+                      width: 24.h,
+                      child: const CircularProgressIndicator(
+                        color: Color(0xFF2E2E2E),
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : Text(
+                      widget.buttonText,
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2E2E2E),
+                      ),
                     ),
-                  ),
             ),
           ),
         ],

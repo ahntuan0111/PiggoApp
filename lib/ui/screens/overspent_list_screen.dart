@@ -4,14 +4,14 @@ import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/overspent_list_controller.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
 
 class OverspentListScreen extends GetView<OverspentListController> {
   const OverspentListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1),
       appBar: AppBar(
@@ -121,28 +121,22 @@ class OverspentListScreen extends GetView<OverspentListController> {
                                 children: [
                                   RichText(
                                     text: TextSpan(
-                                      text: formatter.format(cat.remaining),
+                                      text: CurrencyFormatter.format(
+                                        cat.remaining,
+                                      ),
                                       style: TextStyle(
                                         fontSize: 16.sp,
                                         fontWeight: FontWeight.bold,
                                         color: const Color(0xFF1E1E1E),
                                       ),
-                                      children: [
-                                        TextSpan(
-                                          text: 'đ',
-                                          style: TextStyle(
-                                            fontSize: 16.sp,
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFF1E1E1E),
-                                            decoration: TextDecoration.underline,
-                                          ),
-                                        ),
-                                      ],
                                     ),
                                   ),
                                   SizedBox(height: 8.h),
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 4.h,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFD81B60),
                                       borderRadius: BorderRadius.circular(12.r),
@@ -167,7 +161,6 @@ class OverspentListScreen extends GetView<OverspentListController> {
                 }),
               ),
             ),
-
           ],
         ),
       ),

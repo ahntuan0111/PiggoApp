@@ -87,25 +87,12 @@ class BudgetCategoryItem extends StatelessWidget {
                                 ),
                                 children: [
                                   TextSpan(
-                                    text: formattedAllocated.replaceAll(
-                                      'đ',
-                                      '',
-                                    ),
+                                    text: formattedAllocated,
                                     style: TextStyle(
                                       fontSize: 12.sp,
                                       color: isOverspent
                                           ? const Color(0xFFE53935)
                                           : const Color(0xFF616161),
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: 'đ',
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      color: isOverspent
-                                          ? const Color(0xFFE53935)
-                                          : const Color(0xFF616161),
-                                      decoration: TextDecoration.underline,
                                     ),
                                   ),
                                 ],

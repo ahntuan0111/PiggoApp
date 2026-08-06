@@ -7,6 +7,7 @@ import 'package:appintern/data/repositories/rollover_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/budget_service.dart';
+import 'package:appintern/core/services/settings_service.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
@@ -49,6 +50,9 @@ class SplashController extends BaseController {
         );
       },
       (user) async {
+        // Load settings from cloud (fire-and-forget)
+        Get.find<SettingsService>().loadFromCloud();
+
         final rolloverRepo = Get.find<RolloverRepository>();
         final rolloverResult = await ErrorHandler.execute(
           () async => await rolloverRepo.checkRolloverState(),

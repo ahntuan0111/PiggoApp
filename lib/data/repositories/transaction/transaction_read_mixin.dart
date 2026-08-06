@@ -16,12 +16,17 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     final network = Get.find<NetworkService>();
     if (network.isOffline.value) {
       if (start != null) {
-        String monthYearStr = "${start.month.toString().padLeft(2, '0')}-${start.year}";
+        String monthYearStr =
+            "${start.month.toString().padLeft(2, '0')}-${start.year}";
         final cachedTxs = await localDb.getTransactionsByMonth(monthYearStr);
-        final filtered = cachedTxs.where((tx) => tx.categoryId == categoryId).toList();
+        final filtered = cachedTxs
+            .where((tx) => tx.categoryId == categoryId)
+            .toList();
         filtered.sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
         final limited = filtered.take(limit).toList();
-        return limited.map((tx) => {'transaction': tx, 'detail': null}).toList();
+        return limited
+            .map((tx) => {'transaction': tx, 'detail': null})
+            .toList();
       }
       return [];
     }
@@ -98,11 +103,16 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     final network = Get.find<NetworkService>();
     if (network.isOffline.value) {
       if (start != null) {
-        String monthYearStr = "${start.month.toString().padLeft(2, '0')}-${start.year}";
+        String monthYearStr =
+            "${start.month.toString().padLeft(2, '0')}-${start.year}";
         final cachedTxs = await localDb.getTransactionsByMonth(monthYearStr);
-        cachedTxs.sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
+        cachedTxs.sort(
+          (a, b) => b.transactionDate.compareTo(a.transactionDate),
+        );
         final limited = cachedTxs.take(limit).toList();
-        return limited.map((tx) => {'transaction': tx, 'detail': null}).toList();
+        return limited
+            .map((tx) => {'transaction': tx, 'detail': null})
+            .toList();
       }
       return [];
     }
@@ -163,7 +173,9 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         return txB.transactionDate.compareTo(txA.transactionDate);
       });
 
-      final models = results.map((e) => e['transaction'] as TransactionModel).toList();
+      final models = results
+          .map((e) => e['transaction'] as TransactionModel)
+          .toList();
       if (models.isNotEmpty) await localDb.saveTransactions(models);
 
       return results;
@@ -183,24 +195,33 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     final network = Get.find<NetworkService>();
     if (network.isOffline.value) {
       if (start != null) {
-        String monthYearStr = "${start.month.toString().padLeft(2, '0')}-${start.year}";
+        String monthYearStr =
+            "${start.month.toString().padLeft(2, '0')}-${start.year}";
         final cachedTxs = await localDb.getTransactionsByMonth(monthYearStr);
-        
+
         var filtered = cachedTxs;
         if (categoryId != null && categoryId.isNotEmpty) {
-           filtered = filtered.where((tx) => tx.categoryId == categoryId).toList();
+          filtered = filtered
+              .where((tx) => tx.categoryId == categoryId)
+              .toList();
         }
         if (type != null && type.isNotEmpty) {
-           filtered = filtered.where((tx) => tx.type == type).toList();
-        }
-        
-        if (ascending) {
-          filtered.sort((a, b) => a.transactionDate.compareTo(b.transactionDate));
-        } else {
-          filtered.sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
+          filtered = filtered.where((tx) => tx.type == type).toList();
         }
 
-        return filtered.map((tx) => {'transaction': tx, 'detail': null}).toList();
+        if (ascending) {
+          filtered.sort(
+            (a, b) => a.transactionDate.compareTo(b.transactionDate),
+          );
+        } else {
+          filtered.sort(
+            (a, b) => b.transactionDate.compareTo(a.transactionDate),
+          );
+        }
+
+        return filtered
+            .map((tx) => {'transaction': tx, 'detail': null})
+            .toList();
       }
       return [];
     }
@@ -272,7 +293,9 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
 
       results = await Future.wait(futures);
 
-      final models = results.map((e) => e['transaction'] as TransactionModel).toList();
+      final models = results
+          .map((e) => e['transaction'] as TransactionModel)
+          .toList();
       if (models.isNotEmpty) await localDb.saveTransactions(models);
 
       return results;

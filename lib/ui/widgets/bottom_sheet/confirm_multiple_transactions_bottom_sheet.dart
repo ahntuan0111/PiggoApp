@@ -1,3 +1,4 @@
+import 'package:appintern/core/utils/currency_formatter.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -29,7 +30,7 @@ class ConfirmMultipleTransactionsBottomSheet extends StatefulWidget {
 class _ConfirmMultipleTransactionsBottomSheetState
     extends State<ConfirmMultipleTransactionsBottomSheet> {
   late List<Map<String, dynamic>> transactions;
-  final formatter = NumberFormat('#,###', 'vi_VN');
+  
   bool _isLoading = false;
 
   @override
@@ -60,7 +61,7 @@ class _ConfirmMultipleTransactionsBottomSheetState
         'id': UniqueKey().toString(), // Tạo ID giả để quản lý list
         'type': tx['type'] ?? 'outflow',
         'amountController': TextEditingController(
-          text: formatter.format((tx['amount'] as num?)?.toDouble() ?? 0),
+          text: CurrencyFormatter.format((tx['amount'] as num?)?.toDouble() ?? 0),
         ),
         'noteController': TextEditingController(
           text: tx['note']?.toString() ?? '',
@@ -121,7 +122,7 @@ class _ConfirmMultipleTransactionsBottomSheetState
     if (totalOutflowUnallocated > widget.unallocatedAmount) {
       Get.snackbar(
         "Lỗi phân bổ",
-        "Tổng tiền xuất từ 'Tiền chưa phân bổ' vượt quá số dư hiện tại (${formatter.format(widget.unallocatedAmount)}đ). Vui lòng chọn danh mục cụ thể.",
+        "Tổng tiền xuất từ 'Tiền chưa phân bổ' vượt quá số dư hiện tại (${CurrencyFormatter.format(widget.unallocatedAmount)}đ). Vui lòng chọn danh mục cụ thể.",
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -456,8 +457,8 @@ class _ConfirmMultipleTransactionsBottomSheetState
                   onChanged: (value) {
                     final cleanString = value.replaceAll(RegExp(r'[^0-9]'), '');
                     if (cleanString.isNotEmpty) {
-                      final formatted = formatter.format(
-                        int.parse(cleanString),
+                      final formatted = CurrencyFormatter.format(
+                        double.parse(cleanString),
                       );
                       amountController.value = TextEditingValue(
                         text: formatted,

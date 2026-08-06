@@ -1,3 +1,4 @@
+import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/add_category_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -9,14 +10,13 @@ import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/edit_money_distribution.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/ui/widgets/dialogs/confirm_dialog_widget.dart';
 
 class CategoryDetailScreen extends GetView<CategoryDetailController> {
   const CategoryDetailScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Scaffold(
       backgroundColor: const Color(0xFFFDFBF4),
       appBar: AppBar(
@@ -119,83 +119,95 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                   ),
                   child: GetBuilder<CategoryDetailController>(
                     builder: (controller) => Column(
-                    children: [
-                      _buildMoneyRow(
-                        'Số tiền đã phân bổ',
-                        '${formatter.format(controller.category.defaultBudget.toInt())}đ',
-                        const Color(0xFF1E1E1E),
-                        FontWeight.w500,
-                      ),
-                      SizedBox(height: 12.h),
-                      _buildMoneyRow(
-                        'Số tiền đã tiêu',
-                        '${formatter.format(controller.category.spent.toInt())}đ',
-                        const Color(0xFF1E1E1E),
-                        FontWeight.w500,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        child: Divider(
-                          color: const Color(0xFFEEEEEE),
-                          height: 1.h,
-                        ),
-                      ),
-                      _buildMoneyRow(
-                        'Còn lại',
-                        '${formatter.format(controller.category.remaining.toInt())}đ',
-                        const Color(0xFF43A047), // Màu xanh
-                        FontWeight.bold,
-                      ),
-                      SizedBox(height: 24.h),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48.h,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(
-                              0xFFFFB74D,
-                            ), // Vàng cam
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                            elevation: 0,
+                      children: [
+                        _buildMoneyRow(
+                          'Số tiền đã phân bổ',
+                          CurrencyFormatter.format(
+                            controller.category.defaultBudget,
                           ),
-                          onPressed: () {
-                            Get.bottomSheet(
-                              EditMoneyDistributionBottomSheet(
-                                initialAllocated:
-                                    controller.category.defaultBudget,
-                                unallocatedAmount: controller.unallocatedAmount,
-                                categoryGroups: controller.categoryGroups,
-                                currentCategoryId: controller.category.id,
-                                onSave: (newBudget, {sourceCategoryId, sourceCategoryNewBudget, note}) async {
-                                  await controller.updateBudget(
-                                    newBudget,
-                                    sourceCategoryId: sourceCategoryId,
-                                    sourceCategoryNewBudget: sourceCategoryNewBudget,
-                                  );
-                                  if (Get.isBottomSheetOpen == true) {
-                                    Get.back(); // close bottom sheet
-                                  }
-                                },
+                          const Color(0xFF1E1E1E),
+                          FontWeight.w500,
+                        ),
+                        SizedBox(height: 12.h),
+                        _buildMoneyRow(
+                          'Số tiền đã tiêu',
+                          CurrencyFormatter.format(controller.category.spent),
+                          const Color(0xFF1E1E1E),
+                          FontWeight.w500,
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          child: Divider(
+                            color: const Color(0xFFEEEEEE),
+                            height: 1.h,
+                          ),
+                        ),
+                        _buildMoneyRow(
+                          'Còn lại',
+                          CurrencyFormatter.format(
+                            controller.category.remaining,
+                          ),
+                          const Color(0xFF43A047), // Màu xanh
+                          FontWeight.bold,
+                        ),
+                        SizedBox(height: 24.h),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48.h,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(
+                                0xFFFFB74D,
+                              ), // Vàng cam
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
                               ),
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                            );
-                          },
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              Get.bottomSheet(
+                                EditMoneyDistributionBottomSheet(
+                                  initialAllocated:
+                                      controller.category.defaultBudget,
+                                  unallocatedAmount:
+                                      controller.unallocatedAmount,
+                                  categoryGroups: controller.categoryGroups,
+                                  currentCategoryId: controller.category.id,
+                                  onSave:
+                                      (
+                                        newBudget, {
+                                        sourceCategoryId,
+                                        sourceCategoryNewBudget,
+                                        note,
+                                      }) async {
+                                        await controller.updateBudget(
+                                          newBudget,
+                                          sourceCategoryId: sourceCategoryId,
+                                          sourceCategoryNewBudget:
+                                              sourceCategoryNewBudget,
+                                        );
+                                        if (Get.isBottomSheetOpen == true) {
+                                          Get.back(); // close bottom sheet
+                                        }
+                                      },
+                                ),
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                              );
+                            },
 
-                          child: Text(
-                            'SỬA SỐ TIỀN PHÂN BỔ',
-                            style: TextStyle(
-                              color: const Color(0xFF1E1E1E),
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.bold,
+                            child: Text(
+                              'SỬA SỐ TIỀN PHÂN BỔ',
+                              style: TextStyle(
+                                color: const Color(0xFF1E1E1E),
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                   ),
                 ),
                 SizedBox(height: 24.h),
@@ -330,7 +342,8 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                           children: List.generate(
                             controller.transferHistoryList.length,
                             (index) {
-                              final item = controller.transferHistoryList[index];
+                              final item =
+                                  controller.transferHistoryList[index];
                               return HistoryTransferItem(
                                 action: item['action'],
                                 partnerName: item['partnerName'],
@@ -361,7 +374,22 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                     child: TextButton.icon(
                       onPressed: controller.isLoading
                           ? null
-                          : controller.deleteCategory,
+                          : () {
+                              final hasLinkedGoal = controller.hasLinkedGoal;
+                              Get.dialog(
+                                ConfirmDialogWidget(
+                                  title: 'Xác nhận xóa',
+                                  content:
+                                      'Bạn có chắc chắn muốn xóa danh mục này không?'
+                                      '${hasLinkedGoal ? '\n\nCảnh báo: Danh mục này đang được liên kết với một Mục Tiêu Tiết Kiệm. Việc xóa danh mục sẽ ĐỒNG THỜI XÓA Mục Tiêu Tiết Kiệm đó.' : ''}',
+                                  confirmText: 'Xóa',
+                                  onConfirm: () {
+                                    Get.back();
+                                    controller.deleteCategory();
+                                  },
+                                ),
+                              );
+                            },
                       icon: controller.isLoading
                           ? SizedBox(
                               height: 20.r,
@@ -415,20 +443,11 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
           text: TextSpan(
             children: [
               TextSpan(
-                text: value.substring(0, value.length - 1),
+                text: value,
                 style: TextStyle(
                   fontSize: 16.sp,
                   color: valueColor,
                   fontWeight: valueWeight,
-                ),
-              ),
-              TextSpan(
-                text: 'đ',
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  color: valueColor,
-                  fontWeight: valueWeight,
-                  decoration: TextDecoration.underline,
                 ),
               ),
             ],

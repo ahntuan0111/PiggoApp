@@ -3,6 +3,9 @@ import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/new_month_setup_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
+
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
 class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
@@ -10,15 +13,19 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1), // Nền Kem
       appBar: AppBar(
-        title: Obx(() => Text(
-          "Kế hoạch ${controller.newMonthName.value} 👋", 
-          style: TextStyle(color: const Color(0xFF0B4A3A), fontWeight: FontWeight.bold, fontSize: 16.sp)
-        )),
+        title: Obx(
+          () => Text(
+            "Kế hoạch ${controller.newMonthName.value} 👋",
+            style: TextStyle(
+              color: const Color(0xFF0B4A3A),
+              fontWeight: FontWeight.bold,
+              fontSize: 16.sp,
+            ),
+          ),
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false, // Ngăn back
         backgroundColor: const Color(0xFFF9F7F1),
@@ -38,7 +45,7 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
                   color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
-                )
+                ),
               ],
             ),
             child: Column(
@@ -69,32 +76,35 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
                     controller.onExpectedIncomeChanged(val);
                   },
                 ),
-                Obx(() => Column(
-                      children: [
-                        SizedBox(height: 16.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Tổng định mức đã phân bổ:",
-                              style: TextStyle(
-                                fontSize: 13.sp,
-                                color: Colors.black54,
-                              ),
+                Obx(
+                  () => Column(
+                    children: [
+                      SizedBox(height: 16.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Tổng định mức đã phân bổ:",
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: Colors.black54,
                             ),
-                            Text(
-                              "${formatter.format(controller.totalAllocatedAmount.value)}đ",
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0B4A3A),
-                              ),
+                          ),
+                          Text(
+                            CurrencyFormatter.format(
+                              controller.totalAllocatedAmount.value,
                             ),
-                          ],
-                        )
-                      ],
-                    )
-                )
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0B4A3A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -121,19 +131,21 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
           SizedBox(height: 12.h),
 
           Expanded(
-            child: Obx(() => ListView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
-              itemCount: controller.clonedCategories.length,
-              itemBuilder: (context, index) {
-                final cat = controller.clonedCategories[index];
-                return _buildCategoryBudgetCard(
-                  cat['title'] as String, 
-                  cat['icon'] as String, 
-                  (cat['budget'] as num).toDouble(), 
-                  cat['showAi'] as bool
-                );
-              },
-            )),
+            child: Obx(
+              () => ListView.builder(
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
+                itemCount: controller.clonedCategories.length,
+                itemBuilder: (context, index) {
+                  final cat = controller.clonedCategories[index];
+                  return _buildCategoryBudgetCard(
+                    cat['title'] as String,
+                    cat['icon'] as String,
+                    (cat['budget'] as num).toDouble(),
+                    cat['showAi'] as bool,
+                  );
+                },
+              ),
+            ),
           ),
 
           // Bottom Action
@@ -153,7 +165,7 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
                   ),
                   onPressed: () {
                     // Xong quá trình Rollover, về Home
-                    controller.onStartHardReset(); 
+                    controller.onStartHardReset();
                   },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -167,7 +179,11 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
                         ),
                       ),
                       SizedBox(width: 8.w),
-                      Icon(Icons.check_circle_outline, color: Colors.white, size: 20.sp),
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.white,
+                        size: 20.sp,
+                      ),
                     ],
                   ),
                 ),
@@ -179,9 +195,12 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
     );
   }
 
-  Widget _buildCategoryBudgetCard(String title, String iconName, double currentBudget, bool showAiSuggestion) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-    
+  Widget _buildCategoryBudgetCard(
+    String title,
+    String iconName,
+    double currentBudget,
+    bool showAiSuggestion,
+  ) {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       padding: EdgeInsets.all(16.w),
@@ -193,7 +212,7 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
             color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -210,7 +229,14 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
               ),
               SizedBox(width: 12.w),
               Expanded(
-                child: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16.sp, color: Colors.black87)),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16.sp,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
               if (showAiSuggestion)
                 Container(
@@ -222,9 +248,20 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.auto_awesome, color: const Color(0xFFC49A45), size: 14.sp),
+                      Icon(
+                        Icons.auto_awesome,
+                        color: const Color(0xFFC49A45),
+                        size: 14.sp,
+                      ),
                       SizedBox(width: 4.w),
-                      Text("Đề xuất giảm", style: TextStyle(color: const Color(0xFFC49A45), fontSize: 10.sp, fontWeight: FontWeight.bold)),
+                      Text(
+                        "Đề xuất giảm",
+                        style: TextStyle(
+                          color: const Color(0xFFC49A45),
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -240,21 +277,28 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
               SizedBox(width: 12.w),
               Expanded(
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 8.h,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9F7F1),
                     borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(color: Colors.black12),
                   ),
                   child: Text(
-                    "${formatter.format(currentBudget)}đ",
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(0xFF369B56)),
+                    CurrencyFormatter.format(currentBudget),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF369B56),
+                    ),
                     textAlign: TextAlign.right,
                   ),
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );

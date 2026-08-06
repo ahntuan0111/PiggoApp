@@ -30,8 +30,11 @@ class OnboardingScreen extends GetView<OnboardingController> {
                         width: 296.w,
                         height: 321.h,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Icon(Icons.broken_image, size: 100.w, color: Colors.grey),
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.broken_image,
+                          size: 100.w,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ],

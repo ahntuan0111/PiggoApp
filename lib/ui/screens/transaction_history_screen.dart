@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
+
 import 'package:appintern/core/constants/app_assets.dart';
 import 'package:appintern/ui/controllers/transaction_history_controller.dart';
 import 'package:appintern/data/models/category_model.dart';
@@ -11,28 +14,8 @@ import 'package:appintern/core/services/network_service.dart';
 class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
   TransactionHistoryScreen({super.key});
 
-  final ScrollController _scrollController = ScrollController();
-  final NumberFormat formatter = NumberFormat('#,###', 'vi_VN');
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      if (!controller.isFetchingMore.value && !controller.hasReachedMax.value) {
-        controller.fetchTransactions(isRefresh: false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Gắn scroll listener mỗi lần build (GetView không có initState)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.removeListener(_onScroll);
-        _scrollController.addListener(_onScroll);
-      }
-    });
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
@@ -60,85 +43,99 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
             child: GetBuilder<TransactionHistoryController>(
               id: 'tx_list',
               builder: (_) {
-              if (controller.isLoading &&
-                  controller.transactionsList.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
-              }
+                if (controller.isLoading &&
+                    controller.transactionsList.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-              if (controller.transactionsList.isEmpty) {
-                return _buildEmptyState();
-              }
+                if (controller.transactionsList.isEmpty) {
+                  return _buildEmptyState();
+                }
 
-              final groupedData = controller.groupedTransactions;
-              final dates = groupedData.keys.toList();
+                final groupedData = controller.groupedTransactions;
+                final dates = groupedData.keys.toList();
 
-              return RefreshIndicator(
-                onRefresh: () async =>
-                    controller.fetchTransactions(isRefresh: true),
-                color: const Color(0xFFEBC14F),
-                child: ListView.builder(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16.w,
-                    vertical: 12.h,
-                  ),
-                  itemCount:
-                      dates.length + (controller.isFetchingMore.value || (controller.hasReachedMax.value && Get.find<NetworkService>().isOffline.value) ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == dates.length) {
-                      if (controller.isFetchingMore.value) {
-                        return Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
-                          child: const Center(child: CircularProgressIndicator()),
-                        );
-                      } else {
-                        return Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
-                          child: Center(
-                            child: Text(
-                              "Vui lòng kết nối mạng để xem các giao dịch cũ hơn",
-                              style: TextStyle(fontSize: 13.sp, color: Colors.grey[500], fontStyle: FontStyle.italic),
+                return RefreshIndicator(
+                  onRefresh: () async =>
+                      controller.fetchTransactions(isRefresh: true),
+                  color: const Color(0xFFEBC14F),
+                  child: ListView.builder(
+                    controller: controller.scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 12.h,
+                    ),
+                    itemCount:
+                        dates.length +
+                        (controller.isFetchingMore.value ||
+                                (controller.hasReachedMax.value &&
+                                    Get.find<NetworkService>().isOffline.value)
+                            ? 1
+                            : 0),
+                    itemBuilder: (context, index) {
+                      if (index == dates.length) {
+                        if (controller.isFetchingMore.value) {
+                          return Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          return Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            child: Center(
+                              child: Text(
+                                "Vui lòng kết nối mạng để xem các giao dịch cũ hơn",
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  color: Colors.grey[500],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
                       }
-                    }
 
-                    final dateKey = dates[index];
-                    final transactions = groupedData[dateKey]!;
+                      final dateKey = dates[index];
+                      final transactions = groupedData[dateKey]!;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(top: 16.h, bottom: 8.h),
-                          child: Text(
-                            dateKey,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[700],
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(top: 16.h, bottom: 8.h),
+                            child: Text(
+                              dateKey,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[700],
+                              ),
                             ),
                           ),
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16.r),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16.r),
+                            ),
+                            child: Column(
+                              children: transactions
+                                  .map(
+                                    (txData) => _buildTransactionItem(txData),
+                                  )
+                                  .toList(),
+                            ),
                           ),
-                          child: Column(
-                            children: transactions
-                                .map((txData) => _buildTransactionItem(txData))
-                                .toList(),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              );
-            }),
+                        ],
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -411,7 +408,7 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
                 ),
                 SizedBox(height: 6.h),
                 Text(
-                  "$sign${formatter.format(tx.amount)}đ",
+                  "$sign${CurrencyFormatter.format(tx.amount)}",
                   style: TextStyle(
                     fontSize: 15.sp,
                     fontWeight: FontWeight.bold,
@@ -432,12 +429,18 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(isOffline ? Icons.wifi_off : Icons.search_off, size: 64.sp, color: Colors.grey[300]),
+          Icon(
+            isOffline ? Icons.wifi_off : Icons.search_off,
+            size: 64.sp,
+            color: Colors.grey[300],
+          ),
           SizedBox(height: 16.h),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 24.w),
             child: Text(
-              isOffline ? "Vui lòng kết nối mạng để xem lịch sử giao dịch tháng này." : "Không tìm thấy giao dịch nào.",
+              isOffline
+                  ? "Vui lòng kết nối mạng để xem lịch sử giao dịch tháng này."
+                  : "Không tìm thấy giao dịch nào.",
               style: TextStyle(fontSize: 16.sp, color: Colors.grey[500]),
               textAlign: TextAlign.center,
             ),

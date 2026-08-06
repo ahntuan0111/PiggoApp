@@ -22,18 +22,19 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1E1E1E)),
           onPressed: () => Get.back(),
         ),
-        title: Obx(() => Text(
-          controller.isEdit.value ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch',
-          style: TextStyle(
-            color: const Color(0xFF1E1E1E),
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w600,
+        title: Obx(
+          () => Text(
+            controller.isEdit.value ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch',
+            style: TextStyle(
+              color: const Color(0xFF1E1E1E),
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        )),
+        ),
       ),
       body: Column(
         children: [
-
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.all(16.w),
@@ -588,7 +589,9 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
             return SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: controller.isLoading ? null : () => controller.addTransaction(closeAfterSave: true),
+                onPressed: controller.isLoading
+                    ? null
+                    : () => controller.addTransaction(closeAfterSave: true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFC49A45),
                   padding: EdgeInsets.symmetric(vertical: 14.h),
@@ -600,7 +603,10 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                     ? SizedBox(
                         width: 24.w,
                         height: 24.w,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.w),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.w,
+                        ),
                       )
                     : Text(
                         'Cập nhật',
@@ -617,7 +623,10 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: controller.isLoading ? null : () => controller.addTransaction(closeAfterSave: false),
+                    onPressed: controller.isLoading
+                        ? null
+                        : () =>
+                              controller.addTransaction(closeAfterSave: false),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFC49A45)),
                       padding: EdgeInsets.symmetric(vertical: 14.h),
@@ -640,7 +649,9 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                 SizedBox(width: 12.w),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: controller.isLoading ? null : () => controller.addTransaction(closeAfterSave: true),
+                    onPressed: controller.isLoading
+                        ? null
+                        : () => controller.addTransaction(closeAfterSave: true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFC49A45),
                       padding: EdgeInsets.symmetric(vertical: 14.h),
@@ -652,7 +663,10 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                         ? SizedBox(
                             width: 24.w,
                             height: 24.w,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.w),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.w,
+                            ),
                           )
                         : Text(
                             'Lưu',

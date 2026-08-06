@@ -10,15 +10,15 @@ abstract class BaseController extends GetxController {
   bool get isLoading => uiState.value == UIState.loading;
 
   void showLoading() => uiState.value = UIState.loading;
-  
+
   void hideLoading() => uiState.value = UIState.success;
 
   void setEmpty() => uiState.value = UIState.empty;
-  
+
   void setError() => uiState.value = UIState.error;
-  
+
   void setOfflineCached() => uiState.value = UIState.offlineCached;
-  
+
   void setInitial() => uiState.value = UIState.initial;
 
   void showSuccessMessage(String title, String message) {

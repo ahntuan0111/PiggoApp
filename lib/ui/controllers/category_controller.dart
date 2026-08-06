@@ -20,6 +20,8 @@ class CategoryController extends BaseController {
   // Danh sách chi tiết các danh mục (Cafe, Ăn uống)
   var categories = <CategoryModel>[].obs;
 
+  var isInitialLoading = true.obs;
+
   @override
   void onReady() {
     super.onReady();
@@ -61,6 +63,8 @@ class CategoryController extends BaseController {
             .toList(),
       );
     }
+
+    isInitialLoading.value = false;
   }
 
   Future<void> createCategoryType(String name) async {
@@ -102,7 +106,9 @@ class CategoryController extends BaseController {
         priority: maxPriority + 1,
       );
 
-      final typesDb = List<Map<String, dynamic>>.from(await localDb.getCategoryTypes());
+      final typesDb = List<Map<String, dynamic>>.from(
+        await localDb.getCategoryTypes(),
+      );
       typesDb.add(newType.toMap());
       await localDb.saveCategoryTypes(typesDb);
 
@@ -174,7 +180,9 @@ class CategoryController extends BaseController {
         iconName: iconName,
       );
 
-      final catsDb = List<Map<String, dynamic>>.from(await localDb.getCategories());
+      final catsDb = List<Map<String, dynamic>>.from(
+        await localDb.getCategories(),
+      );
       catsDb.add(newCat.toMap());
       await localDb.saveCategories(catsDb);
 

@@ -12,19 +12,18 @@ mixin DioErrorHandler {
           e.type == DioExceptionType.connectionError) {
         throw NetworkException("Không thể kết nối đến máy chủ AI (Timeout).");
       }
-      
+
       String message = "Lỗi máy chủ AI.";
       if (e.response != null && e.response?.data != null) {
         try {
-          message = e.response?.data['message'] ?? e.response?.data['detail'] ?? message;
+          message =
+              e.response?.data['message'] ??
+              e.response?.data['detail'] ??
+              message;
         } catch (_) {}
       }
 
-      throw ServerException(
-        message,
-        e.response?.statusCode,
-        "DIO_ERROR",
-      );
+      throw ServerException(message, e.response?.statusCode, "DIO_ERROR");
     } catch (e) {
       throw ServerException("Lỗi hệ thống không xác định (STT): $e");
     }

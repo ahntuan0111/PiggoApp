@@ -24,7 +24,8 @@ class TransactionModel {
       amount: (map['amount'] ?? 0).toDouble(),
       type: map['type'] ?? 'EXPENSE',
       transactionDate: map['transactionDate'] != null
-          ? DateTime.tryParse(map['transactionDate'])?.toLocal() ?? DateTime.now()
+          ? DateTime.tryParse(map['transactionDate'])?.toLocal() ??
+                DateTime.now()
           : DateTime.now(),
       status: map['status'] ?? 'COMPLETED',
       note: map['note'],

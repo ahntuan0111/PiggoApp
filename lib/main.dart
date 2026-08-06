@@ -1,5 +1,6 @@
 import 'package:appintern/data/repositories/auth_repository.dart';
 import 'package:appintern/data/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/statistics_repository.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:appintern/data/repositories/goal_repository.dart';
@@ -14,6 +15,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/routes/app_pages.dart';
 import 'core/services/appwrite_service.dart';
 import 'core/services/storage_service.dart';
+import 'core/services/settings_service.dart';
+import 'core/services/notification_service.dart';
 import 'core/services/network_service.dart';
 import 'domain/services/i_ai_service.dart';
 import 'package:appintern/data/data_sources/remote/appwrite_ai_service_impl.dart';
@@ -22,6 +25,7 @@ import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'core/services/offline_sync_service.dart';
 import 'core/services/sync_engine_service.dart';
 import 'core/services/background_worker.dart';
+import 'package:appintern/core/theme/app_theme.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'package:flutter/foundation.dart';
@@ -37,6 +41,8 @@ void main() async {
   );
 
   await Get.putAsync(() => StorageService().init());
+  await Get.putAsync(() => NotificationService().init());
+  await Get.putAsync(() => SettingsService().init());
   await Get.putAsync(() => AppwriteService().init());
 
   // Services (Nên khởi tạo Data Sources trước)
@@ -51,6 +57,7 @@ void main() async {
   Get.put(GoalRepository(appwriteService));
   Get.put(TransferLogRepository(appwriteService));
   Get.put(RolloverRepository(appwriteService));
+  Get.put(StatisticsRepository(appwriteService));
   Get.put(AppwriteAIServiceImpl());
   Get.put<IAIService>(Get.find<AppwriteAIServiceImpl>());
 
@@ -77,17 +84,25 @@ class MyApp extends StatelessWidget {
         return GetMaterialApp(
           title: 'Personal Finance App',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFF9F7F1),
-            ),
-            useMaterial3: true,
-            fontFamily: 'Roboto',
-          ),
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: _getThemeMode(),
           initialRoute: AppPages.INITIAL,
           getPages: AppPages.pages,
         );
       },
     );
+  }
+
+  ThemeMode _getThemeMode() {
+    try {
+      final settings = Get.find<SettingsService>();
+      final mode = settings.themeMode.value;
+      if (mode == 'light') return ThemeMode.light;
+      if (mode == 'dark') return ThemeMode.dark;
+      return ThemeMode.system;
+    } catch (e) {
+      return ThemeMode.system;
+    }
   }
 }

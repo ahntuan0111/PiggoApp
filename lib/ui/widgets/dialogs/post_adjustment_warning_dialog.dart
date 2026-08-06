@@ -9,7 +9,11 @@ class PostAdjustmentWarningDialog {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange,
+              size: 28,
+            ),
             SizedBox(width: 8.w),
             const Expanded(
               child: Text(

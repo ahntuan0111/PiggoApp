@@ -21,11 +21,6 @@ class CategoryTypeModel {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'ownerId': ownerId,
-      'name': name,
-      'priority': priority,
-    };
+    return {'id': id, 'ownerId': ownerId, 'name': name, 'priority': priority};
   }
 }

@@ -1,3 +1,4 @@
+import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -25,8 +26,8 @@ class HistoryTransferItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-    final formattedAmount = formatter.format(amount.abs().toInt());
+    
+    final formattedAmount = CurrencyFormatter.format(amount.abs());
     final formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(date);
     
     final bool isOutbound = amount < 0; // Chuyển đi

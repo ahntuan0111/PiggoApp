@@ -8,10 +8,10 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
   Future<void> saveCategoryTypes(List<Map<String, dynamic>> types) async {
     final db = await database;
     Batch batch = db.batch();
-    
+
     // Purge logic: Xóa các records đã sync (bảo toàn offline ghosts)
     batch.delete('category_types', where: "id NOT LIKE 'offline_%'");
-    
+
     for (var type in types) {
       batch.insert('category_types', {
         'id': type['id'],
@@ -31,10 +31,10 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
   Future<void> saveCategories(List<Map<String, dynamic>> cats) async {
     final db = await database;
     Batch batch = db.batch();
-    
+
     // Purge logic: Xóa các records đã sync (bảo toàn offline ghosts)
     batch.delete('categories', where: "id NOT LIKE 'offline_%'");
-    
+
     for (var cat in cats) {
       batch.insert('categories', {
         'id': cat['id'],
@@ -59,15 +59,16 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
     }).toList();
   }
 
-  Future<void> updateCategory(String categoryId, String name, String iconName, String color) async {
+  Future<void> updateCategory(
+    String categoryId,
+    String name,
+    String iconName,
+    String color,
+  ) async {
     final db = await database;
     await db.update(
       'categories',
-      {
-        'name': name,
-        'iconName': iconName,
-        'color': color,
-      },
+      {'name': name, 'iconName': iconName, 'color': color},
       where: 'id = ?',
       whereArgs: [categoryId],
     );
@@ -77,9 +78,7 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
     final db = await database;
     await db.update(
       'category_types',
-      {
-        'name': name,
-      },
+      {'name': name},
       where: 'id = ?',
       whereArgs: [typeId],
     );

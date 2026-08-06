@@ -81,7 +81,9 @@ class GoalSavingCardItem extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF00ACC1).withValues(alpha: 0.3),
+                              color: const Color(
+                                0xFF00ACC1,
+                              ).withValues(alpha: 0.3),
                               blurRadius: 8.r,
                               spreadRadius: 2.r,
                             ),

@@ -24,6 +24,7 @@ class AppAssets {
   static const String iconNavChartActive = 'assets/icons/icon_chart_0.png';
   static const String iconNavChartInactive = 'assets/icons/icon_chart_1.png';
   static const String iconNavProfileActive = 'assets/icons/icon_profile_0.png';
-  static const String iconNavProfileInactive = 'assets/icons/icon_profile_1.png';
+  static const String iconNavProfileInactive =
+      'assets/icons/icon_profile_1.png';
   static const String iconMagic = 'assets/icons/icon_magic.png';
 }

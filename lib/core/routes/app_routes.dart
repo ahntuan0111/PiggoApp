@@ -21,4 +21,6 @@ abstract class Routes {
   static const OFFLINE_QUEUE = '/offline_queue';
   static const MULTI_MONTH_GAP = '/multi_month_gap';
   static const SPLASH = '/splash';
+  static const STATISTICS = '/statistics';
+  static const BUDGET_SETTINGS = '/budget-settings';
 }

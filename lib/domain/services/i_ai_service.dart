@@ -24,4 +24,3 @@ abstract class IAIService {
   /// Chuyển đổi âm thanh thành văn bản thông qua Microservice STT (PhoWhisper)
   Future<String> convertSpeechToText(String audioPath);
 }
-

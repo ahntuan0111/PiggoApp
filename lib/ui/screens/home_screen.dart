@@ -4,14 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/home_controller.dart';
-import 'package:appintern/ui/controllers/wallet_controller.dart';
 import 'package:appintern/ui/widgets/budget_category_item.dart';
 import 'package:appintern/ui/widgets/empty_category_suggestion_widget.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'package:appintern/core/services/network_service.dart';
-import 'dart:math' as math;
 import 'package:appintern/core/services/offline_sync_service.dart';
-import 'package:intl/intl.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
@@ -44,10 +41,7 @@ class HomeScreen extends GetView<HomeController> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             IconButton(
-                              icon: const Icon(
-                                Icons.edit,
-                                color: Colors.white,
-                              ),
+                              icon: const Icon(Icons.edit, color: Colors.white),
                               onPressed: () async {
                                 await Get.toNamed(Routes.CATEGORY);
                                 controller.fetchData();
@@ -73,7 +67,9 @@ class HomeScreen extends GetView<HomeController> {
                                   ),
                                   decoration: BoxDecoration(
                                     border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.5),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
                                     ),
                                     borderRadius: BorderRadius.circular(16.r),
                                   ),
@@ -105,7 +101,11 @@ class HomeScreen extends GetView<HomeController> {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.cloud_off, color: Colors.white70, size: 12.sp),
+                                          Icon(
+                                            Icons.cloud_off,
+                                            color: Colors.white70,
+                                            size: 12.sp,
+                                          ),
                                           SizedBox(width: 4.w),
                                           Text(
                                             '(Ngoại tuyến)',
@@ -123,14 +123,19 @@ class HomeScreen extends GetView<HomeController> {
                               ],
                             ),
                             Obx(() {
-                              final offlineSyncService = Get.find<OfflineSyncService>();
-                              final queueCount = offlineSyncService.aiQueueCount.value;
-                              
+                              final offlineSyncService =
+                                  Get.find<OfflineSyncService>();
+                              final queueCount =
+                                  offlineSyncService.aiQueueCount.value;
+
                               return IconButton(
                                 icon: Stack(
                                   clipBehavior: Clip.none,
                                   children: [
-                                    const Icon(Icons.notifications, color: Colors.white),
+                                    const Icon(
+                                      Icons.notifications,
+                                      color: Colors.white,
+                                    ),
                                     if (queueCount > 0)
                                       Positioned(
                                         right: -4,
@@ -308,7 +313,10 @@ class HomeScreen extends GetView<HomeController> {
                                         Routes.BUDGET_DISTRIBUTION,
                                       );
                                       if (result == true) {
-                                        final isOffline = Get.find<NetworkService>().isOffline.value;
+                                        final isOffline =
+                                            Get.find<NetworkService>()
+                                                .isOffline
+                                                .value;
                                         if (isOffline) {
                                           controller.showSuccessMessage(
                                             "Đã lưu (Ngoại tuyến)",
@@ -371,7 +379,9 @@ class HomeScreen extends GetView<HomeController> {
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.red.withValues(alpha: 0.2),
+                                        color: Colors.red.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -413,7 +423,9 @@ class HomeScreen extends GetView<HomeController> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFE91E63).withValues(alpha: 0.08),
+                          color: const Color(
+                            0xFFE91E63,
+                          ).withValues(alpha: 0.08),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
@@ -494,7 +506,9 @@ class HomeScreen extends GetView<HomeController> {
                               // CTA Chevron
                               Icon(
                                 Icons.chevron_right_rounded,
-                                color: const Color(0xFFD81B60).withValues(alpha: 0.6),
+                                color: const Color(
+                                  0xFFD81B60,
+                                ).withValues(alpha: 0.6),
                                 size: 24.r,
                               ),
                             ],
@@ -511,92 +525,92 @@ class HomeScreen extends GetView<HomeController> {
             SliverToBoxAdapter(
               child: Obx(() {
                 if (controller.isLoading) {
-                      return Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 48.h),
-                          child: CircularProgressIndicator(
-                            color: const Color(0xFFC49A45),
-                          ),
-                        ),
-                      );
-                    }
+                  return Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48.h),
+                      child: CircularProgressIndicator(
+                        color: const Color(0xFFC49A45),
+                      ),
+                    ),
+                  );
+                }
 
-                    if (controller.categories.isEmpty) {
-                      return EmptyCategorySuggestionWidget(
-                        onSuggestionTap: () async {
-                          await Get.toNamed(Routes.CATEGORY);
-                          controller.fetchData();
-                        },
-                      );
-                    }
+                if (controller.categories.isEmpty) {
+                  return EmptyCategorySuggestionWidget(
+                    onSuggestionTap: () async {
+                      await Get.toNamed(Routes.CATEGORY);
+                      controller.fetchData();
+                    },
+                  );
+                }
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: 16.h),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w),
-                          child: Column(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 16.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: controller.categoryGroups.map((group) {
+                          final filteredCategories = group.categories.where((
+                            cat,
+                          ) {
+                            return !controller.budgetService.goals.any(
+                              (goal) => goal.categoryId == cat.categoryModel.id,
+                            );
+                          }).toList();
+
+                          if (filteredCategories.isEmpty)
+                            return const SizedBox.shrink();
+
+                          return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: controller.categoryGroups.map((group) {
-                              final filteredCategories = group.categories.where(
-                                (cat) {
-                                  return !controller.budgetService.goals.any(
-                                    (goal) =>
-                                        goal.categoryId == cat.categoryModel.id,
-                                  );
-                                },
-                              ).toList();
-
-                              if (filteredCategories.isEmpty)
-                                return const SizedBox.shrink();
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    group.typeName,
-                                    style: TextStyle(
-                                      fontSize: 18.sp,
-                                      color: const Color(0xFF1E1E1E),
+                            children: [
+                              Text(
+                                group.typeName,
+                                style: TextStyle(
+                                  fontSize: 18.sp,
+                                  color: const Color(0xFF1E1E1E),
+                                ),
+                              ),
+                              SizedBox(height: 16.h),
+                              Column(
+                                children: filteredCategories.map((cat) {
+                                  return BudgetCategoryItem(
+                                    category: cat,
+                                    formattedAllocated: controller
+                                        .formatCurrency(cat.allocated),
+                                    formattedSpent: controller.formatCurrency(
+                                      cat.spent,
                                     ),
-                                  ),
-                                  SizedBox(height: 16.h),
-                                  Column(
-                                    children: filteredCategories.map((cat) {
-                                      return BudgetCategoryItem(
-                                        category: cat,
-                                        formattedAllocated: controller
-                                            .formatCurrency(cat.allocated),
-                                        formattedSpent: controller
-                                            .formatCurrency(cat.spent),
-                                        formattedRemaining: controller
-                                            .formatCurrency(cat.remaining),
-                                        onTap: () {
-                                          Get.toNamed(
-                                            Routes.CATEGORY_DETAIL,
-                                            arguments: cat.categoryModel,
-                                          );
-                                        },
-                                        onEdit: () {
-                                          Get.toNamed(
-                                            Routes.OVERSPENT_COMPENSATION,
-                                            arguments: cat.categoryModel,
-                                          );
-                                        },
+                                    formattedRemaining: controller
+                                        .formatCurrency(cat.remaining),
+                                    onTap: () {
+                                      Get.toNamed(
+                                        Routes.CATEGORY_DETAIL,
+                                        arguments: cat.categoryModel,
                                       );
-                                    }).toList(),
-                                  ),
-                                  SizedBox(height: 16.h),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
-                ),
+                                    },
+                                    onEdit: () {
+                                      Get.toNamed(
+                                        Routes.OVERSPENT_COMPENSATION,
+                                        arguments: cat.categoryModel,
+                                      );
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                              SizedBox(height: 16.h),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
             SliverToBoxAdapter(child: SizedBox(height: 80.h)),
           ],
         ),

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
+
 import 'package:appintern/ui/controllers/transaction_detail_controller.dart';
 import 'package:appintern/core/constants/app_assets.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
@@ -49,7 +52,6 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
         ],
       ),
       body: Obx(() {
-
         final tx = controller.rxTransaction.value;
         final detail = controller.detail.value;
         final category = controller.category.value;
@@ -58,7 +60,6 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
         final amountColor = isExpense
             ? const Color(0xFFE53935)
             : const Color(0xFF4CAF50);
-        final formatter = NumberFormat('#,###', 'vi_VN');
 
         String note = "Không có mô tả";
         if (tx.note != null && tx.note!.trim().isNotEmpty) {
@@ -87,7 +88,7 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
               ),
               SizedBox(height: 16.h),
               Text(
-                "$sign${formatter.format(tx.amount)}đ",
+                "$sign${CurrencyFormatter.format(tx.amount)}",
                 style: TextStyle(
                   fontSize: 32.sp,
                   fontWeight: FontWeight.bold,
@@ -153,54 +154,54 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 20.h),
-                      ],
-
-                    // Wallet
-                    Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8.w),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF4CAF50),
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                            child: const Icon(
-                              Icons.account_balance_wallet,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          SizedBox(width: 16.w),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Ví",
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              SizedBox(height: 4.h),
-                              Text(
-                                controller.selectedWalletName.value,
-                                style: TextStyle(
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
                             ],
                           ),
                         ],
                       ),
                       SizedBox(height: 20.h),
-                      Divider(color: Colors.grey[200]),
-                      SizedBox(height: 20.h),
+                    ],
+
+                    // Wallet
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8.w),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4CAF50),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: const Icon(
+                            Icons.account_balance_wallet,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        SizedBox(width: 16.w),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Ví",
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              controller.selectedWalletName.value,
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20.h),
+                    Divider(color: Colors.grey[200]),
+                    SizedBox(height: 20.h),
 
                     // Note
                     Text(
@@ -245,7 +246,9 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
                                       child: SizedBox(
                                         width: 24,
                                         height: 24,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
                                       ),
                                     ),
                                   );
@@ -280,24 +283,33 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
 
               // 3. Delete Button
               if (!controller.isSystemRollover)
-                Obx(() => TextButton(
-                  onPressed: controller.isLoading ? null : controller.onDeleteTransaction,
-                  child: controller.isLoading
-                    ? SizedBox(
-                        height: 20.h,
-                        width: 20.h,
-                        child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE53935)),
-                      )
-                    : Text(
-                        "XÓA GIAO DỊCH",
-                        style: TextStyle(
-                          color: controller.isLoading ? Colors.grey : const Color(0xFFE53935),
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                )),
+                Obx(
+                  () => TextButton(
+                    onPressed: controller.isLoading
+                        ? null
+                        : controller.onDeleteTransaction,
+                    child: controller.isLoading
+                        ? SizedBox(
+                            height: 20.h,
+                            width: 20.h,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFE53935),
+                            ),
+                          )
+                        : Text(
+                            "XÓA GIAO DỊCH",
+                            style: TextStyle(
+                              color: controller.isLoading
+                                  ? Colors.grey
+                                  : const Color(0xFFE53935),
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                  ),
+                ),
               SizedBox(height: 20.h),
             ],
           ),

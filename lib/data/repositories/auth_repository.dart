@@ -4,7 +4,6 @@ import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 import 'package:appwrite/models.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:google_sign_in/google_sign_in.dart' as google;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthRepository with AppwriteErrorHandler {
   final AppwriteService _appwriteService;
@@ -40,9 +39,7 @@ class AuthRepository with AppwriteErrorHandler {
         throw Exception("Không thể lấy ID Token từ Google");
       }
 
-      final functionId =
-          dotenv.env['APPWRITE_FUNCTION_GOOGLE_SIGN_IN'] ??
-          '6a461a8b000317feceac';
+      final functionId = _appwriteService.functionGoogleSignIn;
 
       // 3. Gửi idToken lên Appwrite Cloud Function để đổi lấy Custom Token
       final execution = await _appwriteService.functions.createExecution(
@@ -70,8 +67,10 @@ class AuthRepository with AppwriteErrorHandler {
 
   Future<void> logout() async {
     return handleAppwriteError(() async {
-      await _appwriteService.account.deleteSession(sessionId: 'current').catchError((_) => null);
-      
+      await _appwriteService.account
+          .deleteSession(sessionId: 'current')
+          .catchError((_) => null);
+
       final google.GoogleSignIn googleSignIn = google.GoogleSignIn.instance;
       await googleSignIn.signOut().catchError((_) => null);
     });
@@ -99,11 +98,13 @@ class AuthRepository with AppwriteErrorHandler {
           );
           if (response.rows.isEmpty) break;
           for (var row in response.rows) {
-            await _appwriteService.tables.deleteRow(
-              databaseId: _appwriteService.databaseId,
-              tableId: tableId,
-              rowId: row.$id,
-            ).catchError((_) => null);
+            await _appwriteService.tables
+                .deleteRow(
+                  databaseId: _appwriteService.databaseId,
+                  tableId: tableId,
+                  rowId: row.$id,
+                )
+                .catchError((_) => null);
           }
         }
       }

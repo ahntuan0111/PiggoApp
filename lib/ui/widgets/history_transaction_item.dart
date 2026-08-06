@@ -1,3 +1,4 @@
+import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -22,8 +23,8 @@ class HistoryTransactionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-    final formattedAmount = formatter.format(amount.toInt());
+    
+    final formattedAmount = CurrencyFormatter.format(amount);
     final formattedDate = DateFormat('dd/MM/yyyy').format(date);
     final bool isExpense = type == 'EXPENSE';
 
@@ -104,15 +105,6 @@ class HistoryTransactionItem extends StatelessWidget {
                         fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
                         color: isExpense ? const Color(0xFFE53935) : const Color(0xFF43A047),
-                      ),
-                    ),
-                    TextSpan(
-                      text: 'đ',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: isExpense ? const Color(0xFFE53935) : const Color(0xFF43A047),
-                        decoration: TextDecoration.underline, // Gạch chân chữ đ giống design
                       ),
                     ),
                   ],

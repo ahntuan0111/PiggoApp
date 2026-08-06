@@ -17,7 +17,9 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
       ),
       body: Obx(() {
         if (controller.isLoading) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF369B56)));
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF369B56)),
+          );
         }
 
         if (controller.queueTasks.isEmpty) {
@@ -25,11 +27,18 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.check_circle_outline, size: 64.sp, color: Colors.grey.shade400),
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 64.sp,
+                  color: Colors.grey.shade400,
+                ),
                 SizedBox(height: 16.h),
                 Text(
                   'Không có giao dịch nào đang chờ',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16.sp),
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 16.sp,
+                  ),
                 ),
               ],
             ),
@@ -49,11 +58,14 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
     );
   }
 
-  Widget _buildTaskItem(Map<String, dynamic> task, OfflineQueueController controller) {
+  Widget _buildTaskItem(
+    Map<String, dynamic> task,
+    OfflineQueueController controller,
+  ) {
     final status = task['status'] as String;
     final type = task['task_type'] as String;
     final payload = task['payload'] as String;
-    
+
     // Parse created_at
     DateTime createdAt = DateTime.now();
     try {
@@ -92,11 +104,21 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
         statusIcon = Icons.info_outline;
     }
 
-    String typeText = type == 'TEXT' ? 'Văn bản' : type == 'IMAGE' ? 'Hóa đơn' : 'Giọng nói';
-    IconData typeIcon = type == 'TEXT' ? Icons.chat : type == 'IMAGE' ? Icons.receipt : Icons.mic;
+    String typeText = type == 'TEXT'
+        ? 'Văn bản'
+        : type == 'IMAGE'
+        ? 'Hóa đơn'
+        : 'Giọng nói';
+    IconData typeIcon = type == 'TEXT'
+        ? Icons.chat
+        : type == 'IMAGE'
+        ? Icons.receipt
+        : Icons.mic;
 
     return InkWell(
-      onTap: status == 'NEEDS_CONFIRMATION' ? () => controller.handleTaskTap(task) : null,
+      onTap: status == 'NEEDS_CONFIRMATION'
+          ? () => controller.handleTaskTap(task)
+          : null,
       borderRadius: BorderRadius.circular(12.r),
       child: Container(
         padding: EdgeInsets.all(16.w),
@@ -104,7 +126,9 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
-            color: status == 'NEEDS_CONFIRMATION' ? const Color(0xFF369B56) : Colors.grey.shade200,
+            color: status == 'NEEDS_CONFIRMATION'
+                ? const Color(0xFF369B56)
+                : Colors.grey.shade200,
             width: status == 'NEEDS_CONFIRMATION' ? 2 : 1,
           ),
           boxShadow: [
@@ -149,17 +173,17 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
               type == 'IMAGE' ? '[Ảnh Hóa Đơn]' : payload,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 15.sp,
-                color: Colors.black87,
-              ),
+              style: TextStyle(fontSize: 15.sp, color: Colors.black87),
             ),
             SizedBox(height: 12.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 6.h,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16.r),

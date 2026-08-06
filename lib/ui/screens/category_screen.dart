@@ -115,6 +115,12 @@ class CategoryScreen extends GetView<CategoryController> {
               child: Obx(() {
                 final currentCategories = controller.categories.toList();
 
+                if (controller.isInitialLoading.value) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFF9C03C)),
+                  );
+                }
+
                 if (controller.categoryTypes.isEmpty) {
                   return Center(
                     child: Text(

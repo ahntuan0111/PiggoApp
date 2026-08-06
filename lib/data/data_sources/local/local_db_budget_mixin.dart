@@ -5,13 +5,20 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
   // ==========================================
   // MONTHLY BUDGETS
   // ==========================================
-  Future<void> saveMonthlyBudgets(String monthYear, List<Map<String, dynamic>> budgets) async {
+  Future<void> saveMonthlyBudgets(
+    String monthYear,
+    List<Map<String, dynamic>> budgets,
+  ) async {
     final db = await database;
     Batch batch = db.batch();
-    
+
     // Purge logic: Xóa các budget cũ của tháng này trước khi lưu đè
-    batch.delete('monthly_budgets', where: 'monthYear = ?', whereArgs: [monthYear]);
-    
+    batch.delete(
+      'monthly_budgets',
+      where: 'monthYear = ?',
+      whereArgs: [monthYear],
+    );
+
     for (var mb in budgets) {
       batch.insert('monthly_budgets', {
         'id': mb['id'],
@@ -57,9 +64,10 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
       );
     }
   }
+
   Future<void> transferBudgetLocal(
     String? fromId,
-    String toId,
+    String? toId,
     double amount,
     String monthYear, {
     bool isOffline = true,
@@ -68,20 +76,40 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
     await db.transaction((txn) async {
       // 1. Update fromId if provided (and not 'unallocated')
       if (fromId != null && fromId != 'unallocated') {
-        final fromCatResult = await txn.query('categories', where: 'id = ?', whereArgs: [fromId]);
+        final fromCatResult = await txn.query(
+          'categories',
+          where: 'id = ?',
+          whereArgs: [fromId],
+        );
         if (fromCatResult.isNotEmpty) {
-          double currentDefault = (fromCatResult.first['defaultBudget'] as num?)?.toDouble() ?? 0.0;
+          double currentDefault =
+              (fromCatResult.first['defaultBudget'] as num?)?.toDouble() ?? 0.0;
           double newDefault = currentDefault - amount;
           if (newDefault < 0) newDefault = 0;
-          await txn.update('categories', {'defaultBudget': newDefault}, where: 'id = ?', whereArgs: [fromId]);
+          await txn.update(
+            'categories',
+            {'defaultBudget': newDefault},
+            where: 'id = ?',
+            whereArgs: [fromId],
+          );
         }
 
-        final fromMbResult = await txn.query('monthly_budgets', where: 'categoryId = ? AND monthYear = ?', whereArgs: [fromId, monthYear]);
+        final fromMbResult = await txn.query(
+          'monthly_budgets',
+          where: 'categoryId = ? AND monthYear = ?',
+          whereArgs: [fromId, monthYear],
+        );
         if (fromMbResult.isNotEmpty) {
-          double currentBudgeted = (fromMbResult.first['budgetedAmount'] as num?)?.toDouble() ?? 0.0;
+          double currentBudgeted =
+              (fromMbResult.first['budgetedAmount'] as num?)?.toDouble() ?? 0.0;
           double newBudgeted = currentBudgeted - amount;
           if (newBudgeted < 0) newBudgeted = 0;
-          await txn.update('monthly_budgets', {'budgetedAmount': newBudgeted}, where: 'id = ?', whereArgs: [fromMbResult.first['id']]);
+          await txn.update(
+            'monthly_budgets',
+            {'budgetedAmount': newBudgeted},
+            where: 'id = ?',
+            whereArgs: [fromMbResult.first['id']],
+          );
         } else {
           await txn.insert('monthly_budgets', {
             'id': 'offline_${DateTime.now().millisecondsSinceEpoch}_$fromId',
@@ -95,44 +123,66 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
       }
 
       // 2. Update toId
-      final toCatResult = await txn.query('categories', where: 'id = ?', whereArgs: [toId]);
-      if (toCatResult.isNotEmpty) {
-        double currentDefault = (toCatResult.first['defaultBudget'] as num?)?.toDouble() ?? 0.0;
-        double newDefault = currentDefault + amount;
-        await txn.update('categories', {'defaultBudget': newDefault}, where: 'id = ?', whereArgs: [toId]);
-      }
+      if (toId != null && toId != 'unallocated') {
+        final toCatResult = await txn.query(
+          'categories',
+          where: 'id = ?',
+          whereArgs: [toId],
+        );
+        if (toCatResult.isNotEmpty) {
+          double currentDefault =
+              (toCatResult.first['defaultBudget'] as num?)?.toDouble() ?? 0.0;
+          double newDefault = currentDefault + amount;
+          await txn.update(
+            'categories',
+            {'defaultBudget': newDefault},
+            where: 'id = ?',
+            whereArgs: [toId],
+          );
+        }
 
-      final toMbResult = await txn.query('monthly_budgets', where: 'categoryId = ? AND monthYear = ?', whereArgs: [toId, monthYear]);
-      if (toMbResult.isNotEmpty) {
-        double currentBudgeted = (toMbResult.first['budgetedAmount'] as num?)?.toDouble() ?? 0.0;
-        double newBudgeted = currentBudgeted + amount;
-        await txn.update('monthly_budgets', {'budgetedAmount': newBudgeted}, where: 'id = ?', whereArgs: [toMbResult.first['id']]);
-      } else {
-        await txn.insert('monthly_budgets', {
-          'id': 'offline_${DateTime.now().millisecondsSinceEpoch}_$toId',
-          'categoryId': toId,
-          'monthYear': monthYear,
-          'budgetedAmount': amount,
-          'rolloverAmount': 0.0,
-          'spentAmount': 0.0,
-        });
+        final toMbResult = await txn.query(
+          'monthly_budgets',
+          where: 'categoryId = ? AND monthYear = ?',
+          whereArgs: [toId, monthYear],
+        );
+        if (toMbResult.isNotEmpty) {
+          double currentBudgeted =
+              (toMbResult.first['budgetedAmount'] as num?)?.toDouble() ?? 0.0;
+          double newBudgeted = currentBudgeted + amount;
+          await txn.update(
+            'monthly_budgets',
+            {'budgetedAmount': newBudgeted},
+            where: 'id = ?',
+            whereArgs: [toMbResult.first['id']],
+          );
+        } else {
+          await txn.insert('monthly_budgets', {
+            'id': 'offline_${DateTime.now().millisecondsSinceEpoch}_$toId',
+            'categoryId': toId,
+            'monthYear': monthYear,
+            'budgetedAmount': amount,
+            'rolloverAmount': 0.0,
+            'spentAmount': 0.0,
+          });
+        }
       }
 
       // 3. Insert into transferlogs
       if (amount > 0) {
         await txn.insert('transferlogs', {
-          'id': 'offline_${DateTime.now().microsecondsSinceEpoch}_${fromId ?? "new"}_$toId',
+          'id':
+              'offline_${DateTime.now().microsecondsSinceEpoch}_${fromId ?? "unallocated"}_${toId ?? "unallocated"}',
           'ownerId': '', // Will be set on server or ignored locally
           'amount': amount,
           'fromCategoryId': fromId ?? '',
-          'toCategoryId': toId,
+          'toCategoryId': toId ?? '',
           'note': 'Cân bằng ngân sách',
           'createdAt': DateTime.now().toIso8601String(),
         });
       }
     });
   }
-
 
   // ==========================================
   // MONTHLY SUMMARIES
@@ -142,10 +192,10 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
   ) async {
     final db = await database;
     Batch batch = db.batch();
-    
+
     // Purge logic: Xóa sạch bảng trước khi lưu mới (vì ta luôn fetch toàn bộ)
     batch.delete('monthly_summaries');
-    
+
     for (var ms in summaries) {
       batch.insert('monthly_summaries', {
         'id': ms['id'],

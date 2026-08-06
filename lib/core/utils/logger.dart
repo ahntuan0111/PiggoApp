@@ -4,7 +4,12 @@ class AppLogger {
   static void success(String tag, dynamic result) {
     if (kDebugMode) {
       debugPrint("\n--- 🟢 SUCCESS: [$tag] ---");
-      debugPrint("Response: ${result.toString()}");
+      String resStr = result.toString();
+      if (resStr.length > 300) {
+        resStr =
+            "${resStr.substring(0, 300)}... [TRUNCATED ${resStr.length} chars]";
+      }
+      debugPrint("Response: $resStr");
       debugPrint("------------------------------------------\n");
     }
   }

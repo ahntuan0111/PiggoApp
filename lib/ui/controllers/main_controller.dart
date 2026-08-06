@@ -5,8 +5,8 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/ui/controllers/smart_input_controller.dart';
 
-
-class MainController extends BaseController with GetSingleTickerProviderStateMixin, BudgetAware {
+class MainController extends BaseController
+    with GetSingleTickerProviderStateMixin, BudgetAware {
   var selectedIndex = 0.obs;
   var isFabOpen = false.obs;
   late AnimationController animationController;
@@ -55,4 +55,3 @@ class MainController extends BaseController with GetSingleTickerProviderStateMix
     super.onClose();
   }
 }
-

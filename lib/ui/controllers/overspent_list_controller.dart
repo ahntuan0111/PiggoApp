@@ -26,4 +26,3 @@ class OverspentListController extends BaseController with BudgetAware {
     await budgetService.refreshData();
   }
 }
-

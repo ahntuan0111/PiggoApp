@@ -1,3 +1,4 @@
+import 'package:appintern/core/utils/currency_formatter.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:appintern/core/services/budget_service.dart';
@@ -150,7 +151,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
     String text = amountController.text
         .replaceAll('.', '')
         .replaceAll(',', '')
-        .replaceAll('đ', '')
+        
         .trim();
     if (text.isEmpty) {
       amountValue.value = 0.0;
@@ -207,8 +208,8 @@ class TransactionCreateController extends BaseController with BudgetAware {
         editingDetail = Get.arguments['detail'] as TransactionDetailModel?;
 
         if (editingTransaction != null) {
-          final formatter = NumberFormat('#,###', 'vi_VN');
-          amountController.text = formatter.format(editingTransaction!.amount);
+          
+          amountController.text = CurrencyFormatter.format(editingTransaction!.amount);
           noteController.text =
               editingDetail?.note ?? editingTransaction!.note ?? '';
           selectedDate.value = editingTransaction!.transactionDate;
@@ -225,13 +226,10 @@ class TransactionCreateController extends BaseController with BudgetAware {
     }, tag: "FETCH_TRANSACTION_CREATE");
 
     hideLoading();
-    result.fold(
-      (failure) {
-        // Không hiển thị lỗi kỹ thuật ra UI, đặc biệt khi Offline
-        AppLogger.error("FETCH_TRANSACTION_CREATE", failure.message);
-      },
-      (_) {},
-    );
+    result.fold((failure) {
+      // Không hiển thị lỗi kỹ thuật ra UI, đặc biệt khi Offline
+      AppLogger.error("FETCH_TRANSACTION_CREATE", failure.message);
+    }, (_) {});
   }
 
   Future<void> pickImage() async {
@@ -327,7 +325,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
   Future<void> addTransaction({bool closeAfterSave = true}) async {
     FocusManager.instance.primaryFocus?.unfocus();
     await Future.delayed(const Duration(milliseconds: 150));
-    
+
     if (!isValidAmount.value || amountValue.value <= 0) {
       showErrorMessage("Lỗi", "Vui lòng nhập số tiền hợp lệ");
       return;
@@ -427,11 +425,14 @@ class TransactionCreateController extends BaseController with BudgetAware {
       (_) async {
         if (Get.find<NetworkService>().isOffline.value) {
           await Get.find<BudgetService>().refreshData();
-          showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+          showSuccessMessage(
+            "Đã lưu (Ngoại tuyến)",
+            "Dữ liệu sẽ được đồng bộ khi có mạng",
+          );
         } else {
           showSuccessMessage("Thành công", "Đã lưu giao dịch");
         }
-        
+
         if (closeAfterSave) {
           Get.back(result: true);
         } else {
@@ -487,7 +488,8 @@ class TransactionCreateController extends BaseController with BudgetAware {
           'detail': newDetail.toMap()..['\$id'] = newDetail.id,
           'oldCategory': oldCategory?.toMap(),
           'newCategory': selectedCategory.value!.categoryModel.toMap(),
-          'oldTransaction': editingTransaction!.toMap()..['\$id'] = editingTransaction!.id,
+          'oldTransaction': editingTransaction!.toMap()
+            ..['\$id'] = editingTransaction!.id,
         });
         await offlineSyncService.queueManualTask(
           'UPDATE_MANUAL_TX',
@@ -550,11 +552,14 @@ class TransactionCreateController extends BaseController with BudgetAware {
       (_) async {
         if (Get.find<NetworkService>().isOffline.value) {
           await Get.find<BudgetService>().refreshData();
-          showSuccessMessage("Đã cập nhật (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+          showSuccessMessage(
+            "Đã cập nhật (Ngoại tuyến)",
+            "Dữ liệu sẽ được đồng bộ khi có mạng",
+          );
         } else {
           showSuccessMessage("Thành công", "Đã cập nhật giao dịch");
         }
-        
+
         if (closeAfterSave) {
           Get.back(result: true);
         } else {
@@ -572,7 +577,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
     amountValue.value = 0.0;
     isValidAmount.value = true;
     selectedCategory.value = null; // Bỏ chọn danh mục để ép chọn lại
-    
+
     // Nạp lại data để cập nhật progress cho danh mục
     await budgetService.refreshData();
     final validCategories = budgetService.activeCategoryGroups
@@ -583,12 +588,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
   }
 
   String formatCurrency(double amount) {
-    String numStr = amount.toStringAsFixed(0);
-    final formatted = numStr.replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
-    return '${formatted}đ';
+    return CurrencyFormatter.format(amount);
   }
 
   @override

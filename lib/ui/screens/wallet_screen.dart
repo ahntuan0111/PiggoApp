@@ -4,6 +4,9 @@ import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/wallet_controller.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
+
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
@@ -14,8 +17,6 @@ class WalletScreen extends GetView<WalletController> {
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1),
       body: SafeArea(
@@ -100,7 +101,7 @@ class WalletScreen extends GetView<WalletController> {
                                           .totalWalletBalance
                                           .value;
                                       return Text(
-                                        "${formatter.format(total)}đ",
+                                        CurrencyFormatter.format(total),
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 36.sp,
@@ -129,7 +130,9 @@ class WalletScreen extends GetView<WalletController> {
                                                     .allocatedAmount
                                                     .value;
                                                 return Text(
-                                                  "${formatter.format(allocated)}đ",
+                                                  CurrencyFormatter.format(
+                                                    allocated,
+                                                  ),
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 16.sp,
@@ -165,7 +168,9 @@ class WalletScreen extends GetView<WalletController> {
                                                     .unallocatedAmount
                                                     .value;
                                                 return Text(
-                                                  "${formatter.format(unallocated)}đ",
+                                                  CurrencyFormatter.format(
+                                                    unallocated,
+                                                  ),
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 16.sp,
@@ -196,7 +201,9 @@ class WalletScreen extends GetView<WalletController> {
                             icon: Icons.add,
                             label: "Tạo Giao Dịch",
                             onTap: () async {
-                              final result = await Get.toNamed(Routes.TRANSACTION_CREATE);
+                              final result = await Get.toNamed(
+                                Routes.TRANSACTION_CREATE,
+                              );
                             },
                           ),
                           _buildActionButton(
@@ -210,9 +217,12 @@ class WalletScreen extends GetView<WalletController> {
                             onTap: () async {
                               controller.resetFields();
                               controller.isAdjustMode.value = true;
-                              final result = await Get.toNamed(Routes.WALLETCREATE);
+                              final result = await Get.toNamed(
+                                Routes.WALLETCREATE,
+                              );
                               if (result == true) {
-                                final isOffline = Get.find<NetworkService>().isOffline.value;
+                                final isOffline =
+                                    Get.find<NetworkService>().isOffline.value;
                                 if (isOffline) {
                                   controller.showSuccessMessage(
                                     'Đã lưu (Ngoại tuyến)',
@@ -279,10 +289,13 @@ class WalletScreen extends GetView<WalletController> {
 
               // --- DANH SÁCH LỊCH SỬ ---
               Obx(() {
-                if (controller.isLoadingWallets.value &&
+                if (controller.isLoading &&
                     controller.recentTransactions.isEmpty) {
-                  return const SliverToBoxAdapter(
-                    child: Center(child: CircularProgressIndicator()),
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32.h),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
                   );
                 }
 
@@ -395,7 +408,7 @@ class WalletScreen extends GetView<WalletController> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    "$sign${formatter.format(tx.amount)}đ",
+                                    "$sign${CurrencyFormatter.format(tx.amount)}",
                                     style: TextStyle(
                                       fontSize: 16.sp,
                                       fontWeight: FontWeight.bold,

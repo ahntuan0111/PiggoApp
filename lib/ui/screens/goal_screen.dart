@@ -1,3 +1,4 @@
+import 'package:appintern/core/utils/currency_formatter.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -17,10 +18,10 @@ class GoalScreen extends GetView<GoalController> {
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F7F1), // Màu nền nhẹ của app
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -28,7 +29,7 @@ class GoalScreen extends GetView<GoalController> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios,
-            color: const Color(0xFF0B4A3A),
+            color: theme.colorScheme.primary,
             size: 20.sp,
           ),
           onPressed: () => Get.back(),
@@ -38,7 +39,7 @@ class GoalScreen extends GetView<GoalController> {
           style: TextStyle(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF0B4A3A),
+            color: theme.colorScheme.primary,
           ),
         ),
         actions: [
@@ -55,9 +56,12 @@ class GoalScreen extends GetView<GoalController> {
                     unallocatedAmount:
                         controller.budgetService.unallocatedAmount.value,
                     onConfirm: () async {
-                      final result = await Get.toNamed(Routes.BUDGET_DISTRIBUTION);
+                      final result = await Get.toNamed(
+                        Routes.BUDGET_DISTRIBUTION,
+                      );
                       if (result == true) {
-                        final isOffline = Get.find<NetworkService>().isOffline.value;
+                        final isOffline =
+                            Get.find<NetworkService>().isOffline.value;
                         if (isOffline) {
                           controller.showSuccessMessage(
                             "Đã lưu (Ngoại tuyến)",
@@ -74,7 +78,7 @@ class GoalScreen extends GetView<GoalController> {
                   ),
                 );
               } else {
-                Get.snackbar("Thông báo", "Bạn không có tiền dư để tiết kiệm.");
+                controller.showWarningMessage("Thông báo", "Bạn không có tiền dư để tiết kiệm.");
               }
             },
           ),
@@ -88,7 +92,7 @@ class GoalScreen extends GetView<GoalController> {
 
         return RefreshIndicator(
           onRefresh: controller.fetchGoals,
-          color: const Color(0xFFD32F2F),
+          color: theme.colorScheme.primary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -110,11 +114,11 @@ class GoalScreen extends GetView<GoalController> {
                       ),
                       SizedBox(height: 8.h),
                       Text(
-                        "${formatter.format(controller.totalSaved.value)} đ",
+                        CurrencyFormatter.format(controller.totalSaved),
                         style: TextStyle(
                           fontSize: 32.sp,
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF0B4A3A),
+                          color: theme.colorScheme.primary,
                         ),
                       ),
                     ],
@@ -162,7 +166,7 @@ class GoalScreen extends GetView<GoalController> {
                   )
                 else
                   ...controller.goals
-                      .map((goal) => _buildGoalCard(goal, formatter))
+                      .map((goal) => _buildGoalCard(goal))
                       .toList(),
 
                 SizedBox(height: 32.h),
@@ -177,13 +181,13 @@ class GoalScreen extends GetView<GoalController> {
         onPressed: () => Get.toNamed(
           Routes.GOAL_CREATE,
         )?.then((_) => controller.fetchGoals()),
-        backgroundColor: const Color(0xFF0B4A3A),
+        backgroundColor: theme.colorScheme.primary,
         child: const Icon(Icons.add, color: Color(0xFFEBC14F)),
       ),
     );
   }
 
-  Widget _buildGoalCard(GoalModel goal, NumberFormat formatter) {
+  Widget _buildGoalCard(GoalModel goal) {
     final progress = controller.getGoalProgress(goal);
     final savedAmount = controller.getSavedAmount(goal);
 
@@ -217,17 +221,14 @@ class GoalScreen extends GetView<GoalController> {
       child: GoalSavingCardItem(
         title: goal.name,
         deadlineString: deadlineString,
-        formattedCurrentAmount: "${formatter.format(savedAmount)} đ",
-        formattedTargetAmount: "${formatter.format(goal.targetAmount)} đ",
+        formattedCurrentAmount: CurrencyFormatter.format(savedAmount),
+        formattedTargetAmount: CurrencyFormatter.format(goal.targetAmount),
         progress: progress,
         progressText: "${(progress * 100).toStringAsFixed(1)}%",
         timeLeftString: timeLeftString,
         iconName: iconName,
         onTap: () async {
-          final result = await Get.toNamed(
-            Routes.GOAL_DETAIL,
-            arguments: goal,
-          );
+          final result = await Get.toNamed(Routes.GOAL_DETAIL, arguments: goal);
           if (result == true) {
             controller.showSuccessMessage(
               'Thành công',
@@ -241,20 +242,28 @@ class GoalScreen extends GetView<GoalController> {
           Get.bottomSheet(
             EditMoneyDistributionBottomSheet(
               initialAllocated: goalCategory.categoryModel.defaultBudget,
-              unallocatedAmount: controller.budgetService.unallocatedAmount.value,
+              unallocatedAmount:
+                  controller.budgetService.unallocatedAmount.value,
               categoryGroups: controller.budgetService.categoryGroups,
               currentCategoryId: goalCategory.categoryModel.id,
               isGoal: true,
-              onSave: (newBudget, {sourceCategoryId, sourceCategoryNewBudget, note}) async {
-                await controller.updateGoalBudget(
-                  goalCategory,
-                  newBudget,
-                  sourceCategoryId: sourceCategoryId,
-                  sourceCategoryNewBudget: sourceCategoryNewBudget,
-                  note: note,
-                );
-                if (Get.isBottomSheetOpen == true) Get.back(); // close bottom sheet
-              },
+              onSave:
+                  (
+                    newBudget, {
+                    sourceCategoryId,
+                    sourceCategoryNewBudget,
+                    note,
+                  }) async {
+                    await controller.updateGoalBudget(
+                      goalCategory,
+                      newBudget,
+                      sourceCategoryId: sourceCategoryId,
+                      sourceCategoryNewBudget: sourceCategoryNewBudget,
+                      note: note,
+                    );
+                    if (Get.isBottomSheetOpen == true)
+                      Get.back(); // close bottom sheet
+                  },
             ),
             isScrollControlled: true,
             backgroundColor: Colors.transparent,

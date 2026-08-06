@@ -22,7 +22,8 @@ class OfflineQueueController extends BaseController {
   final BudgetService budgetService = Get.find<BudgetService>();
   final OfflineSyncService offlineSyncService = Get.find<OfflineSyncService>();
   final StorageRepository storageRepository = Get.find<StorageRepository>();
-  final TransactionRepository _transactionRepo = Get.find<TransactionRepository>();
+  final TransactionRepository _transactionRepo =
+      Get.find<TransactionRepository>();
 
   var queueTasks = <Map<String, dynamic>>[].obs;
 
@@ -36,12 +37,9 @@ class OfflineQueueController extends BaseController {
     showLoading();
     final result = await ErrorHandler.execute(() async {
       final db = await _localDb.database;
-      return await db.query(
-        'offline_tasks_queue',
-        orderBy: 'created_at DESC',
-      );
+      return await db.query('offline_tasks_queue', orderBy: 'created_at DESC');
     }, tag: "FETCH_OFFLINE_TASKS");
-    
+
     result.fold(
       (failure) {
         showErrorMessage("Lỗi tải hàng đợi", failure.message);
@@ -74,13 +72,16 @@ class OfflineQueueController extends BaseController {
 
     result.fold(
       (failure) {
-        showErrorMessage("Lỗi dữ liệu", "Không thể đọc dữ liệu: ${failure.message}");
+        showErrorMessage(
+          "Lỗi dữ liệu",
+          "Không thể đọc dữ liệu: ${failure.message}",
+        );
       },
       (dataList) {
         final taskId = task['id'] as String;
         final payload = task['payload'] as String;
         final type = task['task_type'] as String;
-        
+
         File? receiptImage;
         if (type == 'IMAGE') {
           receiptImage = File(payload);
@@ -106,7 +107,7 @@ class OfflineQueueController extends BaseController {
       },
     );
   }
-  
+
   void _showSavingDialog() {
     Get.dialog(
       const LoadingDialogWidget(
@@ -128,12 +129,7 @@ class OfflineQueueController extends BaseController {
     final saveResult = await ErrorHandler.execute(() async {
       List<String> receiptFileIds = [];
       if (receiptImage != null && await receiptImage.exists()) {
-        final uploadedFileId = await storageRepository.uploadReceiptImage(
-          receiptImage,
-        );
-        if (uploadedFileId.isNotEmpty) {
-          receiptFileIds.add(uploadedFileId);
-        }
+        receiptFileIds.add(receiptImage.path);
       }
 
       for (var confirmedData in confirmedDataList) {
@@ -178,10 +174,9 @@ class OfflineQueueController extends BaseController {
           currentCategory: category,
         );
       }
-      
+
       // Xóa task khỏi queue sau khi lưu thành công
       await _localDb.deleteTask(taskId);
-      
     }, tag: "SAVE_CONFIRMED_TX");
 
     // Đóng Loading
@@ -194,12 +189,12 @@ class OfflineQueueController extends BaseController {
       (_) async {
         // Đóng BottomSheet
         if (Get.isBottomSheetOpen == true) Get.back();
-        
+
         // Refresh UI
         budgetService.refreshData();
         offlineSyncService.refreshQueueCount();
         await fetchTasks();
-        
+
         showSuccessMessage("Thành công", "Đã lưu các giao dịch thành công");
       },
     );

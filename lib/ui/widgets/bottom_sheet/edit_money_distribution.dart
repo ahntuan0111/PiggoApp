@@ -12,7 +12,7 @@ import 'package:appintern/ui/widgets/custom_icon_widget.dart';
 
 class EditMoneyDistributionBottomSheet extends StatefulWidget {
   final double initialAllocated;
-  final Future<void> Function(
+  final Function(
     double newBudget, {
     String? sourceCategoryId,
     double? sourceCategoryNewBudget,
@@ -42,7 +42,7 @@ class EditMoneyDistributionBottomSheet extends StatefulWidget {
 
 class _EditMoneyDistributionBottomSheetState
     extends State<EditMoneyDistributionBottomSheet> {
-  final formatter = NumberFormat('#,###', 'vi_VN');
+  
 
   late TextEditingController _offsetController;
 
@@ -54,15 +54,13 @@ class _EditMoneyDistributionBottomSheetState
   String? _selectedSourceName;
   double? _selectedSourceAvailableAmount;
   String? _selectedSourceIconName;
-  bool _isLoading = false;
 
-  Future<void> _executeSave(String? note) async {
+  void _executeSave(String? note) {
     if (_selectedSourceId != null) {
-      if (_isAdding &&
-          _offsetAmount > _selectedSourceAvailableAmount!) {
+      if (_isAdding && _offsetAmount > _selectedSourceAvailableAmount!) {
         Get.snackbar(
           "Lỗi",
-          "Nguồn tiền không đủ để lấy. Tối đa chỉ có thể lấy ${NumberFormat('#,###', 'vi_VN').format(_selectedSourceAvailableAmount!)}đ.",
+          "Nguồn tiền không đủ để lấy. Tối đa chỉ có thể lấy ${CurrencyFormatter.format(_selectedSourceAvailableAmount!)}đ.",
           backgroundColor: Colors.red,
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM,
@@ -87,24 +85,14 @@ class _EditMoneyDistributionBottomSheetState
       } else {
         newSourceBudget = sourceAllocated + _offsetAmount;
       }
-      setState(() => _isLoading = true);
-      try {
-        await widget.onSave(
-          _finalBudget,
-          sourceCategoryId: _selectedSourceId,
-          sourceCategoryNewBudget: newSourceBudget,
-          note: note,
-        );
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
-      }
+      widget.onSave(
+        _finalBudget,
+        sourceCategoryId: _selectedSourceId,
+        sourceCategoryNewBudget: newSourceBudget,
+        note: note,
+      );
     } else {
-      setState(() => _isLoading = true);
-      try {
-        await widget.onSave(_finalBudget, note: note);
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
-      }
+      widget.onSave(_finalBudget, note: note);
     }
   }
 
@@ -145,7 +133,7 @@ class _EditMoneyDistributionBottomSheetState
         _selectedSourceAvailableAmount != null &&
         _offsetAmount > _selectedSourceAvailableAmount!) {
       _offsetAmount = _selectedSourceAvailableAmount!;
-      String formatted = formatter.format(_offsetAmount);
+      String formatted = CurrencyFormatter.format(_offsetAmount);
       _offsetController.value = TextEditingValue(
         text: formatted,
         selection: TextSelection.collapsed(offset: formatted.length),
@@ -233,20 +221,11 @@ class _EditMoneyDistributionBottomSheetState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        formatter.format(_finalBudget),
+                        CurrencyFormatter.format(_finalBudget),
                         style: TextStyle(
                           fontSize: 14.sp,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF1E1E1E),
-                        ),
-                      ),
-                      SizedBox(width: 3.w),
-                      Text(
-                        "đ",
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: const Color(0xFF1E1E1E),
-                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ],
@@ -365,11 +344,10 @@ class _EditMoneyDistributionBottomSheetState
                         ),
                         SizedBox(width: 4.w),
                         Text(
-                          "đ",
+                          CurrencyFormatter.symbol,
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: const Color(0xFF9E9E9E),
-                            decoration: TextDecoration.underline,
                           ),
                         ),
                       ],
@@ -383,8 +361,8 @@ class _EditMoneyDistributionBottomSheetState
 
             Text(
               _isAdding
-                  ? "Lấy ${formatter.format(_offsetAmount)}đ từ ${_selectedSourceName ?? '...'}"
-                  : "Chuyển ${formatter.format(_offsetAmount)}đ đến ${_selectedSourceName ?? '...'}",
+                  ? "Lấy ${CurrencyFormatter.format(_offsetAmount)}đ từ ${_selectedSourceName ?? '...'}"
+                  : "Chuyển ${CurrencyFormatter.format(_offsetAmount)}đ đến ${_selectedSourceName ?? '...'}",
               style: TextStyle(fontSize: 12.sp, color: const Color(0xFF616161)),
             ),
             SizedBox(height: 8.h),
@@ -396,7 +374,9 @@ class _EditMoneyDistributionBottomSheetState
                     unallocatedAmount: widget.unallocatedAmount,
                     categoryGroups: widget.categoryGroups,
                     currentCategoryId: widget.currentCategoryId,
-                    excludeCategoryIds: Get.find<BudgetService>().goals.map((g) => g.categoryId).toList(),
+                    excludeCategoryIds: Get.find<BudgetService>().goals
+                        .map((g) => g.categoryId)
+                        .toList(),
                     onSelected: (id, name, availableAmount, iconName) {
                       setState(() {
                         _selectedSourceId = id;
@@ -407,7 +387,7 @@ class _EditMoneyDistributionBottomSheetState
                         // Auto-correct nếu offsetAmount hiện tại lớn hơn số dư của nguồn mới chọn
                         if (_isAdding && _offsetAmount > availableAmount) {
                           _offsetAmount = availableAmount;
-                          String formatted = formatter.format(_offsetAmount);
+                          String formatted = CurrencyFormatter.format(_offsetAmount);
                           _offsetController.value = TextEditingValue(
                             text: formatted,
                             selection: TextSelection.collapsed(
@@ -505,7 +485,7 @@ class _EditMoneyDistributionBottomSheetState
               width: double.infinity,
               height: 48.h,
               child: ElevatedButton(
-                onPressed: (canSave && !_isLoading)
+                onPressed: canSave
                     ? () {
                         if (widget.isGoal && !_isAdding) {
                           final noteController = TextEditingController();
@@ -514,9 +494,19 @@ class _EditMoneyDistributionBottomSheetState
                               backgroundColor: Colors.white,
                               title: Row(
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28.sp),
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.orange,
+                                    size: 28.sp,
+                                  ),
                                   SizedBox(width: 8.w),
-                                  Text("Cảnh báo", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+                                  Text(
+                                    "Cảnh báo",
+                                    style: TextStyle(
+                                      fontSize: 18.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                               content: Column(
@@ -524,8 +514,11 @@ class _EditMoneyDistributionBottomSheetState
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Việc rút ${formatter.format(_offsetAmount)}đ khỏi quỹ này sẽ làm chậm tiến độ đạt mục tiêu của bạn. Hãy cân nhắc kỹ!",
-                                    style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+                                    "Việc rút ${CurrencyFormatter.format(_offsetAmount)}đ khỏi quỹ này sẽ làm chậm tiến độ đạt mục tiêu của bạn. Hãy cân nhắc kỹ!",
+                                    style: TextStyle(
+                                      fontSize: 14.sp,
+                                      color: Colors.black87,
+                                    ),
                                   ),
                                   SizedBox(height: 16.h),
                                   TextField(
@@ -541,19 +534,33 @@ class _EditMoneyDistributionBottomSheetState
                               actions: [
                                 TextButton(
                                   onPressed: () => Get.back(),
-                                  child: Text("HỦY", style: TextStyle(color: Colors.grey[600])),
+                                  child: Text(
+                                    "HỦY",
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
                                 ),
                                 ElevatedButton(
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                  onPressed: _isLoading ? null : () {
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  onPressed: () {
                                     if (noteController.text.trim().isEmpty) {
-                                      Get.snackbar("Lỗi", "Vui lòng nhập lý do rút tiền", backgroundColor: Colors.red, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+                                      Get.snackbar(
+                                        "Lỗi",
+                                        "Vui lòng nhập lý do rút tiền",
+                                        backgroundColor: Colors.red,
+                                        colorText: Colors.white,
+                                        snackPosition: SnackPosition.BOTTOM,
+                                      );
                                       return;
                                     }
                                     Get.back();
                                     _executeSave(noteController.text.trim());
                                   },
-                                  child: Text("XÁC NHẬN RÚT", style: TextStyle(color: Colors.white)),
+                                  child: Text(
+                                    "XÁC NHẬN RÚT",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
                                 ),
                               ],
                             ),
@@ -572,20 +579,14 @@ class _EditMoneyDistributionBottomSheetState
                   ),
                   elevation: 0,
                 ),
-                child: _isLoading 
-                  ? SizedBox(
-                      height: 24.h, 
-                      width: 24.h, 
-                      child: const CircularProgressIndicator(color: Color(0xFF2E2E2E), strokeWidth: 3)
-                    )
-                  : Text(
-                      "LƯU",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: canSave ? const Color(0xFF2E2E2E) : Colors.white,
-                      ),
-                    ),
+                child: Text(
+                  "LƯU",
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                    color: canSave ? const Color(0xFF2E2E2E) : Colors.white,
+                  ),
+                ),
               ),
             ),
           ],

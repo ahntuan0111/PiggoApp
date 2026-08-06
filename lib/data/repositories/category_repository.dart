@@ -43,8 +43,11 @@ class CategoryRepository with AppwriteErrorHandler {
         queries: [Query.equal('ownerId', userId), Query.orderAsc('priority')],
       );
       return response.rows
-          .map((row) => CategoryTypeModel.fromMap(
-              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id))
+          .map(
+            (row) => CategoryTypeModel.fromMap(
+              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+            ),
+          )
           .toList();
     });
   }
@@ -61,8 +64,9 @@ class CategoryRepository with AppwriteErrorHandler {
       );
       if (typeResponse.rows.isNotEmpty) {
         return CategoryTypeModel.fromMap(
-            Map<String, dynamic>.from(typeResponse.rows.first.data)
-              ..['\$id'] = typeResponse.rows.first.$id);
+          Map<String, dynamic>.from(typeResponse.rows.first.data)
+            ..['\$id'] = typeResponse.rows.first.$id,
+        );
       } else {
         final newTypeResponse = await _appwrite.tables.createRow(
           databaseId: _appwrite.databaseId,
@@ -75,8 +79,9 @@ class CategoryRepository with AppwriteErrorHandler {
           },
         );
         return CategoryTypeModel.fromMap(
-            Map<String, dynamic>.from(newTypeResponse.data)
-              ..['\$id'] = newTypeResponse.$id);
+          Map<String, dynamic>.from(newTypeResponse.data)
+            ..['\$id'] = newTypeResponse.$id,
+        );
       }
     });
   }
@@ -95,7 +100,8 @@ class CategoryRepository with AppwriteErrorHandler {
 
         for (var row in response.rows) {
           CategoryModel cat = CategoryModel.fromMap(
-              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id);
+            Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+          );
           allCategories.add(cat);
         }
       }
@@ -103,18 +109,21 @@ class CategoryRepository with AppwriteErrorHandler {
     });
   }
 
-  Future<List<MonthlyBudgetModel>> getMonthlyBudgets(String monthYearStr) async {
+  Future<List<MonthlyBudgetModel>> getMonthlyBudgets(
+    String monthYearStr,
+  ) async {
     return handleAppwriteError(() async {
       final response = await _appwrite.tables.listRows(
         databaseId: _appwrite.databaseId,
         tableId: _appwrite.monthlyBudgetsTableId,
-        queries: [
-          Query.equal('monthYear', monthYearStr),
-        ],
+        queries: [Query.equal('monthYear', monthYearStr)],
       );
       return response.rows
-          .map((row) => MonthlyBudgetModel.fromMap(
-              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id))
+          .map(
+            (row) => MonthlyBudgetModel.fromMap(
+              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+            ),
+          )
           .where((mb) => mb.categoryId.isNotEmpty)
           .toList();
     });
@@ -128,8 +137,11 @@ class CategoryRepository with AppwriteErrorHandler {
         tableId: _appwrite.monthlySummariesTableId,
       );
       return response.rows
-          .map((row) => MonthlySummaryModel.fromMap(
-              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id))
+          .map(
+            (row) => MonthlySummaryModel.fromMap(
+              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+            ),
+          )
           .toList();
     });
   }
@@ -147,7 +159,8 @@ class CategoryRepository with AppwriteErrorHandler {
         data: {'ownerId': userId, 'name': name, 'priority': priority},
       );
       return CategoryTypeModel.fromMap(
-          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
+        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
+      );
     });
   }
 
@@ -170,7 +183,8 @@ class CategoryRepository with AppwriteErrorHandler {
         },
       );
       return CategoryModel.fromMap(
-          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
+        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
+      );
     });
   }
 
@@ -186,7 +200,8 @@ class CategoryRepository with AppwriteErrorHandler {
         data: {'name': name},
       );
       return CategoryTypeModel.fromMap(
-          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
+        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
+      );
     });
   }
 
@@ -223,11 +238,15 @@ class CategoryRepository with AppwriteErrorHandler {
         data: data,
       );
       return CategoryModel.fromMap(
-          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
+        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
+      );
     });
   }
 
-  Future<void> updateMonthlyBudget(String budgetId, double budgetedAmount) async {
+  Future<void> updateMonthlyBudget(
+    String budgetId,
+    double budgetedAmount,
+  ) async {
     return handleAppwriteError(() async {
       await _appwrite.tables.updateRow(
         databaseId: _appwrite.databaseId,
@@ -259,7 +278,8 @@ class CategoryRepository with AppwriteErrorHandler {
         },
       );
       return MonthlyBudgetModel.fromMap(
-          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
+        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
+      );
     });
   }
 
@@ -271,7 +291,7 @@ class CategoryRepository with AppwriteErrorHandler {
         tableId: _appwrite.transactionsTableId,
         queries: [Query.equal('categories', categoryId)],
       );
-      
+
       for (var row in txResponse.rows) {
         await _appwrite.tables.updateRow(
           databaseId: _appwrite.databaseId,

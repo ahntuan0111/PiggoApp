@@ -99,7 +99,8 @@ class RolloverRepository with AppwriteErrorHandler {
       if (summaryResponse.rows.isNotEmpty) {
         final summaryRow = summaryResponse.rows.first;
         summary = MonthlySummaryModel.fromMap(
-            Map<String, dynamic>.from(summaryRow.data)..['\$id'] = summaryRow.$id);
+          Map<String, dynamic>.from(summaryRow.data)..['\$id'] = summaryRow.$id,
+        );
       }
 
       // 2. Fetch Budgets
@@ -110,8 +111,11 @@ class RolloverRepository with AppwriteErrorHandler {
       );
 
       List<MonthlyBudgetModel> budgets = budgetsResponse.rows
-          .map((r) => MonthlyBudgetModel.fromMap(
-              Map<String, dynamic>.from(r.data)..['\$id'] = r.$id))
+          .map(
+            (r) => MonthlyBudgetModel.fromMap(
+              Map<String, dynamic>.from(r.data)..['\$id'] = r.$id,
+            ),
+          )
           .toList();
 
       // 3. Fetch Categories
@@ -131,8 +135,13 @@ class RolloverRepository with AppwriteErrorHandler {
             queries: [Query.equal('categoryTypes', typeId)],
           );
           categories.addAll(
-            cats.rows.map((r) => CategoryModel.fromMap(
-                Map<String, dynamic>.from(r.data)..['\$id'] = r.$id)).toList(),
+            cats.rows
+                .map(
+                  (r) => CategoryModel.fromMap(
+                    Map<String, dynamic>.from(r.data)..['\$id'] = r.$id,
+                  ),
+                )
+                .toList(),
           );
         }
       }
@@ -178,7 +187,7 @@ class RolloverRepository with AppwriteErrorHandler {
 
       for (var catRow in categories) {
         final catId = catRow.$id;
-        
+
         // Cố tình không lấy defaultBudget mà gán bằng 0.0
         // Để tổng phân bổ là 0, và Chưa phân bổ không bị âm.
         await _appwrite.tables.createRow(
@@ -285,11 +294,13 @@ class RolloverRepository with AppwriteErrorHandler {
       );
 
       for (var doc in txResponse.rows) {
-        await _appwrite.tables.deleteRow(
-          databaseId: _appwrite.databaseId,
-          tableId: _appwrite.transactionsTableId,
-          rowId: doc.$id,
-        ).catchError((_) => null);
+        await _appwrite.tables
+            .deleteRow(
+              databaseId: _appwrite.databaseId,
+              tableId: _appwrite.transactionsTableId,
+              rowId: doc.$id,
+            )
+            .catchError((_) => null);
       }
 
       // 5. Xóa tất cả ngân sách tháng (monthlybudgets) trong tháng đó
@@ -299,11 +310,13 @@ class RolloverRepository with AppwriteErrorHandler {
         queries: [Query.equal('monthYear', monthYear), Query.limit(500)],
       );
       for (var doc in budgetsResponse.rows) {
-        await _appwrite.tables.deleteRow(
-          databaseId: _appwrite.databaseId,
-          tableId: _appwrite.monthlyBudgetsTableId,
-          rowId: doc.$id,
-        ).catchError((_) => null);
+        await _appwrite.tables
+            .deleteRow(
+              databaseId: _appwrite.databaseId,
+              tableId: _appwrite.monthlyBudgetsTableId,
+              rowId: doc.$id,
+            )
+            .catchError((_) => null);
       }
 
       // 6. Xóa tất cả báo cáo tháng (monthlysummaries) trong tháng đó
@@ -313,11 +326,13 @@ class RolloverRepository with AppwriteErrorHandler {
         queries: [Query.equal('monthYear', monthYear), Query.limit(500)],
       );
       for (var doc in summariesResponse.rows) {
-        await _appwrite.tables.deleteRow(
-          databaseId: _appwrite.databaseId,
-          tableId: _appwrite.monthlySummariesTableId,
-          rowId: doc.$id,
-        ).catchError((_) => null);
+        await _appwrite.tables
+            .deleteRow(
+              databaseId: _appwrite.databaseId,
+              tableId: _appwrite.monthlySummariesTableId,
+              rowId: doc.$id,
+            )
+            .catchError((_) => null);
       }
     });
   }

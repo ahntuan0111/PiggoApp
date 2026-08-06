@@ -16,25 +16,31 @@ class StorageRepository with AppwriteErrorHandler {
 
       String generatedFileId = ID.unique();
 
-      return await _appwrite.storage.createFile(
-        bucketId: bucketId,
-        fileId: generatedFileId,
-        file: InputFile.fromPath(
-          path: file.path,
-          filename: file.path.split('/').last,
-        ),
-      ).then((result) => result.$id).catchError((e) {
-        // Appwrite SDK có thể gặp lỗi parse JSON response khi upload file (thường do field thiếu)
-        // Dù file ĐÃ ĐƯỢC UPLOAD THÀNH CÔNG lên server (trả về 201), SDK vẫn văng TypeError.
-        // Ta catch TypeError này và trả về ID tự sinh để không làm gián đoạn luồng app.
-        if (e is TypeError &&
-            e.toString().contains("type 'Null' is not a subtype of type 'int'")) {
-          return generatedFileId;
-        }
-        throw e;
-      });
+      return await _appwrite.storage
+          .createFile(
+            bucketId: bucketId,
+            fileId: generatedFileId,
+            file: InputFile.fromPath(
+              path: file.path,
+              filename: file.path.split('/').last,
+            ),
+          )
+          .then((result) => result.$id)
+          .catchError((e) {
+            // Appwrite SDK có thể gặp lỗi parse JSON response khi upload file (thường do field thiếu)
+            // Dù file ĐÃ ĐƯỢC UPLOAD THÀNH CÔNG lên server (trả về 201), SDK vẫn văng TypeError.
+            // Ta catch TypeError này và trả về ID tự sinh để không làm gián đoạn luồng app.
+            if (e is TypeError &&
+                e.toString().contains(
+                  "type 'Null' is not a subtype of type 'int'",
+                )) {
+              return generatedFileId;
+            }
+            throw e;
+          });
     });
   }
+
   Future<List<int>> getFileView(String fileId) async {
     return handleAppwriteError(() async {
       String bucketId =
@@ -57,10 +63,7 @@ class StorageRepository with AppwriteErrorHandler {
     return handleAppwriteError(() async {
       String bucketId =
           dotenv.env['APPWRITE_RECEIPT_BUCKET_ID'] ?? _appwrite.avatarBucketId;
-      await _appwrite.storage.deleteFile(
-        bucketId: bucketId,
-        fileId: fileId,
-      );
+      await _appwrite.storage.deleteFile(bucketId: bucketId, fileId: fileId);
     });
   }
 }

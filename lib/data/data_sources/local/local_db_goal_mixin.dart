@@ -8,10 +8,10 @@ mixin LocalDbGoalMixin on LocalDatabaseBase {
   Future<void> saveGoals(List<Map<String, dynamic>> goals) async {
     final db = await database;
     Batch batch = db.batch();
-    
+
     // Purge logic: Xóa các records đã sync (bảo toàn offline ghosts nếu có)
     batch.delete('goals', where: "id NOT LIKE 'offline_%'");
-    
+
     for (var g in goals) {
       batch.insert('goals', {
         'id': g['id'],
@@ -53,5 +53,37 @@ mixin LocalDbGoalMixin on LocalDatabaseBase {
         whereArgs: [existing.first['id']],
       );
     }
+  }
+
+  Future<void> insertLocalGoal(Map<String, dynamic> goal) async {
+    final db = await database;
+    await db.insert('goals', {
+      'id': goal['id'],
+      'categoryId': goal['categoryId'],
+      'name': goal['name'],
+      'targetAmount': goal['targetAmount'],
+      'currentAmount': goal['currentAmount'] ?? 0,
+      'deadline': goal['deadline'],
+      'status': goal['status'] ?? 'IN_PROGRESS',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateLocalGoal(Map<String, dynamic> goal) async {
+    final db = await database;
+    await db.update(
+      'goals',
+      {
+        'name': goal['name'],
+        'targetAmount': goal['targetAmount'],
+        'deadline': goal['deadline'],
+      },
+      where: 'id = ?',
+      whereArgs: [goal['id']],
+    );
+  }
+
+  Future<void> deleteLocalGoal(String id) async {
+    final db = await database;
+    await db.delete('goals', where: 'id = ?', whereArgs: [id]);
   }
 }

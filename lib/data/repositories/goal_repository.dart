@@ -13,13 +13,16 @@ class GoalRepository with AppwriteErrorHandler {
       final response = await _appwrite.tables.listRows(
         databaseId: _appwrite.databaseId,
         tableId: _appwrite.goalsTableId,
-        queries: [
-          Query.orderDesc('\$createdAt'),
-        ],
+        queries: [Query.orderDesc('\$createdAt')],
       );
 
-      return response.rows.map((e) => GoalModel.fromMap(
-          Map<String, dynamic>.from(e.data)..['\$id'] = e.$id)).toList();
+      return response.rows
+          .map(
+            (e) => GoalModel.fromMap(
+              Map<String, dynamic>.from(e.data)..['\$id'] = e.$id,
+            ),
+          )
+          .toList();
     });
   }
 
@@ -32,7 +35,8 @@ class GoalRepository with AppwriteErrorHandler {
         data: goal.toMap(),
       );
       return GoalModel.fromMap(
-          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
+        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
+      );
     });
   }
 
@@ -45,7 +49,8 @@ class GoalRepository with AppwriteErrorHandler {
         data: goal.toMap(),
       );
       return GoalModel.fromMap(
-          Map<String, dynamic>.from(response.data)..['\$id'] = response.$id);
+        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
+      );
     });
   }
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
 
 class GoalSweepDialog extends StatelessWidget {
   final double unallocatedAmount;
@@ -15,8 +17,6 @@ class GoalSweepDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       backgroundColor: Colors.white,
@@ -31,7 +31,11 @@ class GoalSweepDialog extends StatelessWidget {
                 color: const Color(0xFFFCE4EC), // Pink light
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.savings, color: const Color(0xFFD32F2F), size: 40.sp),
+              child: Icon(
+                Icons.savings,
+                color: const Color(0xFFD32F2F),
+                size: 40.sp,
+              ),
             ),
             SizedBox(height: 16.h),
             Text(
@@ -44,7 +48,7 @@ class GoalSweepDialog extends StatelessWidget {
             ),
             SizedBox(height: 12.h),
             Text(
-              "Cuối tháng rồi, bạn đang còn dư ${formatter.format(unallocatedAmount)}đ chưa phân bổ. Bạn có muốn dồn số tiền này vào các quỹ mục tiêu để nhanh đạt đích không?",
+              "Cuối tháng rồi, bạn đang còn dư ${CurrencyFormatter.format(unallocatedAmount)} chưa phân bổ. Bạn có muốn dồn số tiền này vào các quỹ mục tiêu để nhanh đạt đích không?",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14.sp,
@@ -67,7 +71,10 @@ class GoalSweepDialog extends StatelessWidget {
                     ),
                     child: Text(
                       "Bỏ qua",
-                      style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -88,7 +95,10 @@ class GoalSweepDialog extends StatelessWidget {
                     ),
                     child: const Text(
                       "Đồng ý",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

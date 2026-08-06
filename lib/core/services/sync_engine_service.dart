@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:appwrite/appwrite.dart';
+import 'package:appintern/data/repositories/statistics_repository.dart';
+import 'package:appintern/data/models/goal_model.dart';
+import 'package:appintern/data/repositories/goal_repository.dart';
 import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/errors/exceptions.dart';
@@ -346,6 +349,68 @@ class SyncEngineService extends GetxService {
         oldCategory: oldCategory,
         newCategory: newCategory,
       );
+    } else if (type == 'DELETE_MANUAL_TX') {
+      final txId = data['transactionId'];
+      final amount = data['amount'];
+      final txType = data['type'];
+      final txDateStr = data['transactionDate'];
+      final txDate = txDateStr != null
+          ? DateTime.parse(txDateStr)
+          : DateTime.now();
+
+      final tx = TransactionModel(
+        id: txId,
+        categoryId: data['category']?['id'] ?? '',
+        amount: amount.toDouble(),
+        type: txType,
+        transactionDate: txDate,
+        status: 'COMPLETED',
+      );
+
+      final categoryData = data['category'];
+      CategoryModel? category;
+      if (categoryData != null) {
+        category = CategoryModel.fromMap(categoryData);
+      }
+
+      await _transactionRepo.deleteTransaction(
+        transaction: tx,
+        currentCategory: category,
+      );
+    } else if (type == 'CREATE_WALLET_ADJUSTMENT') {
+      final txData = data['transaction'];
+      if (txData['id'] != null &&
+          txData['id'].toString().startsWith('offline_')) {
+        txData.remove('id');
+      }
+      final tx = TransactionModel.fromMap(txData);
+
+      final detailData = data['detail'];
+      if (detailData['id'] != null &&
+          detailData['id'].toString().startsWith('offline_')) {
+        detailData.remove('id');
+      }
+      final txDetail = TransactionDetailModel.fromMap(detailData);
+
+      await _transactionRepo.createWalletAdjustmentTransaction(
+        transaction: tx,
+        transactionDetail: txDetail,
+      );
+    } else if (type == 'UPDATE_WALLET_ADJUSTMENT') {
+      final txData = data['transaction'];
+      final tx = TransactionModel.fromMap(txData);
+
+      final detailData = data['detail'];
+      final txDetail = TransactionDetailModel.fromMap(detailData);
+
+      final oldTxData = data['oldTransaction'];
+      final oldTransaction = TransactionModel.fromMap(oldTxData);
+
+      await _transactionRepo.updateWalletAdjustmentTransaction(
+        oldTransaction: oldTransaction,
+        newTransaction: tx,
+        newTransactionDetail: txDetail,
+      );
     } else if (type == 'CREATE_CATEGORY_TYPE') {
       final storage = Get.find<StorageService>();
       final userId = storage.read<String>(AppKeys.userId) ?? '';
@@ -384,15 +449,48 @@ class SyncEngineService extends GetxService {
     } else if (type == 'UPDATE_BUDGET' || type == 'TRANSFER_BUDGET') {
       final monthYear = data['monthYear'];
       final allocations = List<Map<String, dynamic>>.from(data['allocations']);
-      final transferLogs = data['transferLogs'] != null 
+      final transferLogs = data['transferLogs'] != null
           ? List<Map<String, dynamic>>.from(data['transferLogs'])
           : null;
-      await _categoryRepo.transferBudget(monthYear, allocations, transferLogs: transferLogs);
+      await _categoryRepo.transferBudget(
+        monthYear,
+        allocations,
+        transferLogs: transferLogs,
+      );
     } else if (type == 'DELETE_ORPHANED_FILE') {
       final fileId = data['fileId'];
       if (fileId != null) {
         await _storageRepo.deleteFile(fileId);
       }
+    } else if (type == 'CREATE_GOAL') {
+      final goalData = data['goal'];
+      if (goalData['id'] != null && goalData['id'].toString().startsWith('offline_')) {
+        goalData.remove('id');
+      }
+      final goal = GoalModel.fromMap(goalData);
+      await Get.find<GoalRepository>().createGoal(goal);
+      if (data['tempId'] != null) {
+        await _localDb.deleteLocalGoal(data['tempId']);
+      }
+    } else if (type == 'UPDATE_GOAL') {
+      final goalData = data['goal'];
+      final goal = GoalModel.fromMap(goalData);
+      await Get.find<GoalRepository>().updateGoal(goal);
+      
+      final categoryUpdate = data['categoryUpdate'];
+      if (categoryUpdate != null) {
+        await _categoryRepo.updateCategory(
+          categoryUpdate['id'],
+          categoryUpdate['name'],
+          categoryUpdate['iconName'],
+          categoryUpdate['color'],
+        );
+      }
+    } else if (type == 'DELETE_GOAL') {
+      final goalId = data['goalId'];
+      final categoryId = data['categoryId'];
+      await Get.find<GoalRepository>().deleteGoal(goalId);
+      await _categoryRepo.deleteCategory(categoryId);
     }
   }
 }

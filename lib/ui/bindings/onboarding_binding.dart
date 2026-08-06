@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/onboarding_controller.dart';
+
 class OnboardingBinding extends Bindings {
   @override
   void dependencies() {

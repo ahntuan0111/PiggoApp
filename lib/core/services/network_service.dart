@@ -6,7 +6,7 @@ import 'package:appintern/core/utils/logger.dart';
 class NetworkService extends GetxService {
   final Connectivity _connectivity = Connectivity();
   late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
-  
+
   // Trạng thái mạng hiện tại
   final RxBool isOffline = false.obs;
 
@@ -14,7 +14,9 @@ class NetworkService extends GetxService {
   void onInit() {
     super.onInit();
     checkConnection();
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+      _updateConnectionStatus,
+    );
   }
 
   Future<void> checkConnection() async {
@@ -29,8 +31,9 @@ class NetworkService extends GetxService {
 
   void _updateConnectionStatus(List<ConnectivityResult> result) {
     bool wasOffline = isOffline.value;
-    
-    if (result.isEmpty || (result.length == 1 && result.first == ConnectivityResult.none)) {
+
+    if (result.isEmpty ||
+        (result.length == 1 && result.first == ConnectivityResult.none)) {
       isOffline.value = true;
     } else {
       isOffline.value = false;
@@ -38,8 +41,8 @@ class NetworkService extends GetxService {
 
     if (wasOffline != isOffline.value) {
       AppLogger.info(
-        "NETWORK_SERVICE", 
-        "📡 Trạng thái mạng thay đổi: ${isOffline.value ? '🔴 Đã mất kết nối (Offline)' : '🟢 Đã có kết nối (Online)'}"
+        "NETWORK_SERVICE",
+        "📡 Trạng thái mạng thay đổi: ${isOffline.value ? '🔴 Đã mất kết nối (Offline)' : '🟢 Đã có kết nối (Online)'}",
       );
     }
   }

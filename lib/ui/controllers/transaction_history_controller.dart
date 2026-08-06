@@ -31,9 +31,13 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   final hasReachedMax = false.obs;
   static const int pageSize = 20;
 
+  final ScrollController scrollController = ScrollController();
+
   @override
   void onInit() {
     super.onInit();
+
+    scrollController.addListener(_onScroll);
 
     // Đọc arguments nếu có truyền từ màn hình khác
     if (Get.arguments != null) {
@@ -140,7 +144,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
         if (data.isEmpty || data.length < pageSize) {
           hasReachedMax.value = true;
         }
-        
+
         if (isRefresh) {
           transactionsList.clear();
         }
@@ -220,8 +224,20 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     sortAscending.value = false;
   }
 
+  void _onScroll() {
+    if (scrollController.hasClients) {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 200) {
+        if (!isFetchingMore.value && !hasReachedMax.value) {
+          fetchTransactions(isRefresh: false);
+        }
+      }
+    }
+  }
+
   @override
   void onClose() {
+    scrollController.dispose();
     searchController.dispose();
     _debounce?.cancel();
     super.onClose();

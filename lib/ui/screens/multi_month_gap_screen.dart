@@ -3,14 +3,14 @@ import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/multi_month_gap_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:get/get.dart';
 
 class MultiMonthGapScreen extends GetView<MultiMonthGapController> {
   const MultiMonthGapScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1), // Nền Kem
       appBar: AppBar(
@@ -113,8 +113,6 @@ class MultiMonthGapScreen extends GetView<MultiMonthGapController> {
               ),
 
               SizedBox(height: 32.h),
-
-
 
               SizedBox(height: 48.h),
 

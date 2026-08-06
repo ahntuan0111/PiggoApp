@@ -165,6 +165,7 @@ class TransactionDetailController extends BaseController with BudgetAware {
         'category': category.value?.toMap(),
         'amount': transaction.amount,
         'type': transaction.type,
+        'transactionDate': transaction.transactionDate.toIso8601String(),
       });
       await offlineSyncService.queueManualTask('DELETE_MANUAL_TX', payload);
 

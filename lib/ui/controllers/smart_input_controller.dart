@@ -54,7 +54,7 @@ class SmartInputController extends BaseController with BudgetAware {
       successMessage: 'Đoạn chat đã được đưa vào hàng chờ đồng bộ',
       isFile: false,
     );
-    
+
     if (handled) {
       textController.clear();
       return;
@@ -136,7 +136,7 @@ class SmartInputController extends BaseController with BudgetAware {
       successMessage: 'Ảnh hóa đơn đã được đưa vào hàng chờ đồng bộ',
       isFile: true,
     );
-    
+
     if (handled) return;
 
     isProcessing.value = true;
@@ -213,12 +213,7 @@ class SmartInputController extends BaseController with BudgetAware {
       // 1. Upload ảnh hóa đơn lên Appwrite Storage Bucket nếu có
       List<String> receiptFileIds = [];
       if (receiptImage != null && await receiptImage.exists()) {
-        final uploadedFileId = await storageRepository.uploadReceiptImage(
-          receiptImage,
-        );
-        if (uploadedFileId.isNotEmpty) {
-          receiptFileIds.add(uploadedFileId);
-        }
+        receiptFileIds.add(receiptImage.path);
       }
 
       for (var confirmedData in confirmedDataList) {
@@ -282,7 +277,9 @@ class SmartInputController extends BaseController with BudgetAware {
       (_) {
         final count = confirmedDataList.length;
         textController.clear();
-        Get.back(result: count); // Trả về số giao dịch - Caller hiển thị Snackbar
+        Get.back(
+          result: count,
+        ); // Trả về số giao dịch - Caller hiển thị Snackbar
       },
     );
   }

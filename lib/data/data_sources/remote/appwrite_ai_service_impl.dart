@@ -10,7 +10,9 @@ import 'package:dio/dio.dart' as dio;
 import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 import 'package:appintern/core/mixins/dio_error_mixin.dart';
 
-class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioErrorHandler implements IAIService {
+class AppwriteAIServiceImpl extends GetxService
+    with AppwriteErrorHandler, DioErrorHandler
+    implements IAIService {
   final AppwriteService _appwriteService = Get.find<AppwriteService>();
   final dio.Dio _dio = dio.Dio();
 
@@ -29,12 +31,12 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
         'currentTime': currentTime,
       };
 
-      String? envFunctionId = dotenv.env['APPWRITE_FUNCTION_PARSE_TRANSACTION'];
-      final functionId = (envFunctionId != null && envFunctionId.isNotEmpty) 
-          ? envFunctionId 
-          : 'parse-transaction';
+      final functionId = _appwriteService.functionParseTransaction;
 
-      dev.log('[AI_SERVICE] Calling function: $functionId', name: 'PARSE_TRANSACTION');
+      dev.log(
+        '[AI_SERVICE] Calling function: $functionId',
+        name: 'PARSE_TRANSACTION',
+      );
       dev.log('[AI_SERVICE] Payload text: "$text"', name: 'PARSE_TRANSACTION');
 
       final execution = await _appwriteService.functions.createExecution(
@@ -45,11 +47,26 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
 
       // ─── Log toàn bộ chi tiết execution để debug ───────────────────────
       dev.log('[AI_SERVICE] ── Execution Result ──', name: 'PARSE_TRANSACTION');
-      dev.log('[AI_SERVICE] Status:         ${execution.status}', name: 'PARSE_TRANSACTION');
-      dev.log('[AI_SERVICE] HTTP Code:      ${execution.responseStatusCode}', name: 'PARSE_TRANSACTION');
-      dev.log('[AI_SERVICE] ResponseBody:   "${execution.responseBody}"', name: 'PARSE_TRANSACTION');
-      dev.log('[AI_SERVICE] Logs:           ${execution.logs}', name: 'PARSE_TRANSACTION');
-      dev.log('[AI_SERVICE] Errors:         ${execution.errors}', name: 'PARSE_TRANSACTION');
+      dev.log(
+        '[AI_SERVICE] Status:         ${execution.status}',
+        name: 'PARSE_TRANSACTION',
+      );
+      dev.log(
+        '[AI_SERVICE] HTTP Code:      ${execution.responseStatusCode}',
+        name: 'PARSE_TRANSACTION',
+      );
+      dev.log(
+        '[AI_SERVICE] ResponseBody:   "${execution.responseBody}"',
+        name: 'PARSE_TRANSACTION',
+      );
+      dev.log(
+        '[AI_SERVICE] Logs:           ${execution.logs}',
+        name: 'PARSE_TRANSACTION',
+      );
+      dev.log(
+        '[AI_SERVICE] Errors:         ${execution.errors}',
+        name: 'PARSE_TRANSACTION',
+      );
       // ────────────────────────────────────────────────────────────────────
 
       if (execution.responseStatusCode >= 400) {
@@ -57,7 +74,10 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
             ? _tryParseMessage(execution.responseBody)
             : 'Server trả về lỗi ${execution.responseStatusCode} (body rỗng). Kiểm tra Logs Appwrite.';
 
-        dev.log('[AI_SERVICE] ERROR: $serverMessage', name: 'PARSE_TRANSACTION');
+        dev.log(
+          '[AI_SERVICE] ERROR: $serverMessage',
+          name: 'PARSE_TRANSACTION',
+        );
         throw Exception('Function failed: $serverMessage');
       }
 
@@ -65,7 +85,10 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
       if (responseBody.isNotEmpty) {
         final Map<String, dynamic> result = jsonDecode(responseBody);
         if (result['success'] == true && result['data'] != null) {
-          dev.log('[AI_SERVICE] SUCCESS: ${result['data']}', name: 'PARSE_TRANSACTION');
+          dev.log(
+            '[AI_SERVICE] SUCCESS: ${result['data']}',
+            name: 'PARSE_TRANSACTION',
+          );
           final data = result['data'] as Map<String, dynamic>;
           final List<dynamic> txs = data['transactions'] ?? [];
           return txs.map((e) => e as Map<String, dynamic>).toList();
@@ -74,7 +97,9 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
           throw Exception(msg);
         }
       } else {
-        throw Exception('Function trả về kết quả rỗng (status: ${execution.responseStatusCode})');
+        throw Exception(
+          'Function trả về kết quả rỗng (status: ${execution.responseStatusCode})',
+        );
       }
     });
   }
@@ -95,12 +120,12 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
         'currentTime': currentTime,
       };
 
-      String? envFunctionId = dotenv.env['APPWRITE_FUNCTION_PARSE_RECEIPT_VISION'];
-      final functionId = (envFunctionId != null && envFunctionId.isNotEmpty)
-          ? envFunctionId
-          : 'parse_receipt_vision';
+      final functionId = _appwriteService.functionParseReceiptVision;
 
-      dev.log('[AI_SERVICE] Calling vision function: $functionId', name: 'PARSE_RECEIPT_VISION');
+      dev.log(
+        '[AI_SERVICE] Calling vision function: $functionId',
+        name: 'PARSE_RECEIPT_VISION',
+      );
 
       final execution = await _appwriteService.functions.createExecution(
         functionId: functionId,
@@ -108,7 +133,10 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
         xasync: false,
       );
 
-      dev.log('[AI_SERVICE] Vision Execution Result status: ${execution.status}, code: ${execution.responseStatusCode}', name: 'PARSE_RECEIPT_VISION');
+      dev.log(
+        '[AI_SERVICE] Vision Execution Result status: ${execution.status}, code: ${execution.responseStatusCode}',
+        name: 'PARSE_RECEIPT_VISION',
+      );
 
       if (execution.responseStatusCode >= 400) {
         final serverMessage = (execution.responseBody.isNotEmpty)
@@ -134,7 +162,6 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
     });
   }
 
-
   /// Cố parse JSON để lấy field "message", nếu không được thì trả nguyên chuỗi
   String _tryParseMessage(String body) {
     try {
@@ -148,24 +175,29 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
   @override
   Future<String> convertSpeechToText(String audioPath) async {
     return handleDioError(() async {
-      final file = await dio.MultipartFile.fromFile(audioPath, filename: 'voice_input.wav');
+      final file = await dio.MultipartFile.fromFile(
+        audioPath,
+        filename: 'voice_input.wav',
+      );
       final formData = dio.FormData.fromMap({'file': file});
-      
+
       // Lấy IP cấu hình từ .env, fallback về localhost/10.0.2.2 nếu chưa set
       String? envSttUrl = dotenv.env['FASTAPI_STT_URL'];
-      String baseUrl = (envSttUrl != null && envSttUrl.isNotEmpty) 
-          ? envSttUrl 
-          : (Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000');
-      
+      String baseUrl = (envSttUrl != null && envSttUrl.isNotEmpty)
+          ? envSttUrl
+          : (Platform.isAndroid
+                ? 'http://10.0.2.2:8000'
+                : 'http://localhost:8000');
+
       final sttResponse = await _dio.post(
         '$baseUrl/api/v1/transactions/voice',
         data: formData,
         options: dio.Options(
           receiveTimeout: const Duration(seconds: 30),
           sendTimeout: const Duration(seconds: 15),
-        )
+        ),
       );
-      
+
       if (sttResponse.data['status'] == 'success') {
         final text = sttResponse.data['raw_text_detected'] ?? "";
         if (text.isEmpty) {
@@ -173,7 +205,9 @@ class AppwriteAIServiceImpl extends GetxService with AppwriteErrorHandler, DioEr
         }
         return text;
       } else {
-        throw Exception("Lỗi từ server STT: ${sttResponse.data['message'] ?? ''}");
+        throw Exception(
+          "Lỗi từ server STT: ${sttResponse.data['message'] ?? ''}",
+        );
       }
     });
   }

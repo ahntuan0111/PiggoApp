@@ -6,7 +6,8 @@ import 'package:get/get.dart';
 abstract class TransactionRepositoryBase {
   final AppwriteService appwrite;
   final LocalDatabaseService localDb = Get.find<LocalDatabaseService>();
-  final StreamController<void> transactionUpdatedController = StreamController<void>.broadcast();
+  final StreamController<void> transactionUpdatedController =
+      StreamController<void>.broadcast();
 
   TransactionRepositoryBase(this.appwrite);
 

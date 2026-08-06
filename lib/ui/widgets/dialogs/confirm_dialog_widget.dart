@@ -93,7 +93,7 @@ class ConfirmDialogWidget extends StatelessWidget {
                   ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
