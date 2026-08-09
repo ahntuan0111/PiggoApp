@@ -28,7 +28,8 @@ class OfflineSyncService extends GetxService {
   }
 
   Future<void> refreshQueueCount() async {
-    final tasks = await _localDb.getPendingTasks();
+    final db = await _localDb.database;
+    final tasks = await db.query('offline_tasks_queue');
     aiQueueCount.value = tasks
         .where(
           (t) =>
@@ -110,6 +111,47 @@ class OfflineSyncService extends GetxService {
       );
     }
     return true; // Đã xử lý (đưa vào queue thành công)
+  }
+
+  /// Ép buộc đưa tác vụ vào hàng đợi (Bỏ qua kiểm tra Online/Offline)
+  Future<bool> forceQueueOfflineAction(
+    String type,
+    String payload, {
+    required String successMessage,
+    bool isFile = false,
+    bool showSnackbar = true,
+  }) async {
+    // Giới hạn 5 task AI tổng cộng
+    if (aiQueueCount.value >= MAX_AI_TASKS) {
+      OfflineQueueFullDialog.show(
+        currentCount: aiQueueCount.value,
+        maxCount: MAX_AI_TASKS,
+        isAiTask: true,
+      );
+      return true; // Đã xử lý (Offline nhưng đầy)
+    }
+
+    String finalPayload = payload;
+    if (isFile) {
+      final docDir = await getApplicationDocumentsDirectory();
+      final extension = payload.split('.').last;
+      final fileName =
+          '${type.toLowerCase()}_offline_${DateTime.now().millisecondsSinceEpoch}.$extension';
+
+      final savedFile = await File(payload).copy('${docDir.path}/$fileName');
+      finalPayload = savedFile.path;
+    }
+
+    await queueTask(type, finalPayload);
+    if (showSnackbar) {
+      Get.snackbar(
+        'Ngoại tuyến',
+        successMessage,
+        backgroundColor: Get.theme.colorScheme.secondary,
+        colorText: Get.theme.colorScheme.onSecondary,
+      );
+    }
+    return true; 
   }
 
   bool checkAndShowManualQueueFull() {

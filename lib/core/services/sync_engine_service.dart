@@ -23,6 +23,8 @@ import 'package:get/get.dart';
 import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
+import 'package:appintern/data/repositories/rollover_repository.dart' as appintern3;
+import 'package:appintern/core/routes/app_routes.dart';
 
 class SyncEngineService extends GetxService {
   final LocalDatabaseService _localDb = Get.find<LocalDatabaseService>();
@@ -55,10 +57,54 @@ class SyncEngineService extends GetxService {
     // Lắng nghe trạng thái mạng để tự động chạy
     _networkWorker = ever(_networkService.isOffline, (isOffline) {
       if (!isOffline) {
-        warmUpCache();
-        startForegroundSync();
+        // Thay vì gọi trực tiếp ở đây, network_service sẽ gọi handleNetworkRestore()
+        // Nhưng nếu muốn gọi ở đây luôn thì cũng được.
       }
     });
+  }
+
+  Future<void> handleNetworkRestore() async {
+    if (_budgetService.isMonthTransitioning.value) return;
+
+    try {
+      _budgetService.isMonthTransitioning.value = true;
+      
+      // 1. Đồng bộ dữ liệu lên cloud với Timeout
+      await startForegroundSync().timeout(const Duration(seconds: 15));
+
+      // 2. Check Rollover
+      final rolloverRepo = Get.find<appintern3.RolloverRepository>();
+      final rolloverResult = await rolloverRepo.checkRolloverState().timeout(const Duration(seconds: 10));
+
+      if (rolloverResult.state == appintern3.RolloverState.newAccount) {
+         final storage = Get.find<StorageService>();
+         final userId = storage.read(AppKeys.userId);
+         if (userId != null) {
+            await rolloverRepo.executeHardReset(userId).timeout(const Duration(seconds: 15));
+         }
+      } else if (rolloverResult.state == appintern3.RolloverState.multiMonthGap) {
+         Get.offAllNamed(Routes.MULTI_MONTH_GAP, arguments: {
+           'state': rolloverResult.state,
+           'lastActiveMonthYear': rolloverResult.lastActiveMonthYear,
+         });
+      } else if (rolloverResult.state == appintern3.RolloverState.normalRollover) {
+         // Cần popup cho người dùng chọn, nên điều hướng sang Month End Report (rồi sau đó là Rollover Decision)
+         Get.offAllNamed(Routes.MONTH_END_REPORT, arguments: {
+            'state': rolloverResult.state,
+            'lastActiveMonthYear': rolloverResult.lastActiveMonthYear,
+         });
+      }
+
+      warmUpCache();
+    } catch (e) {
+      AppLogger.error("SYNC", "Network Restore Timeout hoặc Lỗi: $e");
+      Get.snackbar(
+        "Đồng bộ lỗi",
+        "Đồng bộ chuyển tháng thất bại do kết nối kém. Đang sử dụng dữ liệu Offline.",
+      );
+    } finally {
+      _budgetService.isMonthTransitioning.value = false;
+    }
   }
 
   /// Tải ngầm 15 giao dịch mới nhất của tháng hiện tại để sẵn sàng khi Offline

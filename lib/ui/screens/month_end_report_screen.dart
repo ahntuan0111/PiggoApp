@@ -176,53 +176,55 @@ class MonthEndReportScreen extends GetView<MonthEndReportController> {
                                 ),
                                 SizedBox(width: 32.w),
                                 // Stats
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildStatRow(
-                                      Icons.circle,
-                                      const Color(0xFF1B4332),
-                                      "Dư từ tháng ${controller.prevMonthName.value}",
-                                      "+${CurrencyFormatter.format(controller.carriedOverBalance.value)}",
-                                    ),
-                                    SizedBox(height: 12.h),
-                                    _buildStatRow(
-                                      Icons.circle,
-                                      const Color(0xFF369B56),
-                                      "Tổng thu",
-                                      "+${CurrencyFormatter.format(controller.income.value)}",
-                                    ),
-                                    SizedBox(height: 12.h),
-                                    _buildStatRow(
-                                      Icons.circle,
-                                      const Color(0xFFE53935),
-                                      "Tổng chi",
-                                      "-${CurrencyFormatter.format(controller.expense.value)}",
-                                    ),
-                                    SizedBox(height: 16.h),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          "Hiệu suất",
-                                          style: TextStyle(
-                                            color: Colors.black54,
-                                            fontSize: 13.sp,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildStatRow(
+                                        Icons.circle,
+                                        const Color(0xFF1B4332),
+                                        "Dư từ tháng ${controller.prevMonthName.value}",
+                                        "+${CurrencyFormatter.format(controller.carriedOverBalance.value)}",
+                                      ),
+                                      SizedBox(height: 12.h),
+                                      _buildStatRow(
+                                        Icons.circle,
+                                        const Color(0xFF369B56),
+                                        "Tổng thu",
+                                        "+${CurrencyFormatter.format(controller.income.value)}",
+                                      ),
+                                      SizedBox(height: 12.h),
+                                      _buildStatRow(
+                                        Icons.circle,
+                                        const Color(0xFFE53935),
+                                        "Tổng chi",
+                                        "-${CurrencyFormatter.format(controller.expense.value)}",
+                                      ),
+                                      SizedBox(height: 16.h),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            "Hiệu suất",
+                                            style: TextStyle(
+                                              color: Colors.black54,
+                                              fontSize: 13.sp,
+                                            ),
                                           ),
-                                        ),
-                                        SizedBox(width: 16.w),
-                                        Text(
-                                          "${controller.isSurplus.value ? '+' : ''}${controller.efficiency.value.toStringAsFixed(1)}%",
-                                          style: TextStyle(
-                                            color: controller.isSurplus.value
-                                                ? const Color(0xFF369B56)
-                                                : Colors.red[600],
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14.sp,
+                                          SizedBox(width: 16.w),
+                                          Text(
+                                            "${controller.isSurplus.value ? '+' : ''}${controller.efficiency.value.toStringAsFixed(1)}%",
+                                            style: TextStyle(
+                                              color: controller.isSurplus.value
+                                                  ? const Color(0xFF369B56)
+                                                  : Colors.red[600],
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14.sp,
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -252,8 +254,10 @@ class MonthEndReportScreen extends GetView<MonthEndReportController> {
                             child: _buildMiniCard(
                               icon: Icons.local_dining,
                               iconColor: const Color(0xFFC49A45),
-                              title: "Chi lớn nhất",
-                              value: controller.biggestExpenseTitle.value,
+                              title: controller.biggestExpenseTitle.value,
+                              value: CurrencyFormatter.format(
+                                controller.biggestExpenseAmount.value,
+                              ),
                             ),
                           ),
                         ],

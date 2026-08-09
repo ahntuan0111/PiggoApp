@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:appintern/ui/controllers/budget_distribution_controller.dart';
 import 'package:appintern/ui/widgets/money_distribution_category_item.dart';
+import 'package:appintern/core/services/budget_service.dart';
 
 class BudgetDistributionScreen extends GetView<BudgetDistributionController> {
   const BudgetDistributionScreen({super.key});
@@ -89,14 +90,17 @@ class BudgetDistributionScreen extends GetView<BudgetDistributionController> {
                         borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Center(
-                        child: Text(
-                          'Hiện tại (T${DateTime.now().month})',
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1E1E1E),
-                          ),
-                        ),
+                        child: Obx(() {
+                          final budgetService = Get.find<BudgetService>();
+                          return Text(
+                            'Hiện tại (T${budgetService.currentTrackingMonth.value.month})',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1E1E1E),
+                            ),
+                          );
+                        }),
                       ),
                     ),
                   ),

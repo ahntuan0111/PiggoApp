@@ -44,9 +44,16 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
             if (controller.isLoading || controller.isSystemRollover) {
               return const SizedBox.shrink();
             }
-            return IconButton(
-              icon: const Icon(Icons.edit, color: Colors.black54),
-              onPressed: () => controller.onEditTransaction(),
+            final isPastMonth = controller.budgetService.isPastMonth;
+            return IgnorePointer(
+              ignoring: isPastMonth,
+              child: Opacity(
+                opacity: isPastMonth ? 0.3 : 1.0,
+                child: IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.black54),
+                  onPressed: () => controller.onEditTransaction(),
+                ),
+              ),
             );
           }),
         ],
@@ -283,33 +290,40 @@ class TransactionDetailScreen extends GetView<TransactionDetailController> {
 
               // 3. Delete Button
               if (!controller.isSystemRollover)
-                Obx(
-                  () => TextButton(
-                    onPressed: controller.isLoading
-                        ? null
-                        : controller.onDeleteTransaction,
-                    child: controller.isLoading
-                        ? SizedBox(
-                            height: 20.h,
-                            width: 20.h,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFFE53935),
-                            ),
-                          )
-                        : Text(
-                            "XÓA GIAO DỊCH",
-                            style: TextStyle(
-                              color: controller.isLoading
-                                  ? Colors.grey
-                                  : const Color(0xFFE53935),
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                  ),
-                ),
+                Obx(() {
+                  final isPastMonth = controller.budgetService.isPastMonth;
+                  return IgnorePointer(
+                    ignoring: isPastMonth,
+                    child: Opacity(
+                      opacity: isPastMonth ? 0.3 : 1.0,
+                      child: TextButton(
+                        onPressed: controller.isLoading
+                            ? null
+                            : controller.onDeleteTransaction,
+                        child: controller.isLoading
+                            ? SizedBox(
+                                height: 20.h,
+                                width: 20.h,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFE53935),
+                                ),
+                              )
+                            : Text(
+                                "XÓA GIAO DỊCH",
+                                style: TextStyle(
+                                  color: controller.isLoading
+                                      ? Colors.grey
+                                      : const Color(0xFFE53935),
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                      ),
+                    ),
+                  );
+                }),
               SizedBox(height: 20.h),
             ],
           ),

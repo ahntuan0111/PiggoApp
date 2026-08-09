@@ -9,6 +9,7 @@ import 'package:appintern/ui/screens/profile_screen.dart';
 import 'package:appintern/ui/screens/wallet_screen.dart';
 import 'package:appintern/ui/screens/statistics_screen.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
+import 'package:appintern/core/services/budget_service.dart';
 import 'dart:math' as math;
 
 class MainScreen extends GetView<MainController> {
@@ -32,22 +33,30 @@ class MainScreen extends GetView<MainController> {
 
           // --- FLOATING ACTION BUTTON --- Figma: 56×56, icon 32×32
           floatingActionButton: Obx(() {
-            return Visibility(
-              visible: !controller.isFabOpen.value,
-              maintainState: true,
-              maintainAnimation: true,
-              maintainSize:
-                  true, // Giữ chỗ cho BottomAppBar có khoảng lõm (notch)
-              child: SizedBox(
-                width: 56.r, // Figma: 56px
-                height: 56.r,
-                child: FloatingActionButton(
-                  heroTag: null,
-                  onPressed: controller.toggleFab,
-                  backgroundColor: const Color.fromARGB(255, 235, 193, 79),
-                  shape: const CircleBorder(),
-                  elevation: 5,
-                  child: Icon(Icons.add, color: Colors.white, size: 32.r),
+            final budgetService = Get.find<BudgetService>();
+            final isPastMonth = budgetService.isPastMonth;
+
+            return IgnorePointer(
+              ignoring: isPastMonth,
+              child: Opacity(
+                opacity: isPastMonth ? 0.3 : 1.0,
+                child: Visibility(
+                  visible: !controller.isFabOpen.value,
+                  maintainState: true,
+                  maintainAnimation: true,
+                  maintainSize: true, // Giữ chỗ cho BottomAppBar có khoảng lõm (notch)
+                  child: SizedBox(
+                    width: 56.r, // Figma: 56px
+                    height: 56.r,
+                    child: FloatingActionButton(
+                      heroTag: null,
+                      onPressed: controller.toggleFab,
+                      backgroundColor: const Color.fromARGB(255, 235, 193, 79),
+                      shape: const CircleBorder(),
+                      elevation: 5,
+                      child: Icon(Icons.add, color: Colors.white, size: 32.r),
+                    ),
+                  ),
                 ),
               ),
             );

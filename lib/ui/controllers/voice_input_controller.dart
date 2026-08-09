@@ -163,9 +163,24 @@ class VoiceInputController extends BaseController
     }, tag: "STT_VOICE_INPUT");
 
     result.fold(
-      (failure) {
+      (failure) async {
         currentState.value = VoiceInputState.idle;
-        showErrorMessage("Lỗi nhận diện", failure.message);
+        if (failure.message.contains("Không thể kết nối đến máy chủ AI") ||
+            failure.message.contains("Timeout")) {
+          // Gợi ý cho người dùng đưa vào hàng đợi
+          final handled = await offlineSyncService.forceQueueOfflineAction(
+            'VOICE',
+            _audioPath!,
+            successMessage: 'Máy chủ bận. Giọng nói đã đưa vào chờ xử lý ngầm.',
+            isFile: true,
+            showSnackbar: true,
+          );
+          if (handled) {
+            Get.back(); // close bottom sheet
+          }
+        } else {
+          showErrorMessage("Lỗi nhận diện", failure.message);
+        }
       },
       (text) async {
         rawText.value = text;

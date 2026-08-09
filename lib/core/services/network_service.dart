@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/utils/logger.dart';
+import 'package:appintern/core/services/storage_service.dart' as appintern;
+import 'package:appintern/core/constants/app_keys.dart' as appintern;
+import 'package:appintern/core/services/sync_engine_service.dart' as appintern2;
 
 class NetworkService extends GetxService {
   final Connectivity _connectivity = Connectivity();
@@ -63,11 +66,28 @@ class NetworkService extends GetxService {
 
   void _setOffline(bool value) {
     if (isOffline.value != value) {
+      final wasOffline = isOffline.value;
       isOffline.value = value;
       AppLogger.info(
         "NETWORK_SERVICE",
         "📡 Trạng thái mạng thay đổi: ${value ? '🔴 Đã mất kết nối (Offline)' : '🟢 Đã có kết nối (Online)'}",
       );
+
+      if (!value) {
+        // Online again
+        try {
+          // Import inline to avoid circular dependency if any
+          final storage = Get.find<appintern.StorageService>();
+          storage.write(appintern.AppKeys.lastSyncedServerTime, DateTime.now().toIso8601String());
+        } catch (_) {}
+      }
+
+      if (wasOffline && !value) {
+        try {
+          final syncEngine = Get.find<appintern2.SyncEngineService>();
+          syncEngine.handleNetworkRestore();
+        } catch (_) {}
+      }
     }
   }
 

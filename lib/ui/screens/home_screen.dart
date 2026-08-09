@@ -82,7 +82,7 @@ class HomeScreen extends GetView<HomeController> {
                                     children: [
                                       Obx(
                                         () => Text(
-                                          controller.currentMonth.value,
+                                          controller.currentMonth,
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 12.sp,

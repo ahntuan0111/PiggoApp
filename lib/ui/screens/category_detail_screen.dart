@@ -34,25 +34,34 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
           onPressed: () => Get.back(),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Color(0xFF8D6E63)),
-            onPressed: () {
-              Get.bottomSheet(
-                AddCategoryBottomSheet(
-                  isUpdate: true,
-                  initialName: controller.category.name,
-                  initialIcon: controller.category.iconName,
-                  title: 'Cập nhật danh mục',
-                  buttonText: 'CẬP NHẬT',
-                  onSave: (name, icon) async {
-                    await controller.updateCategory(name, icon);
-                  },
-                ),
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-              );
-            },
+          Obx(() {
+            final isPastMonth = controller.budgetService.isPastMonth;
+            return IgnorePointer(
+              ignoring: isPastMonth,
+              child: Opacity(
+                opacity: isPastMonth ? 0.3 : 1.0,
+                child: IconButton(
+                  icon: const Icon(Icons.edit, color: Color(0xFF8D6E63)),
+                  onPressed: () {
+                Get.bottomSheet(
+                  AddCategoryBottomSheet(
+                    isUpdate: true,
+                    initialName: controller.category.name,
+                    initialIcon: controller.category.iconName,
+                    title: 'Cập nhật danh mục',
+                    buttonText: 'CẬP NHẬT',
+                    onSave: (name, icon) async {
+                      await controller.updateCategory(name, icon);
+                    },
+                  ),
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                );
+              },
+            ),
           ),
+        );
+      }),
         ],
       ),
       body: RefreshIndicator(

@@ -27,8 +27,10 @@ class HomeController extends BaseController with BudgetAware, OfflineAware {
     return categories.where((cat) => cat.remaining < 0).length;
   }
 
-  final currentMonth =
-      'Tháng ${DateTime.now().month} ${DateTime.now().year}'.obs;
+  String get currentMonth {
+    final tracking = budgetService.currentTrackingMonth.value;
+    return 'Tháng ${tracking.month} ${tracking.year}';
+  }
 
   @override
   void onInit() {

@@ -36,7 +36,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   @override
   void onInit() {
     super.onInit();
-
+    selectedMonth.value = budgetService.currentTrackingMonth.value;
     scrollController.addListener(_onScroll);
 
     // Đọc arguments nếu có truyền từ màn hình khác
@@ -220,7 +220,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     selectedType.value = null;
     searchController.clear();
     searchQuery.value = '';
-    selectedMonth.value = DateTime.now();
+    selectedMonth.value = budgetService.currentTrackingMonth.value;
     sortAscending.value = false;
   }
 

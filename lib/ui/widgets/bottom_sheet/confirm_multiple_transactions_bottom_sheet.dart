@@ -32,6 +32,7 @@ class _ConfirmMultipleTransactionsBottomSheetState
   late List<Map<String, dynamic>> transactions;
 
   bool _isLoading = false;
+  bool _hasShiftedDates = false;
 
   @override
   void initState() {
@@ -45,6 +46,10 @@ class _ConfirmMultipleTransactionsBottomSheetState
       defaultDate = DateTime(trackingMonth.year, trackingMonth.month, 1);
     }
 
+    final firstAllowedDate = DateTime(trackingMonth.year, trackingMonth.month, 1);
+    final lastAllowedDate = DateTime(trackingMonth.year, trackingMonth.month + 1, 0);
+    bool anyShifted = false;
+
     // Tạo bản sao (deep copy) để tự do chỉnh sửa trên UI
     transactions = widget.aiParsedDataList.map((tx) {
       final isInflow = tx['type'] == 'inflow';
@@ -54,6 +59,24 @@ class _ConfirmMultipleTransactionsBottomSheetState
         if (aiCategory != null &&
             widget.availableCategories.contains(aiCategory)) {
           defaultCategory = aiCategory;
+        }
+      }
+
+      DateTime? parsedDate;
+      if (tx['date'] != null) {
+        try {
+          parsedDate = DateTime.parse(tx['date'].toString());
+        } catch (_) {}
+      }
+
+      DateTime finalDate = defaultDate;
+      if (parsedDate != null) {
+        if (parsedDate.isBefore(firstAllowedDate) ||
+            parsedDate.isAfter(lastAllowedDate)) {
+          finalDate = defaultDate;
+          anyShifted = true;
+        } else {
+          finalDate = parsedDate;
         }
       }
 
@@ -69,9 +92,13 @@ class _ConfirmMultipleTransactionsBottomSheetState
           text: tx['note']?.toString() ?? '',
         ),
         'categoryName': defaultCategory,
-        'date': defaultDate,
+        'date': finalDate,
       };
     }).toList();
+
+    if (anyShifted) {
+      _hasShiftedDates = true;
+    }
   }
 
   @override
@@ -234,6 +261,34 @@ class _ConfirmMultipleTransactionsBottomSheetState
               ],
             ),
             SizedBox(height: 8.h),
+            
+            if (_hasShiftedDates)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                margin: EdgeInsets.only(bottom: 12.h),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  border: Border.all(color: Colors.amber.shade300),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 20.sp),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Text(
+                        "⚠️ Một số giao dịch từ tháng trước đã được tự động dời ngày sang tháng hiện tại do sổ kế toán tháng cũ đã khóa.",
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: Colors.orange.shade900,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Nửa trên: Hiển thị khung ảnh hóa đơn (Split-screen UI cho phép Zoom)
             if (widget.receiptImage != null) ...[

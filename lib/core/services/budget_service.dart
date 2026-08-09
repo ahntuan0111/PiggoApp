@@ -35,6 +35,29 @@ class BudgetService extends GetxService {
       <BudgetCategory>[].obs; // Chứa TẤT CẢ danh mục (cả active và bị ẩn)
   final categoryGroups = <BudgetCategoryGroup>[].obs; // Chứa TẤT CẢ các nhóm
 
+  var isMonthTransitioning = false.obs;
+
+  bool get isPastMonth {
+    final tracking = currentTrackingMonth.value;
+    DateTime referenceTime = DateTime.now();
+
+    try {
+      final networkService = Get.find<NetworkService>();
+      if (networkService.isOffline.value) {
+        final lastSyncedStr = storage.read<String>(AppKeys.lastSyncedServerTime);
+        if (lastSyncedStr != null) {
+          referenceTime = DateTime.parse(lastSyncedStr).toLocal();
+        }
+      }
+    } catch (_) {
+      // Fallback nếu Get.find lỗi lúc khởi tạo
+    }
+
+    if (tracking.year < referenceTime.year) return true;
+    if (tracking.year == referenceTime.year && tracking.month < referenceTime.month) return true;
+    return false;
+  }
+
   bool _isCompletedGoal(String categoryId) {
     return goals.any(
       (g) => g.categoryId == categoryId && g.status == 'COMPLETED',
@@ -195,21 +218,8 @@ class BudgetService extends GetxService {
           "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
       var budgetsData = await localDb.getMonthlyBudgets(monthYearStr);
 
-      if (budgetsData.isEmpty) {
-        final prevMonth = DateTime(
-          currentTrackingMonth.value.year,
-          currentTrackingMonth.value.month - 1,
-          1,
-        );
-        final prevMonthStr =
-            "${prevMonth.month.toString().padLeft(2, '0')}-${prevMonth.year}";
-        final prevBudgetsData = await localDb.getMonthlyBudgets(prevMonthStr);
-        if (prevBudgetsData.isNotEmpty) {
-          currentTrackingMonth.value = prevMonth;
-          monthYearStr = prevMonthStr;
-          budgetsData = prevBudgetsData;
-        }
-      }
+      // Removed the harmful logic that forces currentTrackingMonth to fallback to previous month.
+      // If budgetsData is empty, it means the month hasn't been rolled over yet, and SyncEngineService will handle it shortly.
       final goalsData = await localDb.getGoals();
       final summariesData = await localDb.getMonthlySummaries();
 

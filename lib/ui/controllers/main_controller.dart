@@ -39,7 +39,7 @@ class MainController extends BaseController
 
   bool canCreateTransaction() {
     // Kiem tra truc tiep tu BudgetService
-    return budgetService.categories.isNotEmpty;
+    return budgetService.categories.isNotEmpty && !budgetService.isPastMonth;
   }
 
   Future<void> openCameraReceiptScan() async {

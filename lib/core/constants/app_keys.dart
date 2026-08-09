@@ -13,4 +13,5 @@ class AppKeys {
   static const String currencyCode = 'currencyCode';
   static const String numberFormat = 'numberFormat';
   static const String symbolPosition = 'symbolPosition';
+  static const String lastSyncedServerTime = 'lastSyncedServerTime';
 }

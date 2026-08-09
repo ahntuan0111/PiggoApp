@@ -47,8 +47,6 @@ class OfflineQueueController extends BaseController {
       final db = await _localDb.database;
       return await db.query(
         'offline_tasks_queue',
-        where: 'status = ?',
-        whereArgs: ['PENDING'],
         orderBy: 'created_at DESC',
       );
     }, tag: "FETCH_OFFLINE_TASKS");

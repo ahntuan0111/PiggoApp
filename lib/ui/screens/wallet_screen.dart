@@ -291,15 +291,22 @@ class WalletScreen extends GetView<WalletController> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _buildActionButton(
-                            icon: Icons.add,
-                            label: "Tạo Giao Dịch",
-                            onTap: () async {
-                              final result = await Get.toNamed(
-                                Routes.TRANSACTION_CREATE,
-                              );
-                            },
-                          ),
+                          Obx(() {
+                            final isPastMonth = controller.budgetService.isPastMonth;
+                            return IgnorePointer(
+                              ignoring: isPastMonth,
+                              child: Opacity(
+                                opacity: isPastMonth ? 0.3 : 1.0,
+                                child: _buildActionButton(
+                                  icon: Icons.add,
+                                  label: "Tạo Giao Dịch",
+                                  onTap: () async {
+                                    await Get.toNamed(Routes.TRANSACTION_CREATE);
+                                  },
+                                ),
+                              ),
+                            );
+                          }),
                           _buildActionButton(
                             icon: Icons.track_changes,
                             label: "Mục Tiêu",
