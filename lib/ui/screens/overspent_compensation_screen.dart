@@ -137,7 +137,6 @@ class OverspentCompensationScreen
   }
 
   Widget _buildStatusBanner() {
-    
     final isFullyCompensated = controller.isFullyCompensated;
     final bgColor = isFullyCompensated
         ? const Color(0xFFC8E6C9)
@@ -208,7 +207,6 @@ class OverspentCompensationScreen
   }
 
   Widget _buildSourceCard(int index) {
-    
     final source = controller.sources[index];
     final textController = controller.textControllers[index]!;
 
@@ -335,8 +333,10 @@ class OverspentCompensationScreen
                         ),
                         children: [
                           TextSpan(
-                            text:
-                                CurrencyFormatter.format(source.availableAmount - source.amountToCompensate),
+                            text: CurrencyFormatter.format(
+                              source.availableAmount -
+                                  source.amountToCompensate,
+                            ),
                             style: TextStyle(
                               fontSize: 12.sp,
                               fontWeight: FontWeight.bold,

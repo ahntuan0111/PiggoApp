@@ -19,6 +19,7 @@ mixin LocalDbOfflineQueueMixin on LocalDatabaseBase {
       'parsed_data': parsedData,
       'status': 'PENDING',
       'created_at': DateTime.now().toIso8601String(),
+      'client_timestamp': DateTime.now().toIso8601String(),
       'retry_count': 0,
       'next_retry_time': DateTime.now().toIso8601String(),
     });
@@ -32,6 +33,16 @@ mixin LocalDbOfflineQueueMixin on LocalDatabaseBase {
       where: 'status = ? AND next_retry_time <= ?',
       whereArgs: ['PENDING', now],
       orderBy: 'created_at ASC',
+    );
+  }
+
+  Future<void> resetProcessingTasks() async {
+    final db = await database;
+    await db.update(
+      'offline_tasks_queue',
+      {'status': 'PENDING'},
+      where: 'status = ?',
+      whereArgs: ['PROCESSING'],
     );
   }
 

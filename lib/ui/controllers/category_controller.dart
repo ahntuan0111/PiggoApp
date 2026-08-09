@@ -8,11 +8,14 @@ import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/core/utils/offline_helper.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/core/services/budget_service.dart';
 import 'dart:convert';
 
-class CategoryController extends BaseController {
+import 'package:appintern/core/utils/offline_aware_mixin.dart';
+
+class CategoryController extends BaseController with OfflineAware {
   final CategoryRepository categoryRepo = Get.find<CategoryRepository>();
 
   // Danh sách các nhóm (Mong muốn, Thiết yếu...)
@@ -38,8 +41,8 @@ class CategoryController extends BaseController {
     final catsData = await localDb.getCategories();
 
     // Nếu có mạng, đồng bộ mới nhất trước khi gán
-    final networkService = Get.find<NetworkService>();
-    if (!networkService.isOffline.value) {
+    // Nếu có mạng, đồng bộ mới nhất trước khi gán
+    if (!isOffline) {
       await Get.find<BudgetService>().refreshData();
       final freshTypes = await localDb.getCategoryTypes();
       final freshCats = await localDb.getCategories();
@@ -90,8 +93,12 @@ class CategoryController extends BaseController {
           .reduce((a, b) => a > b ? a : b);
     }
 
-    if (networkService.isOffline.value) {
-      final tempId = 'offline_\${DateTime.now().millisecondsSinceEpoch}';
+    if (isOffline) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
+      final tempId = OfflineHelper.generateTempId();
       final payload = jsonEncode({
         'name': name.trim(),
         'priority': maxPriority + 1,
@@ -161,8 +168,12 @@ class CategoryController extends BaseController {
     final localDb = Get.find<LocalDatabaseService>();
     final color = '#FDEBB2';
 
-    if (networkService.isOffline.value) {
-      final tempId = 'offline_\${DateTime.now().millisecondsSinceEpoch}';
+    if (isOffline) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
+      final tempId = OfflineHelper.generateTempId();
       final payload = jsonEncode({
         'typeId': typeId,
         'name': name.trim(),
@@ -180,11 +191,7 @@ class CategoryController extends BaseController {
         iconName: iconName,
       );
 
-      final catsDb = List<Map<String, dynamic>>.from(
-        await localDb.getCategories(),
-      );
-      catsDb.add(newCat.toMap());
-      await localDb.saveCategories(catsDb);
+      await localDb.insertLocalCategory(newCat.toMap());
 
       hideLoading();
       Get.back();
@@ -220,7 +227,11 @@ class CategoryController extends BaseController {
     final offlineSyncService = Get.find<OfflineSyncService>();
     final localDb = Get.find<LocalDatabaseService>();
 
-    if (networkService.isOffline.value) {
+    if (isOffline) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final payload = jsonEncode({'id': typeId, 'name': name.trim()});
       await offlineSyncService.queueManualTask('UPDATE_CATEGORY_TYPE', payload);
       await localDb.updateCategoryType(typeId, name.trim());
@@ -266,7 +277,11 @@ class CategoryController extends BaseController {
     final offlineSyncService = Get.find<OfflineSyncService>();
     final localDb = Get.find<LocalDatabaseService>();
 
-    if (networkService.isOffline.value) {
+    if (isOffline) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final payload = jsonEncode({'id': typeId});
       await offlineSyncService.queueManualTask('DELETE_CATEGORY_TYPE', payload);
       await localDb.deleteCategoryType(typeId);
@@ -317,7 +332,11 @@ class CategoryController extends BaseController {
     final offlineSyncService = Get.find<OfflineSyncService>();
     final localDb = Get.find<LocalDatabaseService>();
 
-    if (networkService.isOffline.value) {
+    if (isOffline) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final payload = jsonEncode({
         'id': categoryId,
         'name': name.trim(),
@@ -373,7 +392,11 @@ class CategoryController extends BaseController {
     final offlineSyncService = Get.find<OfflineSyncService>();
     final localDb = Get.find<LocalDatabaseService>();
 
-    if (networkService.isOffline.value) {
+    if (isOffline) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final payload = jsonEncode({'id': categoryId});
       await offlineSyncService.queueManualTask('DELETE_CATEGORY', payload);
       await localDb.deleteCategory(categoryId);

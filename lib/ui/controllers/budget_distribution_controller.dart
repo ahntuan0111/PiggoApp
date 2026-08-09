@@ -10,6 +10,7 @@ import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/services/budget_service.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/core/utils/offline_helper.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 
 class BudgetDistributionGroup {
@@ -80,9 +81,7 @@ class BudgetDistributionController extends BaseController {
               ? (mb.budgetedAmount + mb.rolloverAmount) - mb.spentAmount
               : budgetCat.categoryModel.remaining;
 
-          String currentAmount = formatCurrency(
-            remaining,
-          ).trim();
+          String currentAmount = formatCurrency(remaining).trim();
 
           if (!textControllers.containsKey(budgetCat.categoryModel.id)) {
             final newController = TextEditingController(text: currentAmount);
@@ -121,7 +120,6 @@ class BudgetDistributionController extends BaseController {
         if (controller != null) {
           String text = controller.text
               .replaceAll('.', '')
-              
               .replaceAll(',', '')
               .trim();
           if (text.isNotEmpty) {
@@ -176,7 +174,6 @@ class BudgetDistributionController extends BaseController {
         if (controller != null) {
           String text = controller.text
               .replaceAll('.', '')
-              
               .replaceAll(',', '')
               .trim();
           bool isNegative = text.startsWith('-');
@@ -213,6 +210,10 @@ class BudgetDistributionController extends BaseController {
     }
 
     if (networkService.isOffline.value) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       // Offline: Ghi hàng đợi và Cập nhật Local DB
       final payload = jsonEncode({
         'monthYear': monthYearStr,
@@ -243,7 +244,7 @@ class BudgetDistributionController extends BaseController {
           budgetsDb[mbIdx]['budgetedAmount'] = amt;
         } else {
           budgetsDb.add({
-            'id': 'offline_\${DateTime.now().millisecondsSinceEpoch}_\$catId',
+            'id': OfflineHelper.generateTempId(catId),
             'categoryId': catId,
             'monthYear': monthYearStr,
             'budgetedAmount': amt,

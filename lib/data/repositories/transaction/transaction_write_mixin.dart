@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import 'package:get/get.dart';
+import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
@@ -9,6 +10,7 @@ import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 import 'transaction_repository_base.dart';
+import 'package:appintern/core/utils/logger.dart';
 
 mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
   Future<void> _updateMonthlySummary(
@@ -56,7 +58,7 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     }
   }
 
-  Future<void> createTransaction({
+  Future<TransactionModel> createTransaction({
     required TransactionModel transaction,
     required TransactionDetailModel transactionDetail,
     CategoryModel? currentCategory,
@@ -176,6 +178,9 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
           );
 
           transactionUpdatedController.add(null);
+          return TransactionModel.fromMap(
+            Map<String, dynamic>.from(txResponse.data)..['\$id'] = txResponse.$id,
+          );
         } catch (e) {
           // 🚨 TỰ ĐỘNG ROLLBACK (COMPENSATING TRANSACTION) 🚨
           // Nếu có lỗi ở bước tạo Detail, Budget hoặc Summary, ta phải xóa Transaction đã tạo
@@ -197,7 +202,7 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
             }
           } catch (rollbackError) {
             // Lỗi trong quá trình rollback cũng cần được ghi nhận nhưng ưu tiên quăng lỗi chính
-            print("Rollback failed: \$rollbackError");
+            AppLogger.error('TransactionWriteMixin', "Rollback failed: \$rollbackError");
           }
           rethrow;
         }
@@ -217,7 +222,7 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     }
   }
 
-  Future<void> createWalletAdjustmentTransaction({
+  Future<TransactionModel> createWalletAdjustmentTransaction({
     required TransactionModel transaction,
     required TransactionDetailModel transactionDetail,
   }) async {
@@ -262,6 +267,9 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         await _updateMonthlySummary(monthYearStr, incomeChange, expenseChange);
 
         transactionUpdatedController.add(null);
+        return TransactionModel.fromMap(
+          Map<String, dynamic>.from(txResponse.data)..['\$id'] = txResponse.$id,
+        );
       } catch (e) {
         try {
           if (createdDetailId != null) {

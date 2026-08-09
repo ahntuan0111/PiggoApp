@@ -6,10 +6,18 @@ import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 class OnboardingController extends BaseController {
   final AuthRepository authRepo = Get.find<AuthRepository>();
   var isGoogleLoading = false.obs;
+  
+  @override
+  void onReady() {
+    super.onReady();
+    FlutterNativeSplash.remove();
+  }
+
   Future<void> loginWithGoogle() async {
     // Kế thừa showLoading() từ BaseController
     showLoading();

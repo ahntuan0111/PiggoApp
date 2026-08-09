@@ -14,19 +14,24 @@ class CurrencySelectBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<CurrencySelectBottomSheet> createState() => _CurrencySelectBottomSheetState();
+  State<CurrencySelectBottomSheet> createState() =>
+      _CurrencySelectBottomSheetState();
 }
 
 class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
   String _searchQuery = '';
-  
+
   final List<Map<String, String>> _currencies = [
     {'code': 'VND', 'name': 'Vietnamese Dong', 'flag': 'assets/flags/vnd.png'},
     {'code': 'USD', 'name': 'US Dollar', 'flag': 'assets/flags/usd.png'},
     {'code': 'SGD', 'name': 'Singapore Dollar', 'flag': 'assets/flags/sgd.png'},
     {'code': 'EUR', 'name': 'Euro', 'flag': 'assets/flags/eur.png'},
     {'code': 'GBP', 'name': 'British Pound', 'flag': 'assets/flags/gbp.png'},
-    {'code': 'AUD', 'name': 'Australian Dollar', 'flag': 'assets/flags/aud.png'},
+    {
+      'code': 'AUD',
+      'name': 'Australian Dollar',
+      'flag': 'assets/flags/aud.png',
+    },
     {'code': 'CAD', 'name': 'Canadian Dollar', 'flag': 'assets/flags/cad.png'},
   ];
 
@@ -34,8 +39,8 @@ class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
   Widget build(BuildContext context) {
     final filteredCurrencies = _currencies.where((c) {
       final query = _searchQuery.toLowerCase();
-      return c['code']!.toLowerCase().contains(query) || 
-             c['name']!.toLowerCase().contains(query);
+      return c['code']!.toLowerCase().contains(query) ||
+          c['name']!.toLowerCase().contains(query);
     }).toList();
 
     return Container(
@@ -63,7 +68,7 @@ class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
             ),
           ),
           SizedBox(height: 16.h),
-          
+
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
             child: Row(
@@ -80,18 +85,28 @@ class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
             ),
           ),
           SizedBox(height: 16.h),
-          
+
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
             child: TextField(
               onChanged: (value) => setState(() => _searchQuery = value),
               decoration: InputDecoration(
                 hintText: 'Tìm kiếm',
-                hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
-                prefixIcon: Icon(Icons.search, color: AppColors.textSecondary, size: 20.sp),
+                hintStyle: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14.sp,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: AppColors.textSecondary,
+                  size: 20.sp,
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF5F5F5),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16.w,
+                  vertical: 12.h,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide.none,
@@ -100,7 +115,7 @@ class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
             ),
           ),
           SizedBox(height: 12.h),
-          
+
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
             child: Text(
@@ -113,7 +128,7 @@ class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
             ),
           ),
           SizedBox(height: 16.h),
-          
+
           Flexible(
             child: ListView.builder(
               shrinkWrap: true,
@@ -121,11 +136,14 @@ class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
               itemBuilder: (context, index) {
                 final currency = filteredCurrencies[index];
                 final isSelected = currency['code'] == widget.currentCode;
-                
+
                 return InkWell(
                   onTap: () => widget.onSelected(currency['code']!),
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20.w,
+                      vertical: 12.h,
+                    ),
                     child: Row(
                       children: [
                         // Cờ (Dùng fallback icon tạm nếu chưa có asset PNG)
@@ -140,12 +158,19 @@ class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
                           child: Image.asset(
                             currency['flag']!,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => 
-                              Center(child: Text(currency['code']!.substring(0, 1), style: TextStyle(fontWeight: FontWeight.bold))),
+                            errorBuilder: (context, error, stackTrace) =>
+                                Center(
+                                  child: Text(
+                                    currency['code']!.substring(0, 1),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                           ),
                         ),
                         SizedBox(width: 16.w),
-                        
+
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +194,7 @@ class _CurrencySelectBottomSheetState extends State<CurrencySelectBottomSheet> {
                             ],
                           ),
                         ),
-                        
+
                         if (isSelected)
                           Icon(Icons.check, color: AppColors.text, size: 24.sp),
                       ],

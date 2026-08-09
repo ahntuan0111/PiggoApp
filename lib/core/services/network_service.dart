@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/utils/logger.dart';
@@ -24,25 +25,48 @@ class NetworkService extends GetxService {
     try {
       result = await _connectivity.checkConnectivity();
     } catch (e) {
+      _setOffline(true);
       return;
     }
-    _updateConnectionStatus(result);
-  }
-
-  void _updateConnectionStatus(List<ConnectivityResult> result) {
-    bool wasOffline = isOffline.value;
 
     if (result.isEmpty ||
         (result.length == 1 && result.first == ConnectivityResult.none)) {
-      isOffline.value = true;
+      _setOffline(true);
     } else {
-      isOffline.value = false;
+      await _verifyInternetAccess();
     }
+  }
 
-    if (wasOffline != isOffline.value) {
+  Future<void> _updateConnectionStatus(List<ConnectivityResult> result) async {
+    if (result.isEmpty ||
+        (result.length == 1 && result.first == ConnectivityResult.none)) {
+      _setOffline(true);
+    } else {
+      await _verifyInternetAccess();
+    }
+  }
+
+  Future<void> _verifyInternetAccess() async {
+    try {
+      final lookupResult = await InternetAddress.lookup(
+        'google.com',
+      ).timeout(const Duration(seconds: 3));
+      _setOffline(
+        lookupResult.isEmpty || lookupResult.first.rawAddress.isEmpty,
+      );
+    } on SocketException catch (_) {
+      _setOffline(true);
+    } on TimeoutException catch (_) {
+      _setOffline(true);
+    }
+  }
+
+  void _setOffline(bool value) {
+    if (isOffline.value != value) {
+      isOffline.value = value;
       AppLogger.info(
         "NETWORK_SERVICE",
-        "📡 Trạng thái mạng thay đổi: ${isOffline.value ? '🔴 Đã mất kết nối (Offline)' : '🟢 Đã có kết nối (Online)'}",
+        "📡 Trạng thái mạng thay đổi: ${value ? '🔴 Đã mất kết nối (Offline)' : '🟢 Đã có kết nối (Online)'}",
       );
     }
   }

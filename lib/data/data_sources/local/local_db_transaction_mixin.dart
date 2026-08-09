@@ -4,9 +4,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 
 mixin LocalDbTransactionMixin on LocalDatabaseBase {
-  // ==========================================
-  // TRANSACTIONS (SCALE-READY)
-  // ==========================================
   Future<void> saveTransactions(List<TransactionModel> txs) async {
     final db = await database;
     Batch batch = db.batch();
@@ -101,45 +98,151 @@ mixin LocalDbTransactionMixin on LocalDatabaseBase {
     );
   }
 
-  // ==========================================
-  // ROLLBACK (Compensating Transaction)
-  // ==========================================
   Future<void> rollbackOptimisticTransaction(
     String type,
     String payload,
   ) async {
     final db = await database;
     try {
-      if (type == 'CREATE_TRANSACTION' || type == 'MANUAL_TRANSACTION') {
-        final Map<String, dynamic> data = jsonDecode(payload);
-        final String? transactionId = data['id'];
-        if (transactionId != null) {
-          // Delete transaction locally
-          await db.delete(
-            'transactions',
-            where: 'id = ?',
-            whereArgs: [transactionId],
-          );
+      final Map<String, dynamic> data = jsonDecode(payload);
+
+      if (type == 'CREATE_MANUAL_TX' || type == 'CREATE_WALLET_ADJUSTMENT') {
+        // Rollback: Xóa giao dịch tạm + hoàn tác số dư local
+        final txData = data['transaction'];
+        if (txData != null) {
+          final String? tempId = txData['\$id'] ?? txData['id'];
+          final String? categoryId = txData['categoryId'];
+          final double amount = (txData['amount'] as num?)?.toDouble() ?? 0.0;
+          final String txType = txData['type'] ?? 'EXPENSE';
+
+          // Xóa giao dịch tạm khỏi local DB
+          if (tempId != null) {
+            await db.delete(
+              'transactions',
+              where: 'id = ?',
+              whereArgs: [tempId],
+            );
+          }
+
+          // Hoàn tác budget spent cho category
+          if (categoryId != null && categoryId.isNotEmpty) {
+            final txDateStr = txData['transactionDate'];
+            final txDate = txDateStr != null
+                ? DateTime.tryParse(txDateStr) ?? DateTime.now()
+                : DateTime.now();
+            final monthYear =
+                "${txDate.month.toString().padLeft(2, '0')}-${txDate.year}";
+
+            if (type == 'CREATE_MANUAL_TX') {
+              // Hoàn tác: giảm spentAmount đã cộng lúc optimistic
+              await _revertBudgetSpent(db, categoryId, monthYear, amount);
+            }
+          }
+
+          // Hoàn tác monthly summary
+          if (amount > 0) {
+            final txDateStr = txData['transactionDate'];
+            final txDate = txDateStr != null
+                ? DateTime.tryParse(txDateStr) ?? DateTime.now()
+                : DateTime.now();
+            final monthYear =
+                "${txDate.month.toString().padLeft(2, '0')}-${txDate.year}";
+
+            if (txType == 'INCOME') {
+              await _revertSummary(db, monthYear, -amount, 0);
+            } else {
+              await _revertSummary(db, monthYear, 0, -amount);
+            }
+          }
         }
       } else if (type == 'CREATE_GOAL') {
-        final Map<String, dynamic> data = jsonDecode(payload);
-        final String? tempGoalId = data['goal']?['id'];
-        final String? tempCatId = data['category']?['id'];
+        final goalData = data['goal'];
+        final String? tempGoalId = goalData?['id'];
+        final String? tempCatId = goalData?['categoryId'];
         if (tempGoalId != null) {
           await db.delete('goals', where: 'id = ?', whereArgs: [tempGoalId]);
         }
         if (tempCatId != null) {
-          await db.delete('categories', where: 'id = ?', whereArgs: [tempCatId]);
+          await db.delete(
+            'categories',
+            where: 'id = ?',
+            whereArgs: [tempCatId],
+          );
         }
-      } else if (type == 'UPDATE_GOAL') {
-        // Optimistic rollback is more complex, typically we just fetch remote again
-        // For now, no-op since offline update failures usually mean we should just sync down
-      } else if (type == 'DELETE_GOAL') {
-        // Rollback a delete means restoring it, which is hard without the full object
-        // Usually handled by fetching again from Appwrite
+      } else if (type == 'CREATE_CATEGORY_TYPE') {
+        final String? tempId = data['tempId'];
+        if (tempId != null) {
+          await db.delete(
+            'category_types',
+            where: 'id = ?',
+            whereArgs: [tempId],
+          );
+        }
+      } else if (type == 'CREATE_CATEGORY') {
+        final String? tempId = data['tempId'];
+        if (tempId != null) {
+          await db.delete('categories', where: 'id = ?', whereArgs: [tempId]);
+        }
       }
+      // UPDATE/DELETE types: không cần rollback phức tạp,
+      // BudgetService.refreshData() sẽ sync lại từ server khi có mạng
     } catch (e) {
-      print("Rollback Error: $e");
+      // Rollback lỗi không nên crash app — chỉ log
+      print("Rollback Error for task type '$type': $e");
+    }
+  }
+
+  /// Hoàn tác spentAmount đã cộng optimistically
+  Future<void> _revertBudgetSpent(
+    Database db,
+    String categoryId,
+    String monthYear,
+    double amount,
+  ) async {
+    final existing = await db.query(
+      'monthly_budgets',
+      where: 'categoryId = ? AND monthYear = ?',
+      whereArgs: [categoryId, monthYear],
+    );
+    if (existing.isNotEmpty) {
+      double currentSpent = (existing.first['spentAmount'] as num).toDouble();
+      double newSpent = currentSpent - amount;
+      if (newSpent < 0) newSpent = 0;
+      await db.update(
+        'monthly_budgets',
+        {'spentAmount': newSpent},
+        where: 'id = ?',
+        whereArgs: [existing.first['id']],
+      );
+    }
+  }
+
+  /// Hoàn tác monthly summary đã cộng optimistically
+  Future<void> _revertSummary(
+    Database db,
+    String monthYear,
+    double incomeChange,
+    double expenseChange,
+  ) async {
+    final existing = await db.query(
+      'monthly_summaries',
+      where: 'monthYear = ?',
+      whereArgs: [monthYear],
+    );
+    if (existing.isNotEmpty) {
+      double currentIncome = (existing.first['totalIncome'] as num).toDouble();
+      double currentExpense = (existing.first['totalExpense'] as num)
+          .toDouble();
+      double newIncome = currentIncome + incomeChange;
+      double newExpense = currentExpense + expenseChange;
+      if (newIncome < 0) newIncome = 0;
+      if (newExpense < 0) newExpense = 0;
+      await db.update(
+        'monthly_summaries',
+        {'totalIncome': newIncome, 'totalExpense': newExpense},
+        where: 'id = ?',
+        whereArgs: [existing.first['id']],
+      );
     }
   }
 }

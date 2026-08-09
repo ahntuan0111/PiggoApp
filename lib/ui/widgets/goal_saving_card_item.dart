@@ -12,6 +12,8 @@ class GoalSavingCardItem extends StatelessWidget {
   final String timeLeftString; // e.g., "Còn 5 tháng"
   final String iconName;
   final VoidCallback? onAddFunds;
+  final VoidCallback? onBreakPiggyBank;
+  final bool isCompleted;
   final VoidCallback? onTap;
 
   const GoalSavingCardItem({
@@ -25,6 +27,8 @@ class GoalSavingCardItem extends StatelessWidget {
     required this.timeLeftString,
     required this.iconName,
     this.onAddFunds,
+    this.onBreakPiggyBank,
+    this.isCompleted = false,
     this.onTap,
   });
 
@@ -60,7 +64,7 @@ class GoalSavingCardItem extends StatelessWidget {
             ),
 
             Padding(
-              padding: EdgeInsets.all(20.w),
+              padding: EdgeInsets.all(16.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -70,8 +74,8 @@ class GoalSavingCardItem extends StatelessWidget {
                     children: [
                       // Icon with glowing ring effect
                       Container(
-                        width: 56.r,
-                        height: 56.r,
+                        width: 42.r,
+                        height: 42.r,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: const LinearGradient(
@@ -98,7 +102,7 @@ class GoalSavingCardItem extends StatelessWidget {
                           child: Center(
                             child: CustomIconWidget(
                               iconName: iconName,
-                              size: 26.sp,
+                              size: 20.sp,
                             ),
                           ),
                         ),
@@ -113,7 +117,7 @@ class GoalSavingCardItem extends StatelessWidget {
                             Text(
                               title,
                               style: TextStyle(
-                                fontSize: 18.sp,
+                                fontSize: 15.sp,
                                 fontWeight: FontWeight.w700,
                                 color: const Color(0xFF1E1E1E),
                               ),
@@ -131,7 +135,7 @@ class GoalSavingCardItem extends StatelessWidget {
                               child: Text(
                                 'Hạn: $deadlineString',
                                 style: TextStyle(
-                                  fontSize: 12.sp,
+                                  fontSize: 10.sp,
                                   color: primaryColor,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -142,7 +146,7 @@ class GoalSavingCardItem extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 24.h),
+                  SizedBox(height: 16.h),
 
                   // Amounts Section
                   Row(
@@ -154,7 +158,7 @@ class GoalSavingCardItem extends StatelessWidget {
                           Text(
                             'Hiện có',
                             style: TextStyle(
-                              fontSize: 14.sp,
+                              fontSize: 11.sp,
                               color: const Color(0xFF757575),
                             ),
                           ),
@@ -162,7 +166,7 @@ class GoalSavingCardItem extends StatelessWidget {
                           Text(
                             formattedCurrentAmount,
                             style: TextStyle(
-                              fontSize: 22.sp,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w800,
                               color: amountColor,
                             ),
@@ -175,7 +179,7 @@ class GoalSavingCardItem extends StatelessWidget {
                           Text(
                             'Mục tiêu',
                             style: TextStyle(
-                              fontSize: 14.sp,
+                              fontSize: 11.sp,
                               color: const Color(0xFF757575),
                             ),
                           ),
@@ -183,7 +187,7 @@ class GoalSavingCardItem extends StatelessWidget {
                           Text(
                             formattedTargetAmount,
                             style: TextStyle(
-                              fontSize: 18.sp,
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF212121),
                             ),
@@ -192,7 +196,7 @@ class GoalSavingCardItem extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 16.h),
+                  SizedBox(height: 10.h),
 
                   // Progress Info Row
                   Row(
@@ -201,7 +205,7 @@ class GoalSavingCardItem extends StatelessWidget {
                       Text(
                         'Tiến độ: $progressText',
                         style: TextStyle(
-                          fontSize: 13.sp,
+                          fontSize: 11.sp,
                           fontWeight: FontWeight.w700,
                           color: primaryColor,
                         ),
@@ -209,18 +213,18 @@ class GoalSavingCardItem extends StatelessWidget {
                       Text(
                         timeLeftString,
                         style: TextStyle(
-                          fontSize: 13.sp,
+                          fontSize: 11.sp,
                           color: const Color(0xFF9E9E9E),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 6.h),
 
                   // Custom Progress Bar
                   Container(
-                    height: 12.h,
+                    height: 8.h,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: const Color(0xFFE0E0E0).withValues(alpha: 0.6),
@@ -237,42 +241,75 @@ class GoalSavingCardItem extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(height: 24.h),
+                  SizedBox(height: 16.h),
 
-                  // Add Funds Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48.h,
-                    child: ElevatedButton(
-                      onPressed: onAddFunds,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: primaryColor,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.r),
-                          side: const BorderSide(
-                            color: Color(0xFF80CBC4),
-                            width: 1.5,
+                  // Break Piggy Bank Button (when Goal is completed)
+                  if (isCompleted && onBreakPiggyBank != null)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 38.h,
+                      child: ElevatedButton(
+                        onPressed: onBreakPiggyBank,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEBC14F),
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shadowColor: const Color(0xFFEBC14F).withValues(alpha: 0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.r),
                           ),
                         ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('🐷', style: TextStyle(fontSize: 20.sp)),
+                            SizedBox(width: 8.w),
+                            Text(
+                              'Khui ống heo',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add, size: 22.sp),
-                          SizedBox(width: 8.w),
-                          Text(
-                            'Nạp thêm',
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.bold,
+                    )
+                  // Add Funds Button (when Goal is not yet completed)
+                  else if (!isCompleted && onAddFunds != null)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 38.h,
+                      child: ElevatedButton(
+                        onPressed: onAddFunds,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: primaryColor,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.r),
+                            side: const BorderSide(
+                              color: Color(0xFF80CBC4),
+                              width: 1.5,
                             ),
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add, size: 22.sp),
+                            SizedBox(width: 8.w),
+                            Text(
+                              'Nạp thêm',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

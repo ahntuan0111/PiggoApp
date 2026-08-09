@@ -85,12 +85,17 @@ class WalletScreen extends GetView<WalletController> {
                                           ),
                                         ),
                                         SizedBox(width: 8.w),
-                                        Icon(
-                                          Icons.remove_red_eye,
-                                          color: Colors.white.withValues(
-                                            alpha: 0.8,
-                                          ),
-                                          size: 16.sp,
+                                        GestureDetector(
+                                          onTap: () => controller.toggleAmountHidden(),
+                                          child: Obx(() => Icon(
+                                            controller.isAmountHidden.value
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.8,
+                                            ),
+                                            size: 16.sp,
+                                          )),
                                         ),
                                       ],
                                     ),
@@ -100,14 +105,16 @@ class WalletScreen extends GetView<WalletController> {
                                           .budgetService
                                           .totalWalletBalance
                                           .value;
-                                      return Text(
-                                        CurrencyFormatter.format(total),
+                                        return Text(
+                                          controller.isAmountHidden.value
+                                              ? "******"
+                                              : CurrencyFormatter.format(total),
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 36.sp,
                                           fontWeight: FontWeight.bold,
                                         ),
-                                      );
+                                        );
                                     }),
                                     SizedBox(height: 32.h),
                                     Row(
@@ -129,16 +136,18 @@ class WalletScreen extends GetView<WalletController> {
                                                     .budgetService
                                                     .allocatedAmount
                                                     .value;
-                                                return Text(
-                                                  CurrencyFormatter.format(
-                                                    allocated,
-                                                  ),
+                                                  return Text(
+                                                    controller.isAmountHidden.value
+                                                        ? "******"
+                                                        : CurrencyFormatter.format(
+                                                            allocated,
+                                                          ),
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 16.sp,
                                                     fontWeight: FontWeight.bold,
                                                   ),
-                                                );
+                                                  );
                                               }),
                                             ],
                                           ),
@@ -168,9 +177,94 @@ class WalletScreen extends GetView<WalletController> {
                                                     .unallocatedAmount
                                                     .value;
                                                 return Text(
-                                                  CurrencyFormatter.format(
-                                                    unallocated,
+                                                  controller.isAmountHidden.value
+                                                      ? "******"
+                                                      : CurrencyFormatter.format(
+                                                          unallocated,
+                                                        ),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16.sp,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
+                                                );
+                                              }),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 16.h),
+                                    Divider(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      height: 1,
+                                    ),
+                                    SizedBox(height: 16.h),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.arrow_downward, color: Colors.greenAccent, size: 16.sp),
+                                                  SizedBox(width: 4.w),
+                                                  Text(
+                                                    "Thu nhập",
+                                                    style: TextStyle(
+                                                      color: Colors.white.withValues(alpha: 0.7),
+                                                      fontSize: 12.sp,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 4.h),
+                                              Obx(() {
+                                                final income = controller.budgetService.currentMonthIncome.value;
+                                                return Text(
+                                                  controller.isAmountHidden.value
+                                                      ? "******"
+                                                      : CurrencyFormatter.format(income),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16.sp,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                );
+                                              }),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          width: 1,
+                                          height: 40.h,
+                                          color: Colors.white.withValues(alpha: 0.2),
+                                        ),
+                                        Expanded(
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.arrow_upward, color: Colors.orangeAccent, size: 16.sp),
+                                                  SizedBox(width: 4.w),
+                                                  Text(
+                                                    "Chi tiêu",
+                                                    style: TextStyle(
+                                                      color: Colors.white.withValues(alpha: 0.7),
+                                                      fontSize: 12.sp,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 4.h),
+                                              Obx(() {
+                                                final expense = controller.budgetService.currentMonthExpense.value;
+                                                return Text(
+                                                  controller.isAmountHidden.value
+                                                      ? "******"
+                                                      : CurrencyFormatter.format(expense),
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 16.sp,

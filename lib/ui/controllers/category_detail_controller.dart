@@ -10,9 +10,11 @@ import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/data/repositories/transfer_log_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'dart:convert';
+import 'package:appintern/ui/widgets/dialogs/confirm_dialog_widget.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
+import 'package:appwrite/appwrite.dart';
 
 class CategoryDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
@@ -33,7 +35,14 @@ class CategoryDetailController extends BaseController with BudgetAware {
 
   // --- Proxy Getters từ BudgetService (Tránh Get.find trong Screen) ---
   double get unallocatedAmount => budgetService.unallocatedAmount.value;
-  List<BudgetCategoryGroup> get categoryGroups => budgetService.categoryGroups;
+  List<BudgetCategoryGroup> get categoryGroups => budgetService.activeCategoryGroups;
+
+  double get currentMonthBudget {
+    return budgetService
+            .getBudgetForCategory(category.id)
+            ?.budgetedAmount ??
+        category.defaultBudget;
+  }
 
   @override
   void onInit() {
@@ -196,6 +205,10 @@ class CategoryDetailController extends BaseController with BudgetAware {
     final localDb = Get.find<LocalDatabaseService>();
 
     if (networkService.isOffline.value) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final payload = jsonEncode({
         'id': category.id,
         'name': name.trim(),
@@ -269,6 +282,10 @@ class CategoryDetailController extends BaseController with BudgetAware {
     final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
     if (networkService.isOffline.value) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final allocations = [
         {'categoryId': category.id, 'amount': newBudget},
         if (sourceCategoryId != null &&
@@ -286,6 +303,7 @@ class CategoryDetailController extends BaseController with BudgetAware {
       final transferLogs = <Map<String, dynamic>>[];
       if (amountChange > 0) {
         transferLogs.add({
+          '\$id': ID.unique(),
           'amount': amountChange,
           'fromCategoryId':
               (sourceCategoryId == null || sourceCategoryId == 'unallocated')
@@ -296,6 +314,7 @@ class CategoryDetailController extends BaseController with BudgetAware {
         });
       } else if (amountChange < 0) {
         transferLogs.add({
+          '\$id': ID.unique(),
           'amount': -amountChange,
           'fromCategoryId': category.id,
           'toCategoryId':
@@ -333,13 +352,11 @@ class CategoryDetailController extends BaseController with BudgetAware {
         );
       }
 
-      hideLoading();
-      Get.back(); // close dialog
       showSuccessMessage(
         "Đã lưu (Ngoại tuyến)",
         "Dữ liệu sẽ được đồng bộ khi có mạng",
       );
-      await budgetService.refreshData(); // Refresh UI
+      await budgetService.loadDataFromLocal(); // Refresh UI
     } else {
       final allocations = [
         {'categoryId': category.id, 'amount': newBudget},
@@ -358,6 +375,7 @@ class CategoryDetailController extends BaseController with BudgetAware {
         final transferLogs = <Map<String, dynamic>>[];
         if (amountChange > 0) {
           transferLogs.add({
+            '\$id': ID.unique(),
             'amount': amountChange,
             'fromCategoryId':
                 (sourceCategoryId == null || sourceCategoryId == 'unallocated')
@@ -368,6 +386,7 @@ class CategoryDetailController extends BaseController with BudgetAware {
           });
         } else if (amountChange < 0) {
           transferLogs.add({
+            '\$id': ID.unique(),
             'amount': -amountChange,
             'fromCategoryId': category.id,
             'toCategoryId':
@@ -409,7 +428,7 @@ class CategoryDetailController extends BaseController with BudgetAware {
       }, tag: "UPDATE_BUDGET");
 
       hideLoading();
-      result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) {
+      result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) async {
         category = CategoryModel(
           id: category.id,
           categoryTypeId: category.categoryTypeId,
@@ -420,7 +439,7 @@ class CategoryDetailController extends BaseController with BudgetAware {
           spent: category.spent,
         );
         update();
-        refreshBudget();
+        await budgetService.loadDataFromLocal();
         showSuccessMessage(
           'Thành công',
           'Cập nhật số tiền phân bổ thành công!',
@@ -440,6 +459,10 @@ class CategoryDetailController extends BaseController with BudgetAware {
     final localDb = Get.find<LocalDatabaseService>();
 
     if (networkService.isOffline.value) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final payload = jsonEncode({'id': category.id});
       await offlineSyncService.queueManualTask('DELETE_CATEGORY', payload);
 

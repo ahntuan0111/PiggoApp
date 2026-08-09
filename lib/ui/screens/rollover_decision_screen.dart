@@ -89,7 +89,7 @@ class RolloverDecisionScreen extends GetView<RolloverDecisionController> {
                         cancelText: "Bỏ qua",
                         onConfirm: () {
                           Get.back();
-                          Get.toNamed(Routes.GOAL_CREATE);
+                          Get.toNamed(Routes.GOAL);
                         },
                       ),
                     );

@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:async';
 import 'local_database_base.dart';
 import 'local_db_cache_mixin.dart';
 import 'local_db_transaction_mixin.dart';
@@ -17,11 +18,22 @@ class LocalDatabaseService extends LocalDatabaseBase
         LocalDbBudgetMixin,
         LocalDbGoalMixin {
   static Database? _db;
+  static Completer<Database>? _initCompleter;
 
   @override
   Future<Database> get database async {
     if (_db != null) return _db!;
-    _db = await _initDB();
+    if (_initCompleter != null) return _initCompleter!.future;
+
+    _initCompleter = Completer<Database>();
+    try {
+      _db = await _initDB();
+      _initCompleter!.complete(_db!);
+    } catch (e) {
+      _initCompleter!.completeError(e);
+      _initCompleter = null;
+      rethrow;
+    }
     return _db!;
   }
 
@@ -29,7 +41,7 @@ class LocalDatabaseService extends LocalDatabaseBase
     String path = join(await getDatabasesPath(), 'appintern_scale.db');
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -66,7 +78,8 @@ class LocalDatabaseService extends LocalDatabaseBase
         created_at TEXT,
         retry_count INTEGER,
         next_retry_time TEXT,
-        parsed_data TEXT
+        parsed_data TEXT,
+        client_timestamp TEXT
       )
     ''');
     await db.execute(
@@ -160,19 +173,6 @@ class LocalDatabaseService extends LocalDatabaseBase
   }
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 4) {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS transferlogs(
-          id TEXT PRIMARY KEY,
-          ownerId TEXT,
-          amount REAL,
-          fromCategoryId TEXT,
-          toCategoryId TEXT,
-          note TEXT,
-          createdAt TEXT
-        )
-      ''');
-    }
     if (oldVersion < 2) {
       await db.execute(
         'ALTER TABLE offline_tasks_queue ADD COLUMN parsed_data TEXT',
@@ -244,5 +244,38 @@ class LocalDatabaseService extends LocalDatabaseBase
         )
       ''');
     }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS transferlogs(
+          id TEXT PRIMARY KEY,
+          ownerId TEXT,
+          amount REAL,
+          fromCategoryId TEXT,
+          toCategoryId TEXT,
+          note TEXT,
+          createdAt TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 5) {
+      await db.execute(
+        'ALTER TABLE offline_tasks_queue ADD COLUMN client_timestamp TEXT',
+      );
+    }
+  }
+
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('transactions');
+      await txn.delete('offline_tasks_queue');
+      await txn.delete('app_cache');
+      await txn.delete('category_types');
+      await txn.delete('categories');
+      await txn.delete('monthly_budgets');
+      await txn.delete('monthly_summaries');
+      await txn.delete('goals');
+      await txn.delete('transferlogs');
+    });
   }
 }

@@ -37,16 +37,6 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
             color: theme.colorScheme.primary,
           ),
         ),
-        actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 16.w),
-            child: CircleAvatar(
-              radius: 16.r,
-              backgroundColor: Colors.grey[300],
-              child: Icon(Icons.person, color: Colors.grey[600], size: 20.sp),
-            ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(20.w),
@@ -163,7 +153,10 @@ class GoalCreateScreen extends GetView<GoalCreateController> {
                         ),
                       ),
                     ),
-                    Icon(Icons.calendar_month, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.calendar_month,
+                      color: theme.colorScheme.primary,
+                    ),
                   ],
                 ),
               ),

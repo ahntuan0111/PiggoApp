@@ -59,6 +59,23 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
     }).toList();
   }
 
+  Future<void> insertLocalCategory(Map<String, dynamic> cat) async {
+    final db = await database;
+    await db.insert(
+      'categories',
+      {
+        'id': cat['id'],
+        'categoryTypeId': cat['categoryTypes'] ?? cat['categoryTypeId'],
+        'name': cat['name'],
+        'iconName': cat['iconName'],
+        'color': cat['color'],
+        'defaultBudget': cat['defaultBudget'],
+        'isActive': cat['isActive'] == true ? 1 : 0,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   Future<void> updateCategory(
     String categoryId,
     String name,

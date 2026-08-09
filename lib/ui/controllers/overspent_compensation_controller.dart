@@ -66,7 +66,7 @@ class OverspentCompensationController extends BaseController with BudgetAware {
     Get.bottomSheet(
       SelectSourceBottomSheet(
         unallocatedAmount: budgetService.unallocatedAmount.value,
-        categoryGroups: budgetService.categoryGroups,
+        categoryGroups: budgetService.activeCategoryGroups,
         currentCategoryId: targetBudget.categoryModel.id,
         excludeCategoryIds: excludeIds,
         onSelected: (id, name, availableAmount, icon) {
@@ -195,6 +195,10 @@ class OverspentCompensationController extends BaseController with BudgetAware {
         .toList();
 
     if (networkService.isOffline.value) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final payload = jsonEncode({
         'monthYear': monthYearStr,
         'allocations': allocations,

@@ -17,10 +17,13 @@ import 'package:appintern/ui/widgets/dialogs/loading_dialog_widget.dart';
 import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 
+import 'package:appintern/core/services/network_service.dart';
+
 class OfflineQueueController extends BaseController {
   final LocalDatabaseService _localDb = Get.find<LocalDatabaseService>();
   final BudgetService budgetService = Get.find<BudgetService>();
   final OfflineSyncService offlineSyncService = Get.find<OfflineSyncService>();
+  final NetworkService networkService = Get.find<NetworkService>();
   final StorageRepository storageRepository = Get.find<StorageRepository>();
   final TransactionRepository _transactionRepo =
       Get.find<TransactionRepository>();
@@ -31,13 +34,23 @@ class OfflineQueueController extends BaseController {
   void onInit() {
     super.onInit();
     fetchTasks();
+
+    // Tự động làm mới danh sách khi background sync xử lý (làm thay đổi trạng thái task)
+    ever(offlineSyncService.queueUpdateTrigger, (_) {
+      if (!isClosed) fetchTasks();
+    });
   }
 
   Future<void> fetchTasks() async {
     showLoading();
     final result = await ErrorHandler.execute(() async {
       final db = await _localDb.database;
-      return await db.query('offline_tasks_queue', orderBy: 'created_at DESC');
+      return await db.query(
+        'offline_tasks_queue',
+        where: 'status = ?',
+        whereArgs: ['PENDING'],
+        orderBy: 'created_at DESC',
+      );
     }, tag: "FETCH_OFFLINE_TASKS");
 
     result.fold(
@@ -52,8 +65,7 @@ class OfflineQueueController extends BaseController {
   }
 
   List<String> get _validCategoryNames {
-    return budgetService.categoryGroups
-        .where((group) => group.typeName != 'Tiết kiệm lâu dài')
+    return budgetService.activeCategoryGroups
         .expand((group) => group.categories)
         .map((budgetCat) => budgetCat.name)
         .toList();

@@ -11,6 +11,7 @@ import 'package:appintern/data/models/transaction_detail_model.dart';
 
 import 'package:appintern/ui/controllers/rollover_decision_controller.dart'
     show RolloverOption;
+import 'package:appintern/core/utils/currency_formatter.dart';
 
 class NewMonthSetupController extends BaseController {
   final RolloverRepository rolloverRepository = Get.find<RolloverRepository>();
@@ -166,12 +167,7 @@ class NewMonthSetupController extends BaseController {
       final txRepo = Get.find<TransactionRepository>();
       final now = DateTime.now();
 
-      String incomeStr = expectedIncomeText.value
-          .replaceAll('.', '')
-          .replaceAll(',', '')
-          
-          .trim();
-      double expectedIncome = double.tryParse(incomeStr) ?? 0.0;
+      double expectedIncome = CurrencyFormatter.parse(expectedIncomeText.value);
 
       if (expectedIncome > 0) {
         final firstDayOfMonth = DateTime(now.year, now.month, 1, 8, 0, 0);

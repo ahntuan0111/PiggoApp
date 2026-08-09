@@ -30,7 +30,7 @@ class ConfirmMultipleTransactionsBottomSheet extends StatefulWidget {
 class _ConfirmMultipleTransactionsBottomSheetState
     extends State<ConfirmMultipleTransactionsBottomSheet> {
   late List<Map<String, dynamic>> transactions;
-  
+
   bool _isLoading = false;
 
   @override
@@ -61,7 +61,9 @@ class _ConfirmMultipleTransactionsBottomSheetState
         'id': UniqueKey().toString(), // Tạo ID giả để quản lý list
         'type': tx['type'] ?? 'outflow',
         'amountController': TextEditingController(
-          text: CurrencyFormatter.format((tx['amount'] as num?)?.toDouble() ?? 0),
+          text: CurrencyFormatter.format(
+            (tx['amount'] as num?)?.toDouble() ?? 0,
+          ),
         ),
         'noteController': TextEditingController(
           text: tx['note']?.toString() ?? '',

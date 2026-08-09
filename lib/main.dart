@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'core/routes/app_pages.dart';
 import 'core/services/appwrite_service.dart';
@@ -31,7 +32,8 @@ import 'package:workmanager/workmanager.dart';
 import 'package:flutter/foundation.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await dotenv.load(fileName: ".env");
 
   // Khởi tạo WorkManager
@@ -52,14 +54,15 @@ void main() async {
   final appwriteService = Get.find<AppwriteService>();
   Get.put(AuthRepository(appwriteService));
   Get.put(CategoryRepository(appwriteService));
-  Get.put(StorageRepository(appwriteService));
   Get.put(TransactionRepository(appwriteService));
-  Get.put(GoalRepository(appwriteService));
-  Get.put(TransferLogRepository(appwriteService));
-  Get.put(RolloverRepository(appwriteService));
-  Get.put(StatisticsRepository(appwriteService));
-  Get.put(AppwriteAIServiceImpl());
-  Get.put<IAIService>(Get.find<AppwriteAIServiceImpl>());
+
+  Get.lazyPut(() => StorageRepository(appwriteService), fenix: true);
+  Get.lazyPut(() => GoalRepository(appwriteService), fenix: true);
+  Get.lazyPut(() => TransferLogRepository(appwriteService), fenix: true);
+  Get.lazyPut(() => RolloverRepository(appwriteService), fenix: true);
+  Get.lazyPut(() => StatisticsRepository(appwriteService), fenix: true);
+  Get.lazyPut(() => AppwriteAIServiceImpl(), fenix: true);
+  Get.lazyPut<IAIService>(() => Get.find<AppwriteAIServiceImpl>(), fenix: true);
 
   // BudgetService phụ thuộc vào Repositories nên phải khởi tạo sau
   Get.put(BudgetService());
@@ -100,9 +103,9 @@ class MyApp extends StatelessWidget {
       final mode = settings.themeMode.value;
       if (mode == 'light') return ThemeMode.light;
       if (mode == 'dark') return ThemeMode.dark;
-      return ThemeMode.system;
+      return ThemeMode.light;
     } catch (e) {
-      return ThemeMode.system;
+      return ThemeMode.light;
     }
   }
 }

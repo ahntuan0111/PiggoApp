@@ -6,6 +6,7 @@ class TransactionModel {
   final DateTime transactionDate;
   final String status;
   final String? note; // Denormalized field for search
+  final DateTime? updatedAt;
 
   TransactionModel({
     required this.id,
@@ -15,6 +16,7 @@ class TransactionModel {
     required this.transactionDate,
     required this.status,
     this.note,
+    this.updatedAt,
   });
 
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
@@ -29,6 +31,11 @@ class TransactionModel {
           : DateTime.now(),
       status: map['status'] ?? 'COMPLETED',
       note: map['note'],
+      updatedAt: map['\$updatedAt'] != null
+          ? DateTime.tryParse(map['\$updatedAt'])?.toLocal()
+          : map['updatedAt'] != null
+          ? DateTime.tryParse(map['updatedAt'])?.toLocal()
+          : null,
     );
   }
 
@@ -41,6 +48,11 @@ class TransactionModel {
     };
     if (categoryId.isNotEmpty) {
       map['categories'] = categoryId;
+    }
+    // Remove note because Appwrite transactions table does not have note attribute
+    // The note is saved in transaction_details table instead.
+    if (updatedAt != null) {
+      map['updatedAt'] = updatedAt!.toUtc().toIso8601String();
     }
     return map;
   }

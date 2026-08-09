@@ -168,8 +168,9 @@ class CategoryRepository with AppwriteErrorHandler {
     String typeId,
     String name,
     String iconName,
-    String color,
-  ) async {
+    String color, {
+    bool isActive = true,
+  }) async {
     return handleAppwriteError(() async {
       final response = await _appwrite.tables.createRow(
         databaseId: _appwrite.databaseId,
@@ -180,6 +181,7 @@ class CategoryRepository with AppwriteErrorHandler {
           'name': name,
           'iconName': iconName,
           'color': color,
+          'isActive': isActive,
         },
       );
       return CategoryModel.fromMap(

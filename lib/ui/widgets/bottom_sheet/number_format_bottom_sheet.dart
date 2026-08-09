@@ -23,10 +23,7 @@ class NumberFormatBottomSheet extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      padding: EdgeInsets.only(
-        top: 8.h,
-        bottom: 20.h,
-      ),
+      padding: EdgeInsets.only(top: 8.h, bottom: 20.h),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -69,7 +66,7 @@ class NumberFormatBottomSheet extends StatelessWidget {
 
   Widget _buildOption(String formatKey, String numStr, BuildContext context) {
     final isSelected = formatKey == currentFormat;
-    
+
     String displayText = '';
     switch (position) {
       case 'before':

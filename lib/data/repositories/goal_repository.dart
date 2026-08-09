@@ -10,13 +10,13 @@ class GoalRepository with AppwriteErrorHandler {
 
   Future<List<GoalModel>> getGoals() async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.listRows(
+      final response = await _appwrite.databases.listDocuments(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.goalsTableId,
+        collectionId: _appwrite.goalsTableId,
         queries: [Query.orderDesc('\$createdAt')],
       );
 
-      return response.rows
+      return response.documents
           .map(
             (e) => GoalModel.fromMap(
               Map<String, dynamic>.from(e.data)..['\$id'] = e.$id,
@@ -28,11 +28,14 @@ class GoalRepository with AppwriteErrorHandler {
 
   Future<GoalModel> createGoal(GoalModel goal) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.createRow(
+      final data = goal.toMap();
+      data.remove('id');
+      
+      final response = await _appwrite.databases.createDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.goalsTableId,
-        rowId: ID.unique(),
-        data: goal.toMap(),
+        collectionId: _appwrite.goalsTableId,
+        documentId: ID.unique(),
+        data: data,
       );
       return GoalModel.fromMap(
         Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
@@ -42,11 +45,14 @@ class GoalRepository with AppwriteErrorHandler {
 
   Future<GoalModel> updateGoal(GoalModel goal) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.updateRow(
+      final data = goal.toMap();
+      data.remove('id');
+      
+      final response = await _appwrite.databases.updateDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.goalsTableId,
-        rowId: goal.id,
-        data: goal.toMap(),
+        collectionId: _appwrite.goalsTableId,
+        documentId: goal.id,
+        data: data,
       );
       return GoalModel.fromMap(
         Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
@@ -56,10 +62,10 @@ class GoalRepository with AppwriteErrorHandler {
 
   Future<void> deleteGoal(String id) async {
     return handleAppwriteError(() async {
-      await _appwrite.tables.deleteRow(
+      await _appwrite.databases.deleteDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.goalsTableId,
-        rowId: id,
+        collectionId: _appwrite.goalsTableId,
+        documentId: id,
       );
     });
   }

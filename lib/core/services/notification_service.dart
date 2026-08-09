@@ -8,7 +8,7 @@ import 'package:appintern/core/routes/app_routes.dart';
 
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse notificationResponse) {
-  // Callback này chạy trong isolate riêng. 
+  // Callback này chạy trong isolate riêng.
   // Thường thì FlutterLocalNotifications tự trigger lại onDidReceiveNotificationResponse ở main isolate.
 }
 
@@ -26,30 +26,31 @@ class NotificationService extends GetxService {
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-      requestSoundPermission: false,
-      requestBadgePermission: false,
-      requestAlertPermission: false,
-    );
+          requestSoundPermission: false,
+          requestBadgePermission: false,
+          requestAlertPermission: false,
+        );
 
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-    );
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsDarwin,
+        );
 
     await flutterLocalNotificationsPlugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse:
           (NotificationResponse notificationResponse) async {
-        final payload = notificationResponse.payload;
-        if (payload == 'daily_reminder') {
-          // Cố gắng điều hướng đến trang tạo giao dịch.
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (Get.currentRoute != Routes.TRANSACTION_CREATE) {
-              Get.toNamed(Routes.TRANSACTION_CREATE);
+            final payload = notificationResponse.payload;
+            if (payload == 'daily_reminder') {
+              // Cố gắng điều hướng đến trang tạo giao dịch.
+              Future.delayed(const Duration(milliseconds: 300), () {
+                if (Get.currentRoute != Routes.TRANSACTION_CREATE) {
+                  Get.toNamed(Routes.TRANSACTION_CREATE);
+                }
+              });
             }
-          });
-        }
-      },
+          },
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
@@ -68,26 +69,32 @@ class NotificationService extends GetxService {
 
   Future<bool> requestPermissions() async {
     bool granted = false;
-    
+
     // Android 13+ permissions
     final androidImplementation = flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+          AndroidFlutterLocalNotificationsPlugin
+        >();
 
     if (androidImplementation != null) {
-      granted = (await androidImplementation.requestNotificationsPermission()) ?? false;
+      granted =
+          (await androidImplementation.requestNotificationsPermission()) ??
+          false;
       await androidImplementation.requestExactAlarmsPermission();
     } else {
       // iOS
       final iosImplementation = flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>();
+            IOSFlutterLocalNotificationsPlugin
+          >();
       if (iosImplementation != null) {
-        granted = (await iosImplementation.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        )) ?? false;
+        granted =
+            (await iosImplementation.requestPermissions(
+              alert: true,
+              badge: true,
+              sound: true,
+            )) ??
+            false;
       }
     }
 
@@ -118,8 +125,14 @@ class NotificationService extends GetxService {
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }

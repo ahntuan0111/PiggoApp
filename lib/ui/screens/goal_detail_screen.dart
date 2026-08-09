@@ -12,6 +12,7 @@ import 'package:appintern/ui/widgets/emoji_picker_bottom_sheet.dart'
     as import_emoji_picker;
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/ui/widgets/bottom_sheet/edit_money_distribution.dart';
+import 'package:appintern/core/routes/app_routes.dart';
 
 class GoalDetailScreen extends GetView<GoalDetailController> {
   const GoalDetailScreen({super.key});
@@ -65,7 +66,9 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
           final progress = controller.currentProgress;
           final saved = controller.savedAmount;
 
-          return Column(
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
             children: [
               // Thông tin tiến độ (Vòng tròn)
               Container(
@@ -81,8 +84,8 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
                           value: progress,
                           strokeWidth: 12.w,
                           backgroundColor: Colors.grey[300],
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            theme.colorScheme.primary,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color.fromARGB(255, 237, 183, 33),
                           ),
                         ),
                         Center(
@@ -94,7 +97,7 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
                                 style: TextStyle(
                                   fontSize: 32.sp,
                                   fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.primary,
+                                  color: const Color(0xFFEBC14F),
                                 ),
                               ),
                               SizedBox(height: 8.h),
@@ -144,35 +147,74 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
                 ),
               ),
 
-              if (controller.unallocatedAmount > 0)
+              if (progress >= 1.0 && saved > 0)
                 Padding(
                   padding: EdgeInsets.only(bottom: 24.h),
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Get.dialog(
-                        ConfirmDialogWidget(
-                          title: "Chuyển tiền nhàn rỗi",
-                          content: "Bạn có chắc chắn muốn chuyển toàn bộ ${CurrencyFormatter.format(controller.unallocatedAmount)} từ ngân sách nhàn rỗi vào mục tiêu này?",
-                          confirmText: "Chuyển",
-                          onConfirm: () {
-                            Get.back();
-                            controller.addUnallocatedToGoal();
+                  child: Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Get.toNamed(
+                          Routes.TRANSACTION_CREATE,
+                          arguments: {
+                            'prefillCategory': goal.categoryId,
+                            'prefillAmount': saved,
                           },
+                        );
+                      },
+                      icon: const Icon(Icons.shopping_cart),
+                      label: const Text(
+                        "Chi tiêu ngay",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEBC14F),
+                        foregroundColor: Colors.white,
+                        minimumSize: Size(200.w, 48.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24.r),
                         ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      color: Colors.green,
+                        elevation: 2,
+                      ),
                     ),
-                    label: Text(
-                      "Chuyển ${CurrencyFormatter.format(controller.unallocatedAmount)} nhàn rỗi vào đây",
-                      style: const TextStyle(color: Colors.green),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.green),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20.r),
+                  ),
+                )
+              else if (controller.unallocatedAmount > 0)
+                Padding(
+                  padding: EdgeInsets.only(bottom: 24.h),
+                  child: Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Get.dialog(
+                          ConfirmDialogWidget(
+                            title: "Chuyển tiền nhàn rỗi",
+                            content:
+                                "Bạn có chắc chắn muốn chuyển toàn bộ ${CurrencyFormatter.format(controller.unallocatedAmount)} từ ngân sách nhàn rỗi vào mục tiêu này?",
+                            confirmText: "Chuyển",
+                            onConfirm: () {
+                              Get.back();
+                              controller.addUnallocatedToGoal();
+                            },
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.add_circle_outline,
+                        color: Colors.green,
+                      ),
+                      label: Text(
+                        "Chuyển ${CurrencyFormatter.format(controller.unallocatedAmount)} nhàn rỗi vào đây",
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.green),
+                        minimumSize: Size(200.w, 48.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24.r),
+                        ),
+                        backgroundColor: Colors.green.withValues(alpha: 0.05),
                       ),
                     ),
                   ),
@@ -282,81 +324,72 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
               SizedBox(height: 24.h),
 
               // Lịch sử giao dịch
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.cardTheme.color,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(24.r),
-                      topRight: Radius.circular(24.r),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
-                      ),
-                    ],
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.cardTheme.color,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24.r),
+                    topRight: Radius.circular(24.r),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.all(24.w),
-                        child: Text(
-                          "Lịch sử nạp tiền",
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(24.w),
+                      child: Text(
+                        "Lịch sử nạp tiền",
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
-                      Expanded(
-                        child: controller.isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : controller.transactions.isEmpty
-                            ? Center(
-                                child: Text(
-                                  "Chưa có giao dịch nào.",
-                                  style: TextStyle(color: Colors.grey[500]),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: EdgeInsets.symmetric(horizontal: 24.w),
-                                itemCount: controller.transactions.length,
-                                itemBuilder: (context, index) {
-                                  final item = controller.transactions[index];
-                                  final tx =
-                                      item['transaction'] as TransactionModel;
-                                  final detail =
-                                      item['detail']; // TransactionDetailModel
+                    ),
+                    if (controller.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (controller.transactions.isEmpty)
+                      Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: Center(
+                          child: Text(
+                            "Chưa có giao dịch nào.",
+                            style: TextStyle(color: Colors.grey[500]),
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24.w,
+                        ).copyWith(bottom: 24.h),
+                        itemCount: controller.transactions.length,
+                        itemBuilder: (context, index) {
+                          final item = controller.transactions[index];
 
-                                  final walletName = 'Ngân sách';
-                                  final categoryName =
-                                      controller.budgetService.categories
-                                          .firstWhereOrNull(
-                                            (c) =>
-                                                c.categoryModel.id ==
-                                                tx.categoryId,
-                                          )
-                                          ?.categoryModel
-                                          .name ??
-                                      'Mục tiêu';
-
-                                  return HistoryTransactionItem(
-                                    categoryName: categoryName,
-                                    note: detail?.note ?? tx.note ?? '',
-                                    walletName: walletName,
-                                    amount: tx.amount,
-                                    type: tx.type,
-                                    date: tx.transactionDate,
-                                  );
-                                },
-                              ),
+                          return HistoryTransactionItem(
+                            categoryName: item['categoryName'] ?? 'Mục tiêu',
+                            note: item['note'] ?? '',
+                            walletName: item['walletName'] ?? 'Ngân sách',
+                            amount: item['amount'] ?? 0.0,
+                            type: item['type'] ?? 'EXPENSE',
+                            date: item['date'] ?? DateTime.now(),
+                          );
+                        },
                       ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -390,7 +423,9 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
     final goal = controller.goal.value;
     final nameController = TextEditingController(text: goal.name);
     final targetController = TextEditingController(
-      text: goal.targetAmount.toInt().toString(),
+      text: CurrencyFormatter.format(
+        goal.targetAmount,
+      ).replaceAll(RegExp(r'[^0-9]'), ''),
     );
     final deadlineObx = Rxn<DateTime>(goal.deadline);
 
@@ -439,8 +474,10 @@ class GoalDetailScreen extends GetView<GoalDetailController> {
               TextField(
                 controller: targetController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [CurrencyFormatter()],
                 decoration: InputDecoration(
                   labelText: "Số tiền mục tiêu",
+                  prefixText: "${CurrencyFormatter.symbol} ",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
                   ),

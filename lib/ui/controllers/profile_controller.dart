@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:appintern/core/utils/logger.dart';
 import 'package:get/get.dart';
 import 'package:appwrite/models.dart' as appwrite_models;
 import 'package:image_picker/image_picker.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:appintern/data/repositories/auth_repository.dart';
-import 'package:appintern/data/repositories/rollover_repository.dart';
 import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/services/budget_service.dart';
@@ -15,7 +15,9 @@ import 'package:appintern/core/services/sync_engine_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/services/notification_service.dart';
+import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/errors/error_handler.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
 
 class ProfileController extends BaseController {
   final AuthRepository authRepository = Get.find<AuthRepository>();
@@ -38,27 +40,22 @@ class ProfileController extends BaseController {
     final result = await ErrorHandler.execute(() async {
       return await authRepository.getUser();
     }, tag: 'FETCH_USER');
-    
+
     result.fold(
-      (failure) => print('Failed to fetch user: ${failure.message}'),
+      (failure) => AppLogger.error(
+        'PROFILE',
+        'Failed to fetch user: ${failure.message}',
+      ),
       (user) {
         currentUser.value = user;
-        _loadAvatar(user);
-      }
+      },
     );
-  }
-
-  Future<void> _loadAvatar(appwrite_models.User user) async {
-    if (user.prefs.data.containsKey('avatarUrl')) {
-      // Actually we can load from prefs, or Appwrite Storage if we uploaded it.
-      // We will handle avatar uploading to Appwrite Storage and storing fileId in prefs.
-    }
   }
 
   Future<void> changeAvatar() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
+
     if (image != null) {
       final bytes = await image.readAsBytes();
       avatarBytes.value = bytes;
@@ -68,15 +65,24 @@ class ProfileController extends BaseController {
   }
 
   Future<void> forceSync() async {
-    showLoading();
-    // Simulate forcing sync
-    await Future.delayed(const Duration(seconds: 1));
-    if (offlineSync.aiQueueCount.value > 0 || offlineSync.manualQueueCount.value > 0) {
-      showWarningMessage('Đồng bộ', 'Đang đẩy dữ liệu lên máy chủ...');
-    } else {
-      showSuccessMessage('Đồng bộ', 'Dữ liệu đã được đồng bộ hóa.');
+    final networkService = Get.find<NetworkService>();
+    if (networkService.isOffline.value) {
+      showWarningMessage('Ngoại tuyến', 'Không thể đồng bộ khi không có mạng.');
+      return;
     }
-    hideLoading();
+
+    showLoading();
+    try {
+      await syncEngine.startForegroundSync();
+      final budgetService = Get.find<BudgetService>();
+      await budgetService.refreshData();
+      offlineSync.refreshQueueCount();
+      showSuccessMessage('Đồng bộ', 'Dữ liệu đã được đồng bộ thành công.');
+    } catch (e) {
+      showErrorMessage('Lỗi đồng bộ', 'Không thể đồng bộ: ${e.toString()}');
+    } finally {
+      hideLoading();
+    }
   }
 
   void changeThemeMode(String mode) {
@@ -88,11 +94,17 @@ class ProfileController extends BaseController {
       final notifService = Get.find<NotificationService>();
       final granted = await notifService.requestPermissions();
       if (!granted) {
-        showWarningMessage('Quyền thông báo', 'Bạn cần cấp quyền để nhận nhắc nhở.');
+        showWarningMessage(
+          'Quyền thông báo',
+          'Bạn cần cấp quyền để nhận nhắc nhở.',
+        );
         return;
       }
     }
-    settingsService.saveNotificationSettings(value, settingsService.reminderTime.value);
+    settingsService.saveNotificationSettings(
+      value,
+      settingsService.reminderTime.value,
+    );
   }
 
   Future<void> changeReminderTime(BuildContext context) async {
@@ -114,8 +126,12 @@ class ProfileController extends BaseController {
     );
 
     if (picked != null) {
-      final timeStr = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-      settingsService.saveNotificationSettings(settingsService.isDailyReminderEnabled.value, timeStr);
+      final timeStr =
+          '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      settingsService.saveNotificationSettings(
+        settingsService.isDailyReminderEnabled.value,
+        timeStr,
+      );
     }
   }
 
@@ -124,6 +140,7 @@ class ProfileController extends BaseController {
     final result = await ErrorHandler.execute(() async {
       await authRepository.clearAllUserData();
       await authRepository.logout();
+      await Get.find<LocalDatabaseService>().clearAllData();
     }, tag: 'DELETE_ACCOUNT');
     hideLoading();
 
@@ -139,11 +156,11 @@ class ProfileController extends BaseController {
     );
   }
 
-
   Future<void> logout() async {
     showLoading();
     final result = await ErrorHandler.execute(() async {
       await authRepository.logout();
+      await Get.find<LocalDatabaseService>().clearAllData();
     }, tag: 'LOGOUT');
     hideLoading();
 
@@ -163,6 +180,7 @@ class ProfileController extends BaseController {
     final result = await ErrorHandler.execute(() async {
       await authRepository.clearAllUserData();
       await authRepository.logout();
+      await Get.find<LocalDatabaseService>().clearAllData();
     }, tag: 'RESET_ALL_DATA');
     hideLoading();
 
@@ -188,6 +206,7 @@ class ProfileController extends BaseController {
     final result = await ErrorHandler.execute(() async {
       // 1. Xóa sạch mọi bảng dữ liệu của user (CategoryTypes, Categories, Budgets, Summaries, Wallets, Transactions, v.v...)
       await authRepository.clearAllUserData();
+      await Get.find<LocalDatabaseService>().clearAllData();
 
       // 2. Tạo lại Category Types mặc định cho user
       if (userId != null && userId.isNotEmpty) {

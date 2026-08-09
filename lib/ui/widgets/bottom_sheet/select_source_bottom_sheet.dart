@@ -12,7 +12,13 @@ class SelectSourceBottomSheet extends StatelessWidget {
   final String currentCategoryId;
   final List<String> excludeCategoryIds;
   final bool showRemainingAmount;
-  final Function(String sourceId, String sourceName, double availableAmount, String iconName) onSelected;
+  final Function(
+    String sourceId,
+    String sourceName,
+    double availableAmount,
+    String iconName,
+  )
+  onSelected;
 
   const SelectSourceBottomSheet({
     super.key,
@@ -26,8 +32,6 @@ class SelectSourceBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
-
     return Container(
       height: Get.height * 0.85,
       padding: EdgeInsets.only(
@@ -105,20 +109,6 @@ class SelectSourceBottomSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 10.h),
-                    child: Center(
-                      child: Text(
-                        "Kế tiếp (T${(DateTime.now().month % 12) + 1})",
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          color: const Color(0xFF757575),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -130,54 +120,66 @@ class SelectSourceBottomSheet extends StatelessWidget {
                 // Unallocated money option
                 if (!excludeCategoryIds.contains('unallocated'))
                   GestureDetector(
-                  onTap: () {
-                    onSelected('unallocated', 'Tiền chưa phân bổ', unallocatedAmount, 'icon_wallet.png');
-                    Get.back();
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(16.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12.r),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            CustomIconWidget(iconName: 'icon_wallet.png', size: 24.sp),
-                            SizedBox(width: 12.w),
-                            Text(
-                              "Tiền chưa phân bổ",
-                              style: TextStyle(
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF1E1E1E),
+                    onTap: () {
+                      onSelected(
+                        'unallocated',
+                        'Tiền chưa phân bổ',
+                        unallocatedAmount,
+                        'icon_wallet.png',
+                      );
+                      Get.back();
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              CustomIconWidget(
+                                iconName: 'icon_wallet.png',
+                                size: 24.sp,
                               ),
-                            ),
-                          ],
-                        ),
-                        if (showRemainingAmount)
-                          _buildMoneyText(unallocatedAmount),
-                      ],
+                              SizedBox(width: 12.w),
+                              Text(
+                                "Tiền chưa phân bổ",
+                                style: TextStyle(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF1E1E1E),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (showRemainingAmount)
+                            _buildMoneyText(unallocatedAmount),
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 SizedBox(height: 24.h),
 
                 // Category Groups
                 ...categoryGroups.map((group) {
                   final validCategories = group.categories
-                      .where((c) => c.categoryModel.id != currentCategoryId && !excludeCategoryIds.contains(c.categoryModel.id))
+                      .where(
+                        (c) =>
+                            c.categoryModel.id != currentCategoryId &&
+                            !excludeCategoryIds.contains(c.categoryModel.id),
+                      )
                       .toList();
-                      
+
                   if (validCategories.isEmpty) return const SizedBox.shrink();
 
                   return Column(
@@ -210,7 +212,12 @@ class SelectSourceBottomSheet extends StatelessWidget {
                         if (remaining < 0) remaining = 0;
                         return GestureDetector(
                           onTap: () {
-                            onSelected(category.categoryModel.id, category.name, remaining, category.icon);
+                            onSelected(
+                              category.categoryModel.id,
+                              category.name,
+                              remaining,
+                              category.icon,
+                            );
                             Get.back();
                           },
                           child: Container(
@@ -232,7 +239,10 @@ class SelectSourceBottomSheet extends StatelessWidget {
                               children: [
                                 Row(
                                   children: [
-                                    CustomIconWidget(iconName: category.icon, size: 24.sp),
+                                    CustomIconWidget(
+                                      iconName: category.icon,
+                                      size: 24.sp,
+                                    ),
                                     SizedBox(width: 12.w),
                                     Text(
                                       category.name,

@@ -52,7 +52,9 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF0B4A3A),
         brightness: Brightness.dark,
-        primary: const Color(0xFF16A085), // Màu xanh sáng hơn chút cho dark mode
+        primary: const Color(
+          0xFF16A085,
+        ), // Màu xanh sáng hơn chút cho dark mode
         onPrimary: Colors.white,
         surface: const Color(0xFF121212), // Nền dark
         onSurface: const Color(0xFFE0E0E0), // Text dark

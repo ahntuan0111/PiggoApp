@@ -26,16 +26,17 @@ class HistoryTransferItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
     final formattedAmount = CurrencyFormatter.format(amount.abs());
     final formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(date);
-    
+
     final bool isOutbound = amount < 0; // Chuyển đi
-    
+
     // Parse color
     Color parsedColor = const Color(0xFF9E9E9E); // Default grey
     if (partnerColor.startsWith('#') && partnerColor.length == 7) {
-      parsedColor = Color(int.parse(partnerColor.substring(1, 7), radix: 16) + 0xFF000000);
+      parsedColor = Color(
+        int.parse(partnerColor.substring(1, 7), radix: 16) + 0xFF000000,
+      );
     }
 
     return Container(
@@ -43,10 +44,7 @@ class HistoryTransferItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          bottom: BorderSide(
-            color: const Color(0xFFEEEEEE),
-            width: 1.h,
-          ),
+          bottom: BorderSide(color: const Color(0xFFEEEEEE), width: 1.h),
         ),
       ),
       child: Row(
@@ -65,10 +63,7 @@ class HistoryTransferItem extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: CustomIconWidget(
-                    iconName: partnerIcon,
-                    size: 20.sp,
-                  ),
+                  child: CustomIconWidget(iconName: partnerIcon, size: 20.sp),
                 ),
               ),
               Positioned(
@@ -81,9 +76,13 @@ class HistoryTransferItem extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isOutbound ? Icons.arrow_outward_rounded : Icons.south_west_rounded,
+                    isOutbound
+                        ? Icons.arrow_outward_rounded
+                        : Icons.south_west_rounded,
                     size: 14.sp,
-                    color: isOutbound ? const Color(0xFFE53935) : const Color(0xFF43A047),
+                    color: isOutbound
+                        ? const Color(0xFFE53935)
+                        : const Color(0xFF43A047),
                   ),
                 ),
               ),
@@ -149,13 +148,15 @@ class HistoryTransferItem extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 6.h),
-              
+
               Text(
                 isOutbound ? '-$formattedAmountđ' : '+$formattedAmountđ',
                 style: TextStyle(
                   fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
-                  color: isOutbound ? const Color(0xFFE53935) : const Color(0xFF43A047),
+                  color: isOutbound
+                      ? const Color(0xFFE53935)
+                      : const Color(0xFF43A047),
                 ),
               ),
             ],

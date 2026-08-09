@@ -6,7 +6,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:appintern/ui/controllers/goal_controller.dart';
 import 'package:appintern/data/models/goal_model.dart';
-import 'package:appintern/ui/widgets/custom_icon_widget.dart';
+
 import 'package:appintern/ui/widgets/goal_saving_card_item.dart';
 import 'package:appintern/ui/widgets/dialogs/goal_sweep_dialog.dart'
     as import_goal_sweep_dialog;
@@ -42,48 +42,6 @@ class GoalScreen extends GetView<GoalController> {
             color: theme.colorScheme.primary,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.savings_outlined,
-              color: const Color(0xFFEBC14F),
-              size: 24.sp,
-            ),
-            onPressed: () {
-              if (controller.budgetService.unallocatedAmount.value > 0) {
-                Get.dialog(
-                  import_goal_sweep_dialog.GoalSweepDialog(
-                    unallocatedAmount:
-                        controller.budgetService.unallocatedAmount.value,
-                    onConfirm: () async {
-                      final result = await Get.toNamed(
-                        Routes.BUDGET_DISTRIBUTION,
-                      );
-                      if (result == true) {
-                        final isOffline =
-                            Get.find<NetworkService>().isOffline.value;
-                        if (isOffline) {
-                          controller.showSuccessMessage(
-                            "Đã lưu (Ngoại tuyến)",
-                            "Dữ liệu sẽ được đồng bộ khi có mạng",
-                          );
-                        } else {
-                          controller.showSuccessMessage(
-                            "Thành công",
-                            "Đã lưu cấu hình ngân sách",
-                          );
-                        }
-                      }
-                    },
-                  ),
-                );
-              } else {
-                controller.showWarningMessage("Thông báo", "Bạn không có tiền dư để tiết kiệm.");
-              }
-            },
-          ),
-          SizedBox(width: 8.w),
-        ],
       ),
       body: Obx(() {
         if (controller.isLoading && controller.goals.isEmpty) {
@@ -106,7 +64,7 @@ class GoalScreen extends GetView<GoalController> {
                       Text(
                         "TỔNG TIẾT KIỆM",
                         style: TextStyle(
-                          fontSize: 12.sp,
+                          fontSize: 10.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.grey[500],
                           letterSpacing: 1.2,
@@ -116,7 +74,7 @@ class GoalScreen extends GetView<GoalController> {
                       Text(
                         CurrencyFormatter.format(controller.totalSaved),
                         style: TextStyle(
-                          fontSize: 32.sp,
+                          fontSize: 26.sp,
                           fontWeight: FontWeight.w800,
                           color: theme.colorScheme.primary,
                         ),
@@ -124,7 +82,7 @@ class GoalScreen extends GetView<GoalController> {
                     ],
                   ),
                 ),
-                SizedBox(height: 40.h),
+                SizedBox(height: 32.h),
 
                 // Tiêu đề danh sách
                 Row(
@@ -133,20 +91,9 @@ class GoalScreen extends GetView<GoalController> {
                     Text(
                       "Mục tiêu của bạn",
                       style: TextStyle(
-                        fontSize: 16.sp,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {},
-                      child: Text(
-                        "Xem tất cả >",
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFEBC14F),
-                        ),
                       ),
                     ),
                   ],
@@ -166,8 +113,7 @@ class GoalScreen extends GetView<GoalController> {
                   )
                 else
                   ...controller.goals
-                      .map((goal) => _buildGoalCard(goal))
-                      .toList(),
+                      .map((goal) => _buildGoalCard(goal)),
 
                 SizedBox(height: 32.h),
 
@@ -202,7 +148,9 @@ class GoalScreen extends GetView<GoalController> {
 
     String deadlineString = "Không có";
     String timeLeftString = "Vô hạn";
-    if (goal.deadline != null) {
+    if (goal.status == 'COMPLETED') {
+      timeLeftString = "🎉 Đã hoàn thành";
+    } else if (goal.deadline != null) {
       deadlineString = DateFormat('MM/yyyy').format(goal.deadline!);
       final now = DateTime.now();
       final difference = goal.deadline!.difference(now);
@@ -217,6 +165,7 @@ class GoalScreen extends GetView<GoalController> {
     }
 
     return Padding(
+      key: ValueKey(goal.id),
       padding: EdgeInsets.only(bottom: 16.h),
       child: GoalSavingCardItem(
         title: goal.name,
@@ -227,6 +176,7 @@ class GoalScreen extends GetView<GoalController> {
         progressText: "${(progress * 100).toStringAsFixed(1)}%",
         timeLeftString: timeLeftString,
         iconName: iconName,
+        isCompleted: goal.status == 'COMPLETED',
         onTap: () async {
           final result = await Get.toNamed(Routes.GOAL_DETAIL, arguments: goal);
           if (result == true) {
@@ -234,17 +184,23 @@ class GoalScreen extends GetView<GoalController> {
               'Thành công',
               'Đã xóa mục tiêu tiết kiệm',
             );
+            controller.fetchGoals();
           }
-          controller.fetchGoals();
         },
-        onAddFunds: () {
+        onBreakPiggyBank: goal.status == 'COMPLETED' ? () async {
+          final result = await Get.toNamed(Routes.GOAL_DETAIL, arguments: goal);
+          if (result == true) {
+            controller.fetchGoals();
+          }
+        } : null,
+        onAddFunds: goal.status == 'COMPLETED' ? null : () {
           if (goalCategory == null) return;
           Get.bottomSheet(
             EditMoneyDistributionBottomSheet(
-              initialAllocated: goalCategory.categoryModel.defaultBudget,
+              initialAllocated: goalCategory.allocated,
               unallocatedAmount:
                   controller.budgetService.unallocatedAmount.value,
-              categoryGroups: controller.budgetService.categoryGroups,
+              categoryGroups: controller.budgetService.activeCategoryGroups,
               currentCategoryId: goalCategory.categoryModel.id,
               isGoal: true,
               onSave:
@@ -254,6 +210,9 @@ class GoalScreen extends GetView<GoalController> {
                     sourceCategoryNewBudget,
                     note,
                   }) async {
+                    if (Get.isBottomSheetOpen == true) {
+                      Get.back(); // close bottom sheet immediately to prevent spam
+                    }
                     await controller.updateGoalBudget(
                       goalCategory,
                       newBudget,
@@ -261,8 +220,6 @@ class GoalScreen extends GetView<GoalController> {
                       sourceCategoryNewBudget: sourceCategoryNewBudget,
                       note: note,
                     );
-                    if (Get.isBottomSheetOpen == true)
-                      Get.back(); // close bottom sheet
                   },
             ),
             isScrollControlled: true,

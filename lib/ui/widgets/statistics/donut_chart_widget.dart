@@ -177,7 +177,7 @@ class _DonutChartWidgetState extends State<DonutChartWidget> {
                       Text(
                         hasData
                             ? CurrencyFormatter.format(totalExpense)
-                            : '0 ₫',
+                            : CurrencyFormatter.format(0),
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,

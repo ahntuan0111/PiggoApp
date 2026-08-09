@@ -27,7 +27,7 @@ class GoalModel {
           : null,
       categoryId: map['categories'] is Map
           ? (map['categories']['\$id'] ?? '')
-          : (map['categories'] ?? ''),
+          : (map['categories'] ?? map['categoryId'] ?? ''),
       status: map['status'] ?? 'ACTIVE',
       createdAt: map['\$createdAt'] != null
           ? DateTime.tryParse(map['\$createdAt'])?.toLocal()

@@ -8,8 +8,9 @@ import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/data/models/budget_category.dart';
 import 'package:appintern/data/models/budget_category_group.dart';
 import 'package:appintern/core/utils/currency_formatter.dart';
+import 'package:appintern/core/utils/offline_aware_mixin.dart';
 
-class HomeController extends BaseController with BudgetAware {
+class HomeController extends BaseController with BudgetAware, OfflineAware {
   final storage = Get.find<StorageService>();
 
   var userName = "Đang tải...".obs;
@@ -35,8 +36,15 @@ class HomeController extends BaseController with BudgetAware {
     userName.value = storage.read(AppKeys.userName) ?? "Đang tải...";
 
     // Listen to BudgetService loading state to show/hide loading indicator
+    // Phân biệt UIState giữa Online loaded và Offline cached
     ever(budgetService.isDataLoaded, (loaded) {
-      if (loaded) hideLoading();
+      if (loaded) {
+        if (isOffline) {
+          setOfflineCached(); // Đánh dấu dữ liệu hiện tại là cache offline
+        } else {
+          hideLoading();
+        }
+      }
     });
 
     ever(budgetService.isError, (error) {

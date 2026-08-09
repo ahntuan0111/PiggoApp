@@ -1,7 +1,7 @@
 import 'package:appintern/ui/controllers/statistics_controller.dart';
 import 'package:appintern/core/theme/app_colors.dart';
 import 'package:appintern/ui/widgets/statistics/ai_insight_card_widget.dart';
-import 'package:appintern/ui/widgets/statistics/burn_rate_progress_widget.dart';
+
 import 'package:appintern/ui/widgets/statistics/donut_chart_widget.dart';
 import 'package:appintern/ui/widgets/statistics/category_analysis_widget.dart';
 import 'package:appintern/ui/widgets/statistics/income_expense_bar_chart_widget.dart';
@@ -29,12 +29,6 @@ class StatisticsScreen extends GetView<StatisticsController> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.person_outline, color: AppColors.textPrimary),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: controller.refreshData,
@@ -51,7 +45,7 @@ class StatisticsScreen extends GetView<StatisticsController> {
             // Check if we have absolutely no expense data across any chart
             final noExpense =
                 (controller.donutChartData['totalExpense'] ?? 0) == 0;
-            if (noExpense && controller.burnRateData.isEmpty) {
+            if (noExpense) {
               return Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
                 child: _buildEmptyState(),
@@ -64,10 +58,6 @@ class StatisticsScreen extends GetView<StatisticsController> {
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
               child: Column(
                 children: [
-                  // Burn Rate Progress
-                  BurnRateProgressWidget(burnRateData: controller.burnRateData),
-                  SizedBox(height: 16.h),
-
                   // AI Insight
                   AiInsightCardWidget(
                     insightText: controller.aiInsight.value,

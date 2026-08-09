@@ -23,7 +23,6 @@ class HistoryTransactionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
     final formattedAmount = CurrencyFormatter.format(amount);
     final formattedDate = DateFormat('dd/MM/yyyy').format(date);
     final bool isExpense = type == 'EXPENSE';
@@ -33,10 +32,7 @@ class HistoryTransactionItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          bottom: BorderSide(
-            color: const Color(0xFFEEEEEE),
-            width: 1.h,
-          ),
+          bottom: BorderSide(color: const Color(0xFFEEEEEE), width: 1.h),
         ),
       ),
       child: Row(
@@ -72,7 +68,6 @@ class HistoryTransactionItem extends StatelessWidget {
             ),
           ),
           SizedBox(width: 16.w), // Khoảng cách giữa 2 phần
-
           // Bên phải: Tên ví, Số tiền & Ngày tháng
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -94,17 +89,21 @@ class HistoryTransactionItem extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 4.h),
-              
+
               // Số tiền
               RichText(
                 text: TextSpan(
                   children: [
                     TextSpan(
-                      text: isExpense ? '-$formattedAmount' : '+$formattedAmount',
+                      text: isExpense
+                          ? '-$formattedAmount'
+                          : '+$formattedAmount',
                       style: TextStyle(
                         fontSize: 16.sp,
                         fontWeight: FontWeight.bold,
-                        color: isExpense ? const Color(0xFFE53935) : const Color(0xFF43A047),
+                        color: isExpense
+                            ? const Color(0xFFE53935)
+                            : const Color(0xFF43A047),
                       ),
                     ),
                   ],

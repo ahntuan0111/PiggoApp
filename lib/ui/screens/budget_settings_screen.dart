@@ -12,14 +12,17 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: const Color(0xFF1E1E1E), size: 24.sp),
+          icon: Icon(
+            Icons.arrow_back,
+            color: const Color(0xFF1E1E1E),
+            size: 24.sp,
+          ),
           onPressed: () {
             // Force reload entire app when going back to apply changes
             Get.offAllNamed(Routes.MAIN);
@@ -38,7 +41,7 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
       body: Obx(() {
         final currencyCode = controller.currencyCode.value;
         final symbol = controller.currencySymbol;
-        
+
         return ListView(
           padding: EdgeInsets.all(16.w),
           children: [
@@ -50,7 +53,11 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
                   CurrencySelectBottomSheet(
                     currentCode: currencyCode,
                     onSelected: (code) {
-                      controller.saveSettings(code, controller.numberFormat.value, controller.symbolPosition.value);
+                      controller.saveSettings(
+                        code,
+                        controller.numberFormat.value,
+                        controller.symbolPosition.value,
+                      );
                       Get.back();
                     },
                   ),
@@ -62,7 +69,11 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
             SizedBox(height: 12.h),
             _buildSettingItem(
               title: 'Định dạng số tiền',
-              value: _getFormatExample(controller.numberFormat.value, symbol, controller.symbolPosition.value),
+              value: _getFormatExample(
+                controller.numberFormat.value,
+                symbol,
+                controller.symbolPosition.value,
+              ),
               onTap: () {
                 Get.bottomSheet(
                   NumberFormatBottomSheet(
@@ -70,7 +81,11 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
                     symbol: symbol,
                     position: controller.symbolPosition.value,
                     onSelected: (format) {
-                      controller.saveSettings(controller.currencyCode.value, format, controller.symbolPosition.value);
+                      controller.saveSettings(
+                        controller.currencyCode.value,
+                        format,
+                        controller.symbolPosition.value,
+                      );
                       Get.back();
                     },
                   ),
@@ -90,7 +105,11 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
                     format: controller.numberFormat.value,
                     symbol: symbol,
                     onSelected: (position) {
-                      controller.saveSettings(controller.currencyCode.value, controller.numberFormat.value, position);
+                      controller.saveSettings(
+                        controller.currencyCode.value,
+                        controller.numberFormat.value,
+                        position,
+                      );
                       Get.back();
                     },
                   ),
@@ -105,7 +124,11 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
     );
   }
 
-  Widget _buildSettingItem({required String title, required String value, required VoidCallback onTap}) {
+  Widget _buildSettingItem({
+    required String title,
+    required String value,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -142,7 +165,11 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
                   ),
                 ),
                 SizedBox(width: 8.w),
-                Icon(Icons.chevron_right, color: const Color(0xFF757575), size: 20.sp),
+                Icon(
+                  Icons.chevron_right,
+                  color: const Color(0xFF757575),
+                  size: 20.sp,
+                ),
               ],
             ),
           ],
@@ -167,7 +194,7 @@ class BudgetSettingsScreen extends GetView<BudgetSettingsController> {
         numStr = '123457';
         break;
     }
-    
+
     switch (position) {
       case 'before':
         return '$symbol$numStr';

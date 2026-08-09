@@ -137,6 +137,46 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
           fontWeight: FontWeight.w500,
         ),
       );
+    } else if (state == VoiceInputState.confirmingText) {
+      return Column(
+        children: [
+          Text(
+            "\"${controller.rawText.value}\"",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18.sp,
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 24.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              OutlinedButton(
+                onPressed: controller.retryVoiceInput,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.grey.shade400),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+                ),
+                child: Text("Thử lại", style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp, fontWeight: FontWeight.w500)),
+              ),
+              SizedBox(width: 16.w),
+              ElevatedButton(
+                onPressed: controller.confirmAndProcessLLM,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF19736),
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+                  elevation: 0,
+                ),
+                child: Text("Tiếp tục", style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ],
+      );
     } else if (state == VoiceInputState.aiProcessing) {
       return Column(
         children: [
@@ -145,15 +185,26 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16.sp,
-              color: Colors.black87,
+              color: Colors.grey,
               fontWeight: FontWeight.w600,
             ),
           ),
           SizedBox(height: 16.h),
-          Text(
-            "AI đang bóc tách giao dịch...",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14.sp, color: Colors.green),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 20.w,
+                height: 20.w,
+                child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
+              ),
+              SizedBox(width: 12.w),
+              Text(
+                "AI đang bóc tách giao dịch...",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14.sp, color: Colors.green, fontWeight: FontWeight.w500),
+              ),
+            ],
           ),
         ],
       );
@@ -178,35 +229,49 @@ class VoiceInputScreen extends GetView<VoiceInputController> {
   }
 
   Widget _buildRecordButton(VoiceInputState state) {
+    if (state == VoiceInputState.confirmingText || state == VoiceInputState.aiProcessing) {
+      return SizedBox(height: 80.w); // Giữ khoảng trống khi không cần thiết
+    }
+
     bool isRecording = state == VoiceInputState.recording;
+    bool isProcessing = state == VoiceInputState.sttProcessing;
 
     return GestureDetector(
-      onTapDown: (_) => controller.handlePointerDown(),
-      onTapUp: (_) => controller.handlePointerUp(),
-      onTapCancel: () => controller.handlePointerUp(),
+      onTapDown: isProcessing ? null : (_) => controller.handlePointerDown(),
+      onTapUp: isProcessing ? null : (_) => controller.handlePointerUp(),
+      onTapCancel: isProcessing ? null : () => controller.handlePointerUp(),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: 80.w,
         height: 80.w,
         decoration: BoxDecoration(
-          color: isRecording
-              ? Colors.orange
-              : const Color(0xFF2C6B4F), // Màu xanh lá đậm giống thiết kế
+          color: isProcessing 
+              ? Colors.grey.shade400 
+              : (isRecording ? Colors.orange : const Color(0xFF2C6B4F)),
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(
-              color: (isRecording ? Colors.orange : const Color(0xFF2C6B4F))
-                  .withValues(alpha: 0.3),
-              blurRadius: 12,
-              spreadRadius: isRecording ? 8 : 2,
-            ),
+            if (!isProcessing)
+              BoxShadow(
+                color: (isRecording ? Colors.orange : const Color(0xFF2C6B4F))
+                    .withValues(alpha: 0.3),
+                blurRadius: 12,
+                spreadRadius: isRecording ? 8 : 2,
+              ),
           ],
         ),
-        child: Icon(
-          isRecording ? Icons.stop_rounded : Icons.mic,
-          color: Colors.white,
-          size: isRecording ? 36.sp : 32.sp,
-        ),
+        child: isProcessing
+            ? SizedBox(
+                width: 24.w,
+                height: 24.w,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                ),
+              )
+            : Icon(
+                isRecording ? Icons.stop_rounded : Icons.mic,
+                color: Colors.white,
+                size: isRecording ? 36.sp : 32.sp,
+              ),
       ),
     );
   }

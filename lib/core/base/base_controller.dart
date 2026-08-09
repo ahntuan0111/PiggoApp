@@ -50,14 +50,16 @@ abstract class BaseController extends GetxController {
   }
 
   void showWarningMessage(String title, String message) {
-    if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
-    Get.snackbar(
-      title,
-      message,
-      backgroundColor: Colors.orange,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-      margin: const EdgeInsets.all(16),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.closeAllSnackbars();
+      Get.snackbar(
+        title,
+        message,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    });
   }
 }

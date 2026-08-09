@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/core/utils/offline_helper.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 
@@ -59,33 +60,28 @@ class GoalCreateController extends BaseController with BudgetAware {
       final localDb = Get.find<LocalDatabaseService>();
       final isOffline = networkService.isOffline.value;
 
-      final tempId = isOffline ? 'offline_${DateTime.now().millisecondsSinceEpoch}' : '';
+      final tempId = isOffline ? OfflineHelper.generateTempId() : '';
 
-      // 1. Get or Create CategoryType "Tiết kiệm lâu dài"
+      // 1. Get CategoryType "Tiết kiệm"
       CategoryTypeModel savingType;
-      if (isOffline) {
-        final types = await localDb.getCategoryTypes();
-        final existingTypeMap = types.firstWhereOrNull((t) => t['name'] == "Tiết kiệm lâu dài");
-        if (existingTypeMap != null) {
-          savingType = CategoryTypeModel.fromMap(existingTypeMap);
-        } else {
-          savingType = CategoryTypeModel(
-            id: tempId + "_type",
-            ownerId: budgetService.currentUserId.value,
-            name: "Tiết kiệm lâu dài",
-            priority: 99,
-          );
-          await localDb.saveCategoryTypes([savingType.toMap()]);
-          final payload = jsonEncode({
-            'name': savingType.name,
-            'priority': savingType.priority,
-            'tempId': savingType.id,
-          });
-          await offlineSyncService.queueManualTask('CREATE_CATEGORY_TYPE', payload);
-        }
+      final types = isOffline
+          ? await localDb.getCategoryTypes().then(
+              (list) => list.map((e) => CategoryTypeModel.fromMap(e)).toList(),
+            )
+          : await _categoryRepository.getCategoryTypes(
+              budgetService.currentUserId.value,
+            );
+
+      final existingType = types.firstWhereOrNull((t) => t.name == 'Tiết kiệm');
+      if (existingType != null) {
+        savingType = existingType;
       } else {
-        savingType = await _categoryRepository
-            .getOrCreateSavingCategoryType(budgetService.currentUserId.value);
+        // Fallback to the first available category type if "Tiết kiệm" is somehow missing
+        if (types.isNotEmpty) {
+          savingType = types.first;
+        } else {
+          throw Exception("Không tìm thấy Category Type nào để gắn mục tiêu");
+        }
       }
 
       // 2. Create Category
@@ -97,14 +93,16 @@ class GoalCreateController extends BaseController with BudgetAware {
           name: nameController.text.trim(),
           iconName: selectedIcon.value,
           color: '0xFFD32F2F',
+          isActive: false, // Ẩn khỏi màn hình Budget/Transaction
         );
-        await localDb.saveCategories([createdCategory.toMap()]);
+        await localDb.insertLocalCategory(createdCategory.toMap());
         final payload = jsonEncode({
           'typeId': createdCategory.categoryTypeId,
           'name': createdCategory.name,
           'iconName': createdCategory.iconName,
           'color': createdCategory.color,
           'tempId': createdCategory.id,
+          'isActive': false,
         });
         await offlineSyncService.queueManualTask('CREATE_CATEGORY', payload);
       } else {
@@ -113,6 +111,7 @@ class GoalCreateController extends BaseController with BudgetAware {
           nameController.text.trim(),
           selectedIcon.value,
           '0xFFD32F2F', // default color
+          isActive: false, // Ẩn khỏi màn hình Budget/Transaction
         );
       }
 
@@ -127,10 +126,12 @@ class GoalCreateController extends BaseController with BudgetAware {
       );
 
       if (isOffline) {
+        if (offlineSyncService.checkAndShowManualQueueFull()) return;
         await localDb.insertLocalGoal(newGoal.toMap()..['id'] = newGoal.id);
         final payload = jsonEncode({
           'goal': newGoal.toMap()..['id'] = newGoal.id,
           'category': createdCategory.toMap()..['id'] = createdCategory.id,
+          'tempId': tempId,
         });
         await offlineSyncService.queueManualTask('CREATE_GOAL', payload);
       } else {

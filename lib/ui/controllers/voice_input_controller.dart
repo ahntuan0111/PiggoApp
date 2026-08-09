@@ -15,6 +15,8 @@ import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
+import 'package:appintern/ui/widgets/dialogs/permission_dialog.dart';
+import 'package:appintern/ui/widgets/dialogs/ai_parse_error_dialog.dart';
 
 class VoiceInputController extends BaseController
     with BudgetAware, GetSingleTickerProviderStateMixin {
@@ -49,36 +51,9 @@ class VoiceInputController extends BaseController
   Future<bool> requestPermission() async {
     final status = await Permission.microphone.request();
     if (status.isPermanentlyDenied) {
-      Get.dialog(
-        AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text(
-            "Quyền truy cập Micro bị từ chối",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: const Text(
-            "Vui lòng vào Cài đặt để cấp quyền truy cập Micro cho ứng dụng để sử dụng tính năng nhận diện giọng nói.",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
-              ),
-              onPressed: () {
-                Get.back();
-                openAppSettings();
-              },
-              child: const Text(
-                "Cài đặt",
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
+      PermissionDialog.show(
+        "Quyền truy cập Micro bị từ chối",
+        "Vui lòng vào Cài đặt để cấp quyền truy cập Micro cho ứng dụng để sử dụng tính năng nhận diện giọng nói.",
       );
       return false;
     } else if (!status.isGranted) {
@@ -92,6 +67,8 @@ class VoiceInputController extends BaseController
   }
 
   Future<void> handlePointerDown() async {
+    if (currentState.value != VoiceInputState.idle) return;
+
     if (await Permission.microphone.isGranted) {
       await _startRecording();
     } else {
@@ -157,11 +134,17 @@ class VoiceInputController extends BaseController
             path,
             successMessage: 'Giọng nói đã được đưa vào hàng chờ đồng bộ',
             isFile: true,
+            showSnackbar: false,
           );
 
           if (handled) {
             currentState.value = VoiceInputState.idle;
             Get.back(); // Đóng bottom sheet
+            
+            // Hiển thị thông báo sau khi bottom sheet đóng
+            Future.delayed(const Duration(milliseconds: 300), () {
+              showSuccessMessage("Ngoại tuyến", "Giọng nói đã được đưa vào hàng chờ đồng bộ");
+            });
           } else {
             await _processAudioToText();
           }
@@ -186,16 +169,25 @@ class VoiceInputController extends BaseController
       },
       (text) async {
         rawText.value = text;
-        await _processTextWithLLM(text);
+        currentState.value = VoiceInputState.confirmingText;
       },
     );
+  }
+
+  Future<void> confirmAndProcessLLM() async {
+    if (currentState.value != VoiceInputState.confirmingText) return;
+    await _processTextWithLLM(rawText.value);
+  }
+
+  void retryVoiceInput() {
+    currentState.value = VoiceInputState.idle;
+    rawText.value = "";
   }
 
   Future<void> _processTextWithLLM(String text) async {
     currentState.value = VoiceInputState.aiProcessing;
 
-    final validCategoryNames = budgetService.categoryGroups
-        .where((group) => group.typeName != 'Tiết kiệm lâu dài')
+    final validCategoryNames = budgetService.activeCategoryGroups
         .expand((group) => group.categories)
         .map((budgetCat) => budgetCat.name)
         .toList();
@@ -213,43 +205,7 @@ class VoiceInputController extends BaseController
 
     result.fold(
       (failure) {
-        Get.dialog(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.orange,
-                  size: 28,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  "Không thể phân tích",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: const Text(
-              "Giọng nói có thể không rõ ràng, chứa từ ngữ không phù hợp hoặc kết nối mạng bị gián đoạn. Vui lòng thử lại với câu khác.",
-              style: TextStyle(fontSize: 14),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(),
-                child: const Text(
-                  "Đã hiểu",
-                  style: TextStyle(
-                    color: Color(0xFFEBC14F),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+        Get.dialog(const AiParseErrorDialog());
       },
       (data) {
         // Mở ConfirmMultipleTransactionsBottomSheet đè lên màn hình hiện tại

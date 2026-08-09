@@ -83,7 +83,7 @@ class TransactionCreateScreen extends GetView<TransactionCreateController> {
                             Padding(
                               padding: EdgeInsets.only(bottom: 6.h),
                               child: Text(
-                                'VND',
+                                CurrencyFormatter.symbol,
                                 style: TextStyle(
                                   color: const Color(0xFF4ADE80),
                                   fontSize: 24.sp,

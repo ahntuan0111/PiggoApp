@@ -23,21 +23,26 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
         }
 
         if (controller.queueTasks.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+          return RefreshIndicator(
+            onRefresh: () async => await controller.fetchTasks(),
+            color: const Color(0xFF369B56),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
                 Icon(
                   Icons.check_circle_outline,
                   size: 64.sp,
                   color: Colors.grey.shade400,
                 ),
                 SizedBox(height: 16.h),
-                Text(
-                  'Không có giao dịch nào đang chờ',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 16.sp,
+                Center(
+                  child: Text(
+                    'Không có giao dịch nào đang chờ',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 16.sp,
+                    ),
                   ),
                 ),
               ],
@@ -45,14 +50,19 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
           );
         }
 
-        return ListView.separated(
-          padding: EdgeInsets.all(16.w),
-          itemCount: controller.queueTasks.length,
-          separatorBuilder: (context, index) => SizedBox(height: 12.h),
-          itemBuilder: (context, index) {
-            final task = controller.queueTasks[index];
-            return _buildTaskItem(task, controller);
-          },
+        return RefreshIndicator(
+          onRefresh: () async => await controller.fetchTasks(),
+          color: const Color(0xFF369B56),
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.all(16.w),
+            itemCount: controller.queueTasks.length,
+            separatorBuilder: (context, index) => SizedBox(height: 12.h),
+            itemBuilder: (context, index) {
+              final task = controller.queueTasks[index];
+              return _buildTaskItem(task, controller);
+            },
+          ),
         );
       }),
     );
@@ -80,8 +90,12 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
     switch (status) {
       case 'PENDING':
         statusColor = Colors.orange;
-        statusText = 'Đang chờ mạng';
-        statusIcon = Icons.wifi_off;
+        statusText = controller.networkService.isOffline.value 
+            ? 'Đang chờ mạng' 
+            : 'Đang chờ xử lý';
+        statusIcon = controller.networkService.isOffline.value 
+            ? Icons.wifi_off 
+            : Icons.hourglass_empty;
         break;
       case 'PROCESSING':
         statusColor = Colors.blue;
@@ -98,22 +112,37 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
         statusText = 'Lỗi xử lý';
         statusIcon = Icons.error_outline;
         break;
+      case 'FAILED_PERMANENT':
+        statusColor = Colors.red;
+        statusText = 'Từ chối / Đã hủy';
+        statusIcon = Icons.cancel;
+        break;
       default:
         statusColor = Colors.grey;
         statusText = status;
         statusIcon = Icons.info_outline;
     }
 
-    String typeText = type == 'TEXT'
-        ? 'Văn bản'
-        : type == 'IMAGE'
-        ? 'Hóa đơn'
-        : 'Giọng nói';
-    IconData typeIcon = type == 'TEXT'
-        ? Icons.chat
-        : type == 'IMAGE'
-        ? Icons.receipt
-        : Icons.mic;
+    String typeText;
+    IconData typeIcon;
+
+    if (type == 'TEXT') {
+      typeText = 'Văn bản';
+      typeIcon = Icons.chat;
+    } else if (type == 'IMAGE') {
+      typeText = 'Hóa đơn';
+      typeIcon = Icons.receipt;
+    } else if (type == 'VOICE') {
+      typeText = 'Giọng nói';
+      typeIcon = Icons.mic;
+    } else {
+      typeText = 'Đồng bộ dữ liệu';
+      typeIcon = Icons.cloud_sync;
+    }
+
+    if (status == 'PROCESSING' && type != 'TEXT' && type != 'IMAGE' && type != 'VOICE') {
+      statusText = 'Đang đồng bộ...';
+    }
 
     return InkWell(
       onTap: status == 'NEEDS_CONFIRMATION'
@@ -170,7 +199,9 @@ class OfflineQueueScreen extends GetView<OfflineQueueController> {
             ),
             SizedBox(height: 12.h),
             Text(
-              type == 'IMAGE' ? '[Ảnh Hóa Đơn]' : payload,
+              type == 'TEXT'
+                  ? payload
+                  : (type == 'IMAGE' ? '[Ảnh Hóa Đơn]' : '[Đoạn ghi âm]'),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 15.sp, color: Colors.black87),

@@ -62,6 +62,7 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
                 SizedBox(height: 8.h),
                 TextField(
                   keyboardType: TextInputType.number,
+                  inputFormatters: [CurrencyFormatter()],
                   style: TextStyle(
                     fontSize: 32.sp,
                     fontWeight: FontWeight.bold,
@@ -69,7 +70,7 @@ class NewMonthSetupScreen extends GetView<NewMonthSetupController> {
                   ),
                   decoration: InputDecoration(
                     border: InputBorder.none,
-                    hintText: "0đ",
+                    hintText: CurrencyFormatter.format(0),
                     hintStyle: TextStyle(color: Colors.grey[300]),
                   ),
                   onChanged: (val) {

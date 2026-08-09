@@ -97,7 +97,7 @@ class MoneyDistributionCategoryItem extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: '0',
                     hintStyle: TextStyle(color: Colors.grey, fontSize: 14.sp),
-                     // Xóa khoảng trắng thừa
+                    // Xóa khoảng trắng thừa
                     suffixStyle: TextStyle(
                       color: Colors.black,
                       fontSize: 14.sp,

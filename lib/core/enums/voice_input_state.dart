@@ -1,1 +1,1 @@
-enum VoiceInputState { idle, recording, sttProcessing, aiProcessing }
+enum VoiceInputState { idle, recording, sttProcessing, confirmingText, aiProcessing }

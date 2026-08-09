@@ -34,10 +34,9 @@ class SmartInputController extends BaseController with BudgetAware {
     super.onClose();
   }
 
-  /// Lấy danh sách tên danh mục hợp lệ (loại trừ nhóm Tiết kiệm lâu dài)
+  /// Lấy danh sách tên danh mục hợp lệ (loại trừ các danh mục bị ẩn/Goal)
   List<String> get _validCategoryNames {
-    return budgetService.categoryGroups
-        .where((group) => group.typeName != 'Tiết kiệm lâu dài')
+    return budgetService.activeCategoryGroups
         .expand((group) => group.categories)
         .map((budgetCat) => budgetCat.name)
         .toList();

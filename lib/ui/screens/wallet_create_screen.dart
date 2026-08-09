@@ -54,7 +54,6 @@ class WalletCreateScreen extends GetView<WalletController> {
             final newTotal = controller.newTotalBalance;
             final isAdding = controller.isAdding.value;
             final amount = controller.inputAmount.value;
-            
 
             return Container(
               width: double.infinity,

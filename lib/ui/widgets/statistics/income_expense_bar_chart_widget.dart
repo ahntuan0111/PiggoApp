@@ -210,7 +210,22 @@ class IncomeExpenseBarChartWidget extends GetView<StatisticsController> {
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
                   maxY: maxY,
-                  barTouchData: BarTouchData(enabled: true),
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (group) => AppColors.textPrimary,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          CurrencyFormatter.format(rod.toY),
+                          TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.sp,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                   titlesData: FlTitlesData(
                     show: true,
                     bottomTitles: AxisTitles(

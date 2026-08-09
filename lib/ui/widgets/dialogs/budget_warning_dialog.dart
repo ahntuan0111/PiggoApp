@@ -212,7 +212,6 @@ class _BudgetWarningDialogState extends State<BudgetWarningDialog> {
   }
 
   Widget _buildPage1() {
-    
     return Column(
       children: [
         Container(

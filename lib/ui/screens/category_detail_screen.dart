@@ -168,7 +168,7 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                               Get.bottomSheet(
                                 EditMoneyDistributionBottomSheet(
                                   initialAllocated:
-                                      controller.category.defaultBudget,
+                                      controller.currentMonthBudget,
                                   unallocatedAmount:
                                       controller.unallocatedAmount,
                                   categoryGroups: controller.categoryGroups,
@@ -180,15 +180,15 @@ class CategoryDetailScreen extends GetView<CategoryDetailController> {
                                         sourceCategoryNewBudget,
                                         note,
                                       }) async {
+                                        if (Get.isBottomSheetOpen == true) {
+                                          Get.back(); // close bottom sheet immediately to prevent spam
+                                        }
                                         await controller.updateBudget(
                                           newBudget,
                                           sourceCategoryId: sourceCategoryId,
                                           sourceCategoryNewBudget:
                                               sourceCategoryNewBudget,
                                         );
-                                        if (Get.isBottomSheetOpen == true) {
-                                          Get.back(); // close bottom sheet
-                                        }
                                       },
                                 ),
                                 isScrollControlled: true,

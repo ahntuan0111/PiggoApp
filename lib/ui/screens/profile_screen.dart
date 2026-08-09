@@ -15,10 +15,7 @@ class ProfileScreen extends GetView<ProfileController> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          "Cá nhân",
-          style: theme.appBarTheme.titleTextStyle,
-        ),
+        title: Text("Cá nhân", style: theme.appBarTheme.titleTextStyle),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -26,7 +23,9 @@ class ProfileScreen extends GetView<ProfileController> {
       body: Obx(() {
         final user = controller.currentUser.value;
         final avatarBytes = controller.avatarBytes.value;
-        final syncTasks = controller.offlineSync.aiQueueCount.value + controller.offlineSync.manualQueueCount.value;
+        final syncTasks =
+            controller.offlineSync.aiQueueCount.value +
+            controller.offlineSync.manualQueueCount.value;
 
         return ListView(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -42,9 +41,14 @@ class ProfileScreen extends GetView<ProfileController> {
                       width: 90.w,
                       height: 90.w,
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE0E0E0),
+                        color: isDark
+                            ? const Color(0xFF2C2C2C)
+                            : const Color(0xFFE0E0E0),
                         shape: BoxShape.circle,
-                        border: Border.all(color: theme.scaffoldBackgroundColor, width: 4.w),
+                        border: Border.all(
+                          color: theme.scaffoldBackgroundColor,
+                          width: 4.w,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
@@ -54,23 +58,27 @@ class ProfileScreen extends GetView<ProfileController> {
                         ],
                       ),
                       clipBehavior: Clip.hardEdge,
-                      child: avatarBytes != null 
-                        ? Image.memory(avatarBytes, fit: BoxFit.cover)
-                        : (user != null && user.name.isNotEmpty) 
+                      child: avatarBytes != null
+                          ? Image.memory(avatarBytes, fit: BoxFit.cover)
+                          : (user != null && user.name.isNotEmpty)
                           ? Center(
                               child: Text(
                                 user.name.substring(0, 1).toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 40.sp,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? const Color(0xFFE0E0E0) : const Color(0xFF757575),
-                                )
+                                  color: isDark
+                                      ? const Color(0xFFE0E0E0)
+                                      : const Color(0xFF757575),
+                                ),
                               ),
                             )
                           : Icon(
                               Icons.person,
                               size: 45.sp,
-                              color: isDark ? const Color(0xFF757575) : const Color(0xFF9E9E9E),
+                              color: isDark
+                                  ? const Color(0xFF757575)
+                                  : const Color(0xFF9E9E9E),
                             ),
                     ),
                   ),
@@ -79,9 +87,16 @@ class ProfileScreen extends GetView<ProfileController> {
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: theme.scaffoldBackgroundColor, width: 2.w),
+                      border: Border.all(
+                        color: theme.scaffoldBackgroundColor,
+                        width: 2.w,
+                      ),
                     ),
-                    child: Icon(Icons.camera_alt, size: 14.sp, color: Colors.white),
+                    child: Icon(
+                      Icons.camera_alt,
+                      size: 14.sp,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -103,7 +118,9 @@ class ProfileScreen extends GetView<ProfileController> {
                 user?.email ?? "Đang tải...",
                 style: TextStyle(
                   fontSize: 14.sp,
-                  color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF757575),
+                  color: isDark
+                      ? const Color(0xFFA0A0A0)
+                      : const Color(0xFF757575),
                 ),
               ),
             ),
@@ -112,7 +129,9 @@ class ProfileScreen extends GetView<ProfileController> {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 decoration: BoxDecoration(
-                  color: syncTasks > 0 ? Colors.orange.withValues(alpha: 0.15) : const Color(0xFF369B56).withValues(alpha: 0.15),
+                  color: syncTasks > 0
+                      ? Colors.orange.withValues(alpha: 0.15)
+                      : const Color(0xFF369B56).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Row(
@@ -121,15 +140,21 @@ class ProfileScreen extends GetView<ProfileController> {
                     Icon(
                       syncTasks > 0 ? Icons.sync_problem : Icons.cloud_done,
                       size: 14.sp,
-                      color: syncTasks > 0 ? Colors.orange : const Color(0xFF369B56),
+                      color: syncTasks > 0
+                          ? Colors.orange
+                          : const Color(0xFF369B56),
                     ),
                     SizedBox(width: 6.w),
                     Text(
-                      syncTasks > 0 ? "Đang chờ đồng bộ ($syncTasks)" : "Đã đồng bộ",
+                      syncTasks > 0
+                          ? "Đang chờ đồng bộ ($syncTasks)"
+                          : "Đã đồng bộ",
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
-                        color: syncTasks > 0 ? Colors.orange : const Color(0xFF369B56),
+                        color: syncTasks > 0
+                            ? Colors.orange
+                            : const Color(0xFF369B56),
                       ),
                     ),
                   ],
@@ -139,14 +164,16 @@ class ProfileScreen extends GetView<ProfileController> {
             SizedBox(height: 32.h),
 
             // ==================== B. Settings Menu ====================
-            
+
             // Nhóm 1: Tuỳ chỉnh
             Text(
               "TÙY CHỈNH",
               style: TextStyle(
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
-                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF9E9E9E),
+                color: isDark
+                    ? const Color(0xFFA0A0A0)
+                    : const Color(0xFF9E9E9E),
                 letterSpacing: 1.2,
               ),
             ),
@@ -157,8 +184,13 @@ class ProfileScreen extends GetView<ProfileController> {
                   ListTile(
                     leading: const Icon(Icons.currency_exchange),
                     title: const Text("Định dạng tiền tệ"),
-                    subtitle: Text("Đang dùng: ${controller.settingsService.currencyCode.value}"),
-                    trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                    subtitle: Text(
+                      "Đang dùng: ${controller.settingsService.currencyCode.value}",
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.grey,
+                    ),
                     onTap: () => Get.toNamed(Routes.BUDGET_SETTINGS),
                   ),
                   const Divider(),
@@ -168,11 +200,13 @@ class ProfileScreen extends GetView<ProfileController> {
                     trailing: DropdownButton<String>(
                       value: controller.settingsService.themeMode.value,
                       underline: const SizedBox(),
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.grey,
+                      ),
                       items: const [
                         DropdownMenuItem(value: 'light', child: Text("Sáng")),
                         DropdownMenuItem(value: 'dark', child: Text("Tối")),
-                        DropdownMenuItem(value: 'system', child: Text("Hệ thống")),
                       ],
                       onChanged: (val) {
                         if (val != null) controller.changeThemeMode(val);
@@ -180,23 +214,43 @@ class ProfileScreen extends GetView<ProfileController> {
                     ),
                   ),
                   const Divider(),
-                  Obx(() => SwitchListTile(
-                    secondary: const Icon(Icons.notifications_active_outlined),
-                    title: const Text("Nhắc nhở hàng ngày"),
-                    subtitle: controller.settingsService.isDailyReminderEnabled.value
-                        ? Text("Đang bật: \${controller.settingsService.reminderTime.value}")
-                        : const Text("Tắt"),
-                    value: controller.settingsService.isDailyReminderEnabled.value,
-                    onChanged: (val) {
-                      controller.toggleDailyReminder(val);
-                    },
-                  )),
+                  Obx(
+                    () => SwitchListTile(
+                      secondary: const Icon(
+                        Icons.notifications_active_outlined,
+                      ),
+                      title: const Text("Nhắc nhở hàng ngày"),
+                      subtitle:
+                          controller
+                              .settingsService
+                              .isDailyReminderEnabled
+                              .value
+                          ? Text(
+                              "Đang bật: ${controller.settingsService.reminderTime.value}",
+                            )
+                          : const Text("Tắt"),
+                      value: controller
+                          .settingsService
+                          .isDailyReminderEnabled
+                          .value,
+                      onChanged: (val) {
+                        controller.toggleDailyReminder(val);
+                      },
+                    ),
+                  ),
                   Obx(() {
-                    if (controller.settingsService.isDailyReminderEnabled.value) {
+                    if (controller
+                        .settingsService
+                        .isDailyReminderEnabled
+                        .value) {
                       return ListTile(
                         leading: const Icon(Icons.access_time),
                         title: const Text("Giờ nhắc nhở"),
-                        trailing: const Icon(Icons.edit, color: Colors.grey, size: 20),
+                        trailing: const Icon(
+                          Icons.edit,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
                         onTap: () => controller.changeReminderTime(context),
                       );
                     }
@@ -213,7 +267,9 @@ class ProfileScreen extends GetView<ProfileController> {
               style: TextStyle(
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
-                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF9E9E9E),
+                color: isDark
+                    ? const Color(0xFFA0A0A0)
+                    : const Color(0xFF9E9E9E),
                 letterSpacing: 1.2,
               ),
             ),
@@ -224,7 +280,9 @@ class ProfileScreen extends GetView<ProfileController> {
                   ListTile(
                     leading: const Icon(Icons.sync),
                     title: const Text("Trạng thái đồng bộ"),
-                    subtitle: syncTasks > 0 ? Text("$syncTasks mục đang chờ") : const Text("Mọi thứ đã đồng bộ"),
+                    subtitle: syncTasks > 0
+                        ? Text("$syncTasks mục đang chờ")
+                        : const Text("Mọi thứ đã đồng bộ"),
                     trailing: TextButton(
                       onPressed: controller.forceSync,
                       child: const Text("Đồng bộ ngay"),
@@ -233,14 +291,22 @@ class ProfileScreen extends GetView<ProfileController> {
                   const Divider(),
                   ListTile(
                     leading: const Icon(Icons.refresh, color: Colors.orange),
-                    title: const Text("Reset Dữ Liệu Tháng Này", style: TextStyle(color: Colors.orange)),
+                    title: const Text(
+                      "Reset Dữ Liệu Tháng Này",
+                      style: TextStyle(color: Colors.orange),
+                    ),
                     onTap: () {
                       Get.dialog(
                         AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
                           title: Row(
                             children: [
-                              const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.orange,
+                              ),
                               SizedBox(width: 8.w),
                               const Text("Reset dữ liệu"),
                             ],
@@ -250,13 +316,25 @@ class ProfileScreen extends GetView<ProfileController> {
                             style: TextStyle(height: 1.4),
                           ),
                           actions: [
-                            TextButton(onPressed: () => Get.back(), child: const Text("Hủy", style: TextStyle(color: Colors.grey))),
+                            TextButton(
+                              onPressed: () => Get.back(),
+                              child: const Text(
+                                "Hủy",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
                             TextButton(
                               onPressed: () {
                                 Get.back();
                                 controller.resetAccountData();
                               },
-                              child: const Text("Reset", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                              child: const Text(
+                                "Reset",
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -274,7 +352,9 @@ class ProfileScreen extends GetView<ProfileController> {
               style: TextStyle(
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
-                color: isDark ? const Color(0xFFA0A0A0) : const Color(0xFF9E9E9E),
+                color: isDark
+                    ? const Color(0xFFA0A0A0)
+                    : const Color(0xFF9E9E9E),
                 letterSpacing: 1.2,
               ),
             ),
@@ -289,15 +369,26 @@ class ProfileScreen extends GetView<ProfileController> {
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.delete_forever, color: Colors.red),
-                    title: const Text("Xoá tài khoản", style: TextStyle(color: Colors.red)),
+                    leading: const Icon(
+                      Icons.delete_forever,
+                      color: Colors.red,
+                    ),
+                    title: const Text(
+                      "Xoá tài khoản",
+                      style: TextStyle(color: Colors.red),
+                    ),
                     onTap: () {
                       Get.dialog(
                         AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
                           title: Row(
                             children: [
-                              const Icon(Icons.delete_forever, color: Colors.red),
+                              const Icon(
+                                Icons.delete_forever,
+                                color: Colors.red,
+                              ),
                               SizedBox(width: 8.w),
                               const Text("Xoá tài khoản"),
                             ],
@@ -307,13 +398,25 @@ class ProfileScreen extends GetView<ProfileController> {
                             style: TextStyle(height: 1.4),
                           ),
                           actions: [
-                            TextButton(onPressed: () => Get.back(), child: const Text("Hủy", style: TextStyle(color: Colors.grey))),
+                            TextButton(
+                              onPressed: () => Get.back(),
+                              child: const Text(
+                                "Hủy",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
                             TextButton(
                               onPressed: () {
                                 Get.back();
                                 controller.deleteAccount();
                               },
-                              child: const Text("Xoá vĩnh viễn", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                              child: const Text(
+                                "Xoá vĩnh viễn",
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),

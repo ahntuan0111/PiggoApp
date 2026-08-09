@@ -9,6 +9,7 @@ import 'package:appintern/ui/widgets/empty_category_suggestion_widget.dart';
 import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/ui/widgets/persistent_offline_banner.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
@@ -17,9 +18,13 @@ class HomeScreen extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F1), // Nền kem sáng nhạt giống ảnh
-      body: RefreshIndicator(
-        onRefresh: controller.fetchData,
-        child: CustomScrollView(
+      body: Column(
+        children: [
+          const PersistentOfflineBanner(),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: controller.fetchData,
+              child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
               child: Stack(
@@ -93,33 +98,7 @@ class HomeScreen extends GetView<HomeController> {
                                     ],
                                   ),
                                 ),
-                                Obx(() {
-                                  final network = Get.find<NetworkService>();
-                                  if (network.isOffline.value) {
-                                    return Padding(
-                                      padding: EdgeInsets.only(top: 4.h),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.cloud_off,
-                                            color: Colors.white70,
-                                            size: 12.sp,
-                                          ),
-                                          SizedBox(width: 4.w),
-                                          Text(
-                                            '(Ngoại tuyến)',
-                                            style: TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 10.sp,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                }),
+
                               ],
                             ),
                             Obx(() {
@@ -313,11 +292,7 @@ class HomeScreen extends GetView<HomeController> {
                                         Routes.BUDGET_DISTRIBUTION,
                                       );
                                       if (result == true) {
-                                        final isOffline =
-                                            Get.find<NetworkService>()
-                                                .isOffline
-                                                .value;
-                                        if (isOffline) {
+                                        if (controller.isOffline) {
                                           controller.showSuccessMessage(
                                             "Đã lưu (Ngoại tuyến)",
                                             "Dữ liệu sẽ được đồng bộ khi có mạng",
@@ -614,6 +589,9 @@ class HomeScreen extends GetView<HomeController> {
             SliverToBoxAdapter(child: SizedBox(height: 80.h)),
           ],
         ),
+          ), // End RefreshIndicator
+          ), // End Expanded
+        ],
       ),
     );
   }

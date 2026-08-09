@@ -56,17 +56,26 @@ class CurrencyFormatter extends TextInputFormatter {
     );
   }
 
+  static String formatNumberOnly(double amount) {
+    final settings = Get.find<SettingsService>();
+    final separator = _getSeparator(settings.numberFormat.value);
+    String numStr = amount.abs().toStringAsFixed(0);
+    numStr = _formatNumberString(numStr, separator);
+    String sign = amount < 0 ? '-' : '';
+    return '$sign$numStr';
+  }
+
   static String format(double amount) {
     final settings = Get.find<SettingsService>();
     final separator = _getSeparator(settings.numberFormat.value);
     final symbol = settings.currencySymbol;
     final position = settings.symbolPosition.value;
-    
+
     String numStr = amount.abs().toStringAsFixed(0);
     numStr = _formatNumberString(numStr, separator);
-    
+
     String sign = amount < 0 ? '-' : '';
-    
+
     switch (position) {
       case 'before':
         return '$sign$symbol$numStr';
@@ -82,7 +91,7 @@ class CurrencyFormatter extends TextInputFormatter {
     final settings = Get.find<SettingsService>();
     final position = settings.symbolPosition.value;
     final symbol = settings.currencySymbol;
-    
+
     double absAmount = amount.abs();
     String numStr;
     if (absAmount >= 1e9) {
@@ -94,11 +103,11 @@ class CurrencyFormatter extends TextInputFormatter {
     } else {
       numStr = absAmount.toStringAsFixed(0);
     }
-    
+
     if (numStr.endsWith('.0B')) numStr = numStr.replaceAll('.0B', 'B');
     if (numStr.endsWith('.0M')) numStr = numStr.replaceAll('.0M', 'M');
     if (numStr.endsWith('.0K')) numStr = numStr.replaceAll('.0K', 'K');
-    
+
     final separator = _getSeparator(settings.numberFormat.value);
     if (separator == ',') {
       numStr = numStr.replaceFirst('.', ',');
@@ -107,7 +116,7 @@ class CurrencyFormatter extends TextInputFormatter {
     }
 
     String sign = amount < 0 ? '-' : '';
-    
+
     switch (position) {
       case 'before':
         return '$sign$symbol$numStr';

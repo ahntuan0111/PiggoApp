@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/services/appwrite_service.dart';
@@ -11,7 +12,7 @@ class SettingsService extends GetxService {
   final currencyCode = 'VND'.obs;
   final numberFormat = 'dot'.obs; // 'dot' | 'comma' | 'space' | 'none'
   final symbolPosition = 'after'.obs; // 'before' | 'after' | 'hidden'
-  final themeMode = 'system'.obs; // 'system' | 'light' | 'dark'
+  final themeMode = 'light'.obs; // 'light' | 'dark'
 
   // Notification Settings
   final isDailyReminderEnabled = false.obs;
@@ -47,8 +48,9 @@ class SettingsService extends GetxService {
     numberFormat.value = _storage.read<String>(AppKeys.numberFormat) ?? 'dot';
     symbolPosition.value =
         _storage.read<String>(AppKeys.symbolPosition) ?? 'after';
-    themeMode.value = _storage.read<String>('themeMode') ?? 'system';
-    isDailyReminderEnabled.value = _storage.read<bool>('isDailyReminderEnabled') ?? false;
+    themeMode.value = _storage.read<String>('themeMode') ?? 'light';
+    isDailyReminderEnabled.value =
+        _storage.read<bool>('isDailyReminderEnabled') ?? false;
     reminderTime.value = _storage.read<String>('reminderTime') ?? '20:00';
   }
 
@@ -80,7 +82,7 @@ class SettingsService extends GetxService {
         _saveToLocal();
       }
     } catch (e) {
-      print("Failed to load settings from cloud: $e");
+      AppLogger.error('SETTINGS', "Failed to load settings from cloud: $e");
     }
   }
 
@@ -98,18 +100,21 @@ class SettingsService extends GetxService {
     _storage.write('themeMode', newTheme);
     _syncToCloud();
 
-    if (newTheme == 'light') Get.changeThemeMode(ThemeMode.light);
-    else if (newTheme == 'dark') Get.changeThemeMode(ThemeMode.dark);
-    else Get.changeThemeMode(ThemeMode.system);
+    if (newTheme == 'light')
+      Get.changeThemeMode(ThemeMode.light);
+    else if (newTheme == 'dark')
+      Get.changeThemeMode(ThemeMode.dark);
+    else
+      Get.changeThemeMode(ThemeMode.system);
   }
 
   void saveNotificationSettings(bool isEnabled, String time) {
     isDailyReminderEnabled.value = isEnabled;
     reminderTime.value = time;
-    
+
     _storage.write('isDailyReminderEnabled', isEnabled);
     _storage.write('reminderTime', time);
-    
+
     _applyNotificationSettings();
     _syncToCloud();
   }
@@ -152,7 +157,7 @@ class SettingsService extends GetxService {
         },
       );
     } catch (e) {
-      print("Failed to sync settings to cloud: $e");
+      AppLogger.error('SETTINGS', "Failed to sync settings to cloud: $e");
     }
   }
 }

@@ -8,7 +8,7 @@ class AppKeys {
   static const String avatarUrl = 'avatarUrl';
   static const String avatarFileId = 'avatarFileId';
   static const String statisticsInsightFunctionId = 'statistics_insight';
-  
+
   // Settings
   static const String currencyCode = 'currencyCode';
   static const String numberFormat = 'numberFormat';

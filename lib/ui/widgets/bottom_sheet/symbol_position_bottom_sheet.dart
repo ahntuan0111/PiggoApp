@@ -23,10 +23,7 @@ class SymbolPositionBottomSheet extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      padding: EdgeInsets.only(
-        top: 8.h,
-        bottom: 20.h,
-      ),
+      padding: EdgeInsets.only(top: 8.h, bottom: 20.h),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -67,13 +64,21 @@ class SymbolPositionBottomSheet extends StatelessWidget {
 
   Widget _buildOption(String positionKey, String label, BuildContext context) {
     final isSelected = positionKey == currentPosition;
-    
+
     String numStr = '123457';
     switch (format) {
-      case 'comma': numStr = '123,457'; break;
-      case 'dot': numStr = '123.457'; break;
-      case 'space': numStr = '123 457'; break;
-      case 'none': numStr = '123457'; break;
+      case 'comma':
+        numStr = '123,457';
+        break;
+      case 'dot':
+        numStr = '123.457';
+        break;
+      case 'space':
+        numStr = '123 457';
+        break;
+      case 'none':
+        numStr = '123457';
+        break;
     }
 
     String exampleText = '';

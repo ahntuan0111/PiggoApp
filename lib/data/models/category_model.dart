@@ -31,7 +31,10 @@ class CategoryModel {
       color: map['color'] ?? '',
       iconName: map['iconName'] ?? '',
       defaultBudget: (map['defaultBudget'] ?? 0).toDouble(),
-      isActive: map['isActive'] ?? true, // Fallback true cho dữ liệu cũ (NULL)
+      isActive: map['isActive'] == null
+          ? true
+          : (map['isActive'] == 1 ||
+                map['isActive'] == true), // Fallback true cho dữ liệu cũ (NULL)
       spent: (map['spent'] ?? 0).toDouble(), // Parse spent nếu có
     );
   }

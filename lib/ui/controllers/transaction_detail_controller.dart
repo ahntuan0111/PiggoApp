@@ -160,6 +160,10 @@ class TransactionDetailController extends BaseController with BudgetAware {
     final localDb = Get.find<LocalDatabaseService>();
 
     if (networkService.isOffline.value) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
       final payload = jsonEncode({
         'transactionId': transaction.id,
         'category': category.value?.toMap(),

@@ -23,7 +23,7 @@ class StatisticsController extends BaseController {
   final donutChartTimeframe = 'this_month'.obs;
   final trendChartTimeframe = 'this_month'.obs;
 
-  final burnRateData = <String, dynamic>{}.obs;
+
   final aiInsight = ''.obs;
 
   final barChartData = <String, dynamic>{}.obs;
@@ -65,7 +65,6 @@ class StatisticsController extends BaseController {
       _fetchOfflineForBarChart(),
       _fetchOfflineForDonutChart(),
       _fetchOfflineForTrendChart(),
-      _fetchOfflineForBurnRate(),
     ]);
 
     isInitialLoading.value = false;
@@ -116,11 +115,6 @@ class StatisticsController extends BaseController {
     trendChartData.value = data['trend'] ?? {};
   }
 
-  // --- Burn Rate & Fixed This Month Data ---
-  Future<void> _fetchOfflineForBurnRate() async {
-    final data = await _statisticRepository.getOfflineStatistics('this_month');
-    burnRateData.value = data['burnRate'] ?? {};
-  }
 
   // --- Online AI Insight Sync ---
   Future<void> _syncOnlineData() async {

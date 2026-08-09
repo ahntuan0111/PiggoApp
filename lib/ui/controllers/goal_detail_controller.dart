@@ -137,18 +137,26 @@ class GoalDetailController extends BaseController with BudgetAware {
     showLoading();
     final networkService = Get.find<NetworkService>();
     final offlineSyncService = Get.find<OfflineSyncService>();
+    
+    if (networkService.isOffline.value && offlineSyncService.checkAndShowManualQueueFull()) {
+      hideLoading();
+      return;
+    }
+    
     final localDb = Get.find<LocalDatabaseService>();
     final now = budgetService.currentTrackingMonth.value;
     final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-    final category = budgetService.categories.firstWhereOrNull((c) => c.categoryModel.id == goal.value.categoryId)?.categoryModel;
+    final category = budgetService.categories
+        .firstWhereOrNull((c) => c.categoryModel.id == goal.value.categoryId)
+        ?.categoryModel;
     if (category == null) {
       hideLoading();
       return;
     }
 
     final newBudget = category.defaultBudget + amount;
-    
+
     final allocations = [
       {'categoryId': category.id, 'amount': newBudget},
     ];
@@ -168,10 +176,19 @@ class GoalDetailController extends BaseController with BudgetAware {
         'transferLogs': transferLogs,
       });
       await offlineSyncService.queueManualTask('UPDATE_BUDGET', payload);
-      await localDb.transferBudgetLocal(null, category.id, amount, monthYearStr, isOffline: true);
-      
+      await localDb.transferBudgetLocal(
+        null,
+        category.id,
+        amount,
+        monthYearStr,
+        isOffline: true,
+      );
+
       hideLoading();
-      showSuccessMessage("Đã lưu (Ngoại tuyến)", "Dữ liệu sẽ được đồng bộ khi có mạng");
+      showSuccessMessage(
+        "Đã lưu (Ngoại tuyến)",
+        "Dữ liệu sẽ được đồng bộ khi có mạng",
+      );
       await budgetService.refreshData();
       await fetchHistory();
     } else {
@@ -181,18 +198,26 @@ class GoalDetailController extends BaseController with BudgetAware {
           allocations,
           transferLogs: transferLogs,
         );
-        await localDb.transferBudgetLocal(null, category.id, amount, monthYearStr, isOffline: false);
+        await localDb.transferBudgetLocal(
+          null,
+          category.id,
+          amount,
+          monthYearStr,
+          isOffline: false,
+        );
       }, tag: "UPDATE_BUDGET");
       hideLoading();
-      
-      result.fold(
-        (failure) => showErrorMessage('Lỗi', failure.message),
-        (_) async {
-          showSuccessMessage('Thành công', 'Đã chuyển tiền nhàn rỗi vào mục tiêu!');
-          await budgetService.refreshData();
-          await fetchHistory();
-        }
-      );
+
+      result.fold((failure) => showErrorMessage('Lỗi', failure.message), (
+        _,
+      ) async {
+        showSuccessMessage(
+          'Thành công',
+          'Đã chuyển tiền nhàn rỗi vào mục tiêu!',
+        );
+        await budgetService.refreshData();
+        await fetchHistory();
+      });
     }
   }
 
@@ -203,6 +228,10 @@ class GoalDetailController extends BaseController with BudgetAware {
       final offlineSyncService = Get.find<OfflineSyncService>();
       final localDb = Get.find<LocalDatabaseService>();
       final isOffline = networkService.isOffline.value;
+
+      if (isOffline && offlineSyncService.checkAndShowManualQueueFull()) {
+        return; // Dừng lại, ErrorHandler sẽ trả về data null và hideLoading()
+      }
 
       if (isOffline) {
         // Xóa local db
@@ -250,6 +279,10 @@ class GoalDetailController extends BaseController with BudgetAware {
       final localDb = Get.find<LocalDatabaseService>();
       final isOffline = networkService.isOffline.value;
 
+      if (isOffline && offlineSyncService.checkAndShowManualQueueFull()) {
+        return;
+      }
+
       // 1. Cập nhật Category
       final category = budgetService.categories.firstWhereOrNull(
         (c) => c.categoryModel.id == goal.value.categoryId,
@@ -293,16 +326,23 @@ class GoalDetailController extends BaseController with BudgetAware {
       }
 
       // 2. Cập nhật Goal
+      String newStatus = goal.value.status;
+      if (newStatus == 'COMPLETED' && newTarget > getSavedAmount(goal.value)) {
+        newStatus = 'ACTIVE';
+      }
+
       final updatedGoal = goal.value.copyWith(
         name: newName,
         targetAmount: newTarget,
         deadline: newDeadline,
+        status: newStatus,
       );
 
       if (isOffline) {
-        await localDb.updateLocalGoal(updatedGoal.toMap());
+        final goalMap = updatedGoal.toMap()..['id'] = updatedGoal.id;
+        await localDb.updateLocalGoal(goalMap);
         final payload = jsonEncode({
-          'goal': updatedGoal.toMap(),
+          'goal': goalMap,
           if (categoryUpdateMap != null) 'categoryUpdate': categoryUpdateMap,
         });
         await offlineSyncService.queueManualTask('UPDATE_GOAL', payload);

@@ -121,6 +121,24 @@ class TrendAreaChartWidget extends GetView<StatisticsController> {
               height: 200.h,
               child: LineChart(
                 LineChartData(
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (spot) => AppColors.textPrimary,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((LineBarSpot touchedSpot) {
+                          return LineTooltipItem(
+                            CurrencyFormatter.format(touchedSpot.y),
+                            TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.sp,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
@@ -187,7 +205,7 @@ class TrendAreaChartWidget extends GetView<StatisticsController> {
                         reservedSize: 42,
                         getTitlesWidget: (value, meta) {
                           return Text(
-                            CurrencyFormatter.format(value),
+                            CurrencyFormatter.formatCompact(value),
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 10.sp,

@@ -1,5 +1,6 @@
 import 'package:appintern/data/data_sources/local/local_database_base.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:appintern/core/utils/offline_helper.dart';
 
 mixin LocalDbBudgetMixin on LocalDatabaseBase {
   // ==========================================
@@ -112,7 +113,7 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
           );
         } else {
           await txn.insert('monthly_budgets', {
-            'id': 'offline_${DateTime.now().millisecondsSinceEpoch}_$fromId',
+            'id': OfflineHelper.generateTempId(fromId!),
             'categoryId': fromId,
             'monthYear': monthYear,
             'budgetedAmount': 0.0,
@@ -158,7 +159,7 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
           );
         } else {
           await txn.insert('monthly_budgets', {
-            'id': 'offline_${DateTime.now().millisecondsSinceEpoch}_$toId',
+            'id': OfflineHelper.generateTempId(toId!),
             'categoryId': toId,
             'monthYear': monthYear,
             'budgetedAmount': amount,
@@ -171,8 +172,9 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
       // 3. Insert into transferlogs
       if (amount > 0) {
         await txn.insert('transferlogs', {
-          'id':
-              'offline_${DateTime.now().microsecondsSinceEpoch}_${fromId ?? "unallocated"}_${toId ?? "unallocated"}',
+          'id': OfflineHelper.generateTempId(
+            '${fromId ?? "unallocated"}_${toId ?? "unallocated"}',
+          ),
           'ownerId': '', // Will be set on server or ignored locally
           'amount': amount,
           'fromCategoryId': fromId ?? '',

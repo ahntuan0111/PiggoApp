@@ -41,12 +41,12 @@ import 'package:appintern/ui/screens/new_month_setup_screen.dart';
 import 'package:appintern/ui/screens/multi_month_gap_screen.dart';
 import 'package:appintern/ui/screens/offline_queue_screen.dart';
 import 'package:appintern/ui/bindings/offline_queue_binding.dart';
-import 'package:appintern/ui/screens/splash_screen.dart';
 import 'package:appintern/ui/bindings/splash_binding.dart';
 import 'package:appintern/ui/screens/statistics_screen.dart';
 import 'package:appintern/ui/bindings/statistics_binding.dart';
 import 'package:appintern/ui/screens/budget_settings_screen.dart';
 import 'package:appintern/ui/bindings/budget_settings_binding.dart';
+import 'package:appintern/ui/screens/splash_screen.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'app_routes.dart';
@@ -59,12 +59,6 @@ class AppPages {
   }
 
   static final pages = [
-    GetPage(
-      name: Routes.SPLASH,
-      page: () => const SplashScreen(),
-      binding: SplashBinding(),
-      transition: Transition.fadeIn,
-    ),
     GetPage(
       name: Routes.ONBOARDING,
       page: () => const OnboardingScreen(),
@@ -202,6 +196,12 @@ class AppPages {
       page: () => const BudgetSettingsScreen(),
       binding: BudgetSettingsBinding(),
       transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.SPLASH,
+      page: () => const SplashScreen(),
+      binding: SplashBinding(),
+      transition: Transition.fadeIn,
     ),
   ];
 }

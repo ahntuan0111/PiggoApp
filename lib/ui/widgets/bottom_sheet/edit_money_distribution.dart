@@ -42,8 +42,6 @@ class EditMoneyDistributionBottomSheet extends StatefulWidget {
 
 class _EditMoneyDistributionBottomSheetState
     extends State<EditMoneyDistributionBottomSheet> {
-  
-
   late TextEditingController _offsetController;
 
   bool _isAdding = true;
@@ -68,12 +66,12 @@ class _EditMoneyDistributionBottomSheetState
         return;
       }
 
-      // Tìm category gốc để lấy defaultBudget hiện tại
+      // Tìm category gốc để lấy số tiền đã phân bổ hiện tại
       double sourceAllocated = 0.0;
       for (var group in widget.categoryGroups) {
         for (var cat in group.categories) {
           if (cat.categoryModel.id == _selectedSourceId) {
-            sourceAllocated = cat.categoryModel.defaultBudget;
+            sourceAllocated = cat.allocated;
             break;
           }
         }
@@ -211,7 +209,7 @@ class _EditMoneyDistributionBottomSheetState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Đã phân bổ",
+                    widget.isGoal ? "Hiện có" : "Đã phân bổ",
                     style: TextStyle(
                       fontSize: 12.sp,
                       color: const Color(0xFF424242),
@@ -387,7 +385,9 @@ class _EditMoneyDistributionBottomSheetState
                         // Auto-correct nếu offsetAmount hiện tại lớn hơn số dư của nguồn mới chọn
                         if (_isAdding && _offsetAmount > availableAmount) {
                           _offsetAmount = availableAmount;
-                          String formatted = CurrencyFormatter.format(_offsetAmount);
+                          String formatted = CurrencyFormatter.format(
+                            _offsetAmount,
+                          );
                           _offsetController.value = TextEditingValue(
                             text: formatted,
                             selection: TextSelection.collapsed(
@@ -490,79 +490,196 @@ class _EditMoneyDistributionBottomSheetState
                         if (widget.isGoal && !_isAdding) {
                           final noteController = TextEditingController();
                           Get.dialog(
-                            AlertDialog(
+                            Dialog(
                               backgroundColor: Colors.white,
-                              title: Row(
-                                children: [
-                                  Icon(
-                                    Icons.warning_amber_rounded,
-                                    color: Colors.orange,
-                                    size: 28.sp,
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Text(
-                                    "Cảnh báo",
-                                    style: TextStyle(
-                                      fontSize: 18.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.r),
                               ),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Việc rút ${CurrencyFormatter.format(_offsetAmount)}đ khỏi quỹ này sẽ làm chậm tiến độ đạt mục tiêu của bạn. Hãy cân nhắc kỹ!",
-                                    style: TextStyle(
-                                      fontSize: 14.sp,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  SizedBox(height: 16.h),
-                                  TextField(
-                                    controller: noteController,
-                                    decoration: InputDecoration(
-                                      labelText: "Lý do rút tiền *",
-                                      border: OutlineInputBorder(),
-                                      hintText: "Vd: Kẹt tiền trả tiền nhà",
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Get.back(),
-                                  child: Text(
-                                    "HỦY",
-                                    style: TextStyle(color: Colors.grey[600]),
+                              child: SingleChildScrollView(
+                                child: Padding(
+                                  padding: EdgeInsets.all(24.w),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: EdgeInsets.all(16.w),
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFFFF6D9),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.admin_panel_settings_outlined,
+                                          color: const Color(0xFFF2994A),
+                                          size: 32.sp,
+                                        ),
+                                      ),
+                                      SizedBox(height: 16.h),
+                                      Text(
+                                        "Rút tiền từ quỹ mục tiêu?",
+                                        style: TextStyle(
+                                          fontSize: 20.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      SizedBox(height: 12.h),
+                                      RichText(
+                                        textAlign: TextAlign.center,
+                                        text: TextSpan(
+                                          style: TextStyle(
+                                            fontSize: 14.sp,
+                                            color: Colors.black54,
+                                            height: 1.5,
+                                            fontFamily: 'Inter',
+                                          ),
+                                          children: [
+                                            const TextSpan(text: "Việc rút "),
+                                            TextSpan(
+                                              text:
+                                                  "${CurrencyFormatter.format(_offsetAmount)}đ",
+                                              style: const TextStyle(
+                                                color: Color(0xFFD64D3F),
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const TextSpan(
+                                              text:
+                                                  " khỏi quỹ này sẽ làm chậm tiến độ đạt mục tiêu của bạn. Hãy cân nhắc kỹ!",
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(height: 24.h),
+                                      TextField(
+                                        controller: noteController,
+                                        decoration: InputDecoration(
+                                          labelText: "Lý do rút tiền *",
+                                          labelStyle: TextStyle(
+                                            fontSize: 14.sp,
+                                          ),
+                                          hintText: "Vd: Kẹt tiền trả tiền nhà",
+                                          hintStyle: TextStyle(
+                                            fontSize: 14.sp,
+                                            color: Colors.grey[400],
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12.r,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Colors.grey[300]!,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12.r,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Colors.grey[300]!,
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12.r,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Get.theme.primaryColor,
+                                            ),
+                                          ),
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 16.w,
+                                            vertical: 14.h,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: 24.h),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: OutlinedButton(
+                                              style: OutlinedButton.styleFrom(
+                                                padding: EdgeInsets.symmetric(
+                                                  vertical: 14.h,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        30.r,
+                                                      ),
+                                                ),
+                                                side: BorderSide(
+                                                  color: Colors.grey[400]!,
+                                                ),
+                                              ),
+                                              onPressed: () => Get.back(),
+                                              child: Text(
+                                                "HỦY",
+                                                style: TextStyle(
+                                                  color: const Color(
+                                                    0xFF003B5C,
+                                                  ),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14.sp,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(width: 12.w),
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(
+                                                  0xFFD64D3F,
+                                                ),
+                                                padding: EdgeInsets.symmetric(
+                                                  vertical: 14.h,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        30.r,
+                                                      ),
+                                                ),
+                                                elevation: 0,
+                                              ),
+                                              onPressed: () {
+                                                if (noteController.text
+                                                    .trim()
+                                                    .isEmpty) {
+                                                  Get.snackbar(
+                                                    "Lỗi",
+                                                    "Vui lòng nhập lý do rút tiền",
+                                                    backgroundColor: Colors.red,
+                                                    colorText: Colors.white,
+                                                    snackPosition:
+                                                        SnackPosition.BOTTOM,
+                                                  );
+                                                  return;
+                                                }
+                                                Get.back();
+                                                _executeSave(
+                                                  noteController.text.trim(),
+                                                );
+                                              },
+                                              child: Text(
+                                                "XÁC NHẬN\nRÚT",
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  height: 1.2,
+                                                  fontSize: 14.sp,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                  ),
-                                  onPressed: () {
-                                    if (noteController.text.trim().isEmpty) {
-                                      Get.snackbar(
-                                        "Lỗi",
-                                        "Vui lòng nhập lý do rút tiền",
-                                        backgroundColor: Colors.red,
-                                        colorText: Colors.white,
-                                        snackPosition: SnackPosition.BOTTOM,
-                                      );
-                                      return;
-                                    }
-                                    Get.back();
-                                    _executeSave(noteController.text.trim());
-                                  },
-                                  child: Text(
-                                    "XÁC NHẬN RÚT",
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           );
                         } else {

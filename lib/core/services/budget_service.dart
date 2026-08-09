@@ -28,14 +28,29 @@ class BudgetService extends GetxService {
   final totalWalletBalance = 0.0.obs;
   final allocatedAmount = 0.0.obs;
   final unallocatedAmount = 0.0.obs;
+  final currentMonthIncome = 0.0.obs;
+  final currentMonthExpense = 0.0.obs;
 
   final categories =
       <BudgetCategory>[].obs; // Chứa TẤT CẢ danh mục (cả active và bị ẩn)
   final categoryGroups = <BudgetCategoryGroup>[].obs; // Chứa TẤT CẢ các nhóm
 
-  // Danh sách chỉ chứa các danh mục đang hoạt động (isActive = true)
-  List<BudgetCategory> get activeCategories =>
-      categories.where((c) => c.categoryModel.isActive).toList();
+  bool _isCompletedGoal(String categoryId) {
+    return goals.any(
+      (g) => g.categoryId == categoryId && g.status == 'COMPLETED',
+    );
+  }
+
+  // Danh sách chỉ chứa các danh mục đang hoạt động (isActive = true) HOẶC là Goal đã hoàn thành
+  List<BudgetCategory> get activeCategories => categories.where((c) {
+    final group = categoryGroups.firstWhereOrNull(
+      (g) => g.typeId == c.categoryModel.categoryTypeId,
+    );
+    if (group != null && group.typeName == 'Tiết kiệm lâu dài') {
+      return _isCompletedGoal(c.categoryModel.id);
+    }
+    return c.categoryModel.isActive || _isCompletedGoal(c.categoryModel.id);
+  }).toList();
 
   List<BudgetCategoryGroup> get activeCategoryGroups {
     return categoryGroups
@@ -43,7 +58,13 @@ class BudgetService extends GetxService {
           return BudgetCategoryGroup(
             group.typeId,
             group.typeName,
-            group.categories.where((c) => c.categoryModel.isActive).toList(),
+            group.categories.where((c) {
+              if (group.typeName == 'Tiết kiệm lâu dài') {
+                return _isCompletedGoal(c.categoryModel.id);
+              }
+              return c.categoryModel.isActive ||
+                  _isCompletedGoal(c.categoryModel.id);
+            }).toList(),
           );
         })
         .where((g) => g.categories.isNotEmpty)
@@ -70,30 +91,125 @@ class BudgetService extends GetxService {
     });
   }
 
+  bool _isRefreshing = false;
+
   Future<void> refreshData() async {
-    // Luôn đọc lại userId phòng trường hợp vừa login xong
-    currentUserId.value = storage.read(AppKeys.userId) ?? "";
-    final userId = currentUserId.value;
-
-    if (userId.isEmpty) {
-      isError.value = true;
-      errorMessage.value = "Người dùng chưa đăng nhập";
-      // Đánh dấu loaded để tránh kẹt loading ở HomeController
-      isDataLoaded.value = true;
-      return;
-    }
-
-    final localDb = Get.find<LocalDatabaseService>();
-    bool hasLoadedFromCache = false;
-
-    // 1. THỬ LOAD TỪ CACHE (STRUCTURED TABLES) TRƯỚC TIÊN (ZERO LOADING)
+    if (_isRefreshing) return;
+    _isRefreshing = true;
     try {
+      // Luôn đọc lại userId phòng trường hợp vừa login xong
+      currentUserId.value = storage.read(AppKeys.userId) ?? "";
+      final userId = currentUserId.value;
+
+      if (userId.isEmpty) {
+        isError.value = true;
+        errorMessage.value = "Người dùng chưa đăng nhập";
+        // Đánh dấu loaded để tránh kẹt loading ở HomeController
+        isDataLoaded.value = true;
+        return;
+      }
+
+      final localDb = Get.find<LocalDatabaseService>();
+      bool hasLoadedFromCache = false;
+
+      // 1. THỬ LOAD TỪ CACHE (STRUCTURED TABLES) TRƯỚC TIÊN (ZERO LOADING)
+      hasLoadedFromCache = await loadDataFromLocal();
+
+      final networkService = Get.find<NetworkService>();
+      if (networkService.isOffline.value && hasLoadedFromCache) {
+        return;
+      }
+
+      // 2. FETCH TỪ APPWRITE (BACKGROUND SYNC)
+      final result = await ErrorHandler.execute(() async {
+        final types = await categoryRepository.getCategoryTypes(userId);
+        List<CategoryModel> cats = [];
+        List<MonthlyBudgetModel> fetchedMonthlyBudgets = [];
+
+        if (types.isNotEmpty) {
+          final typeIds = types.map((e) => e.id).toList();
+          cats = await categoryRepository.getCategories(typeIds);
+
+          String monthYearStr =
+              "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
+          fetchedMonthlyBudgets = await categoryRepository.getMonthlyBudgets(
+            monthYearStr,
+          );
+          monthlyBudgets.value = fetchedMonthlyBudgets;
+        }
+
+        final fetchedGoals = await goalRepository.getGoals();
+
+        // Lấy tất cả MonthlySummaries của user để tính dòng tiền
+        final allSummaries = await categoryRepository.getAllMonthlySummaries();
+
+        // GHI CACHE RAW DATA VÀO STRUCTURED TABLES
+        await localDb.saveCategoryTypes(types.map((e) => e.toMap()).toList());
+        await localDb.saveCategories(cats.map((e) => e.toMap()).toList());
+        String currentMonthStr =
+            "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
+        await localDb.saveMonthlyBudgets(
+          currentMonthStr,
+          fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),
+        );
+        await localDb.saveGoals(fetchedGoals.map((e) => e.toMap()).toList());
+        await localDb.saveMonthlySummaries(
+          allSummaries.map((e) => e.toMap()).toList(),
+        );
+
+        _parseAndSetBudgetData(
+          typesData: types.map((e) => e.toMap()).toList(),
+          catsData: cats.map((e) => e.toMap()).toList(),
+          budgetsData: fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),
+          goalsData: fetchedGoals.map((e) => e.toMap()).toList(),
+          summariesData: allSummaries.map((e) => e.toMap()).toList(),
+        );
+      }, tag: "FETCH_BUDGET_DATA");
+
+      result.fold(
+        (failure) {
+          AppLogger.error("FETCH_BUDGET_DATA", failure.message);
+          if (!hasLoadedFromCache) {
+            isError.value = true;
+            errorMessage.value = failure.message;
+          }
+        },
+        (_) {
+          isError.value = false;
+          errorMessage.value = "";
+          isDataLoaded.value = true;
+        },
+      );
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  Future<bool> loadDataFromLocal() async {
+    try {
+      final localDb = Get.find<LocalDatabaseService>();
       final typesData = await localDb.getCategoryTypes();
       final catsData = await localDb.getCategories();
 
       String monthYearStr =
           "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
-      final budgetsData = await localDb.getMonthlyBudgets(monthYearStr);
+      var budgetsData = await localDb.getMonthlyBudgets(monthYearStr);
+
+      if (budgetsData.isEmpty) {
+        final prevMonth = DateTime(
+          currentTrackingMonth.value.year,
+          currentTrackingMonth.value.month - 1,
+          1,
+        );
+        final prevMonthStr =
+            "${prevMonth.month.toString().padLeft(2, '0')}-${prevMonth.year}";
+        final prevBudgetsData = await localDb.getMonthlyBudgets(prevMonthStr);
+        if (prevBudgetsData.isNotEmpty) {
+          currentTrackingMonth.value = prevMonth;
+          monthYearStr = prevMonthStr;
+          budgetsData = prevBudgetsData;
+        }
+      }
       final goalsData = await localDb.getGoals();
       final summariesData = await localDb.getMonthlySummaries();
 
@@ -106,108 +222,12 @@ class BudgetService extends GetxService {
           summariesData: summariesData,
         );
         isDataLoaded.value = true;
-        hasLoadedFromCache = true;
+        return true;
       }
     } catch (e) {
       AppLogger.error("CACHE_READ_ERROR", e.toString());
     }
-
-    final networkService = Get.find<NetworkService>();
-    if (networkService.isOffline.value && hasLoadedFromCache) {
-      return;
-    }
-
-    // 2. FETCH TỪ APPWRITE (BACKGROUND SYNC)
-    final result = await ErrorHandler.execute(() async {
-      final types = await categoryRepository.getCategoryTypes(userId);
-      List<BudgetCategoryGroup> tempGroups = [];
-      List<BudgetCategory> tempCategories = [];
-      List<CategoryModel> cats = [];
-      List<MonthlyBudgetModel> fetchedMonthlyBudgets = [];
-
-      if (types.isNotEmpty) {
-        final typeIds = types.map((e) => e.id).toList();
-        cats = await categoryRepository.getCategories(typeIds);
-
-        String monthYearStr =
-            "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
-        fetchedMonthlyBudgets = await categoryRepository.getMonthlyBudgets(
-          monthYearStr,
-        );
-        monthlyBudgets.value = fetchedMonthlyBudgets;
-
-        for (var type in types) {
-          final typeCats = cats
-              .where((c) => c.categoryTypeId == type.id)
-              .toList();
-          if (typeCats.isNotEmpty) {
-            tempGroups.add(
-              BudgetCategoryGroup(
-                type.id,
-                type.name,
-                typeCats.map((c) {
-                  final mb = fetchedMonthlyBudgets.firstWhereOrNull(
-                    (m) => m.categoryId == c.id,
-                  );
-                  return BudgetCategory(
-                    categoryModel: c,
-                    icon: c.iconName,
-                    name: c.name,
-                    allocated:
-                        (mb?.budgetedAmount ?? 0.0) +
-                        (mb?.rolloverAmount ?? 0.0),
-                    spent: mb?.spentAmount ?? 0.0,
-                  );
-                }).toList(),
-              ),
-            );
-          }
-        }
-        tempCategories = tempGroups.expand((g) => g.categories).toList();
-      }
-
-      final fetchedGoals = await goalRepository.getGoals();
-
-      // Lấy tất cả MonthlySummaries của user để tính dòng tiền
-      final allSummaries = await categoryRepository.getAllMonthlySummaries();
-
-      // GHI CACHE RAW DATA VÀO STRUCTURED TABLES
-      await localDb.saveCategoryTypes(types.map((e) => e.toMap()).toList());
-      await localDb.saveCategories(cats.map((e) => e.toMap()).toList());
-      String currentMonthStr =
-          "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
-      await localDb.saveMonthlyBudgets(
-        currentMonthStr,
-        fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),
-      );
-      await localDb.saveGoals(fetchedGoals.map((e) => e.toMap()).toList());
-      await localDb.saveMonthlySummaries(
-        allSummaries.map((e) => e.toMap()).toList(),
-      );
-
-      _parseAndSetBudgetData(
-        typesData: types.map((e) => e.toMap()).toList(),
-        catsData: cats.map((e) => e.toMap()).toList(),
-        budgetsData: fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),
-        goalsData: fetchedGoals.map((e) => e.toMap()).toList(),
-        summariesData: allSummaries.map((e) => e.toMap()).toList(),
-      );
-    }, tag: "FETCH_BUDGET_DATA");
-
-    result.fold(
-      (failure) {
-        AppLogger.error("FETCH_BUDGET_DATA", failure.message);
-        if (!hasLoadedFromCache) {
-          isError.value = true;
-          errorMessage.value = failure.message;
-        }
-      },
-      (_) {
-        isError.value = false;
-        errorMessage.value = "";
-        isDataLoaded.value = true;
-      },
-    );
+    return false;
   }
 
   void _parseAndSetBudgetData({
@@ -264,7 +284,14 @@ class BudgetService extends GetxService {
     final validCategoryIds = tempCategories
         .map((c) => c.categoryModel.id)
         .toSet();
-    final fetchedGoals = goalsData.map((e) => GoalModel.fromMap(e)).toList();
+    final fetchedGoals = goalsData.map((e) {
+      final map = Map<String, dynamic>.from(e);
+      // Ánh xạ từ SQLite 'categoryId' sang 'categories' cho GoalModel.fromMap
+      if (map['categoryId'] != null) {
+        map['categories'] = map['categoryId'];
+      }
+      return GoalModel.fromMap(map);
+    }).toList();
 
     // Filter goals exactly as previously done in GoalController
     final userGoals = fetchedGoals
@@ -289,6 +316,16 @@ class BudgetService extends GetxService {
 
     // Tổng ngân sách hiện tại = Tổng Thu - Tổng Chi
     totalWalletBalance.value = totalAllTimeIncome - totalAllTimeExpense;
+
+    String currentMonthStr =
+        "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
+    final currentSummary = summariesData.firstWhereOrNull(
+      (s) => s['monthYear'] == currentMonthStr,
+    );
+    currentMonthIncome.value = (currentSummary?['totalIncome'] ?? 0.0)
+        .toDouble();
+    currentMonthExpense.value = (currentSummary?['totalExpense'] ?? 0.0)
+        .toDouble();
 
     double totalRemainingBudgets = tempCategories.fold(
       0.0,

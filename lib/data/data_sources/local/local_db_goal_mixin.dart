@@ -10,12 +10,12 @@ mixin LocalDbGoalMixin on LocalDatabaseBase {
     Batch batch = db.batch();
 
     // Purge logic: Xóa các records đã sync (bảo toàn offline ghosts nếu có)
-    batch.delete('goals', where: "id NOT LIKE 'offline_%'");
+    batch.delete('goals', where: "id NOT LIKE 'offline_%' OR id IS NULL");
 
     for (var g in goals) {
       batch.insert('goals', {
         'id': g['id'],
-        'categoryId': g['categoryId'],
+        'categoryId': g['categories'] ?? g['categoryId'],
         'name': g['name'],
         'targetAmount': g['targetAmount'],
         'currentAmount': g['currentAmount'],
@@ -59,7 +59,7 @@ mixin LocalDbGoalMixin on LocalDatabaseBase {
     final db = await database;
     await db.insert('goals', {
       'id': goal['id'],
-      'categoryId': goal['categoryId'],
+      'categoryId': goal['categories'] ?? goal['categoryId'],
       'name': goal['name'],
       'targetAmount': goal['targetAmount'],
       'currentAmount': goal['currentAmount'] ?? 0,
@@ -76,6 +76,7 @@ mixin LocalDbGoalMixin on LocalDatabaseBase {
         'name': goal['name'],
         'targetAmount': goal['targetAmount'],
         'deadline': goal['deadline'],
+        'status': goal['status'],
       },
       where: 'id = ?',
       whereArgs: [goal['id']],

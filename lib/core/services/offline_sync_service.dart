@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:appwrite/appwrite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
@@ -13,6 +14,12 @@ class OfflineSyncService extends GetxService {
 
   final aiQueueCount = 0.obs;
   final manualQueueCount = 0.obs;
+  final queueUpdateTrigger = 0.obs;
+
+  void triggerQueueUpdate() {
+    queueUpdateTrigger.value++;
+    refreshQueueCount();
+  }
 
   @override
   void onInit() {
@@ -23,15 +30,25 @@ class OfflineSyncService extends GetxService {
   Future<void> refreshQueueCount() async {
     final tasks = await _localDb.getPendingTasks();
     aiQueueCount.value = tasks
-        .where((t) => t['task_type'] == 'TEXT' || t['task_type'] == 'IMAGE')
+        .where(
+          (t) =>
+              t['task_type'] == 'TEXT' ||
+              t['task_type'] == 'IMAGE' ||
+              t['task_type'] == 'VOICE',
+        )
         .length;
     manualQueueCount.value = tasks
-        .where((t) => t['task_type'] != 'TEXT' && t['task_type'] != 'IMAGE')
+        .where(
+          (t) =>
+              t['task_type'] != 'TEXT' &&
+              t['task_type'] != 'IMAGE' &&
+              t['task_type'] != 'VOICE',
+        )
         .length;
   }
 
   Future<void> queueTask(String type, String payload) async {
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final id = ID.unique(); // CR-06: Collision-proof ID thay cho timestamp
     await _localDb.addOfflineTask(id: id, taskType: type, payload: payload);
     await refreshQueueCount();
 
@@ -54,6 +71,7 @@ class OfflineSyncService extends GetxService {
     String payload, {
     required String successMessage,
     bool isFile = false,
+    bool showSnackbar = true,
   }) async {
     final networkService = Get.find<NetworkService>();
     if (!networkService.isOffline.value) {
@@ -82,14 +100,28 @@ class OfflineSyncService extends GetxService {
     }
 
     await queueTask(type, finalPayload);
-    Get.snackbar(
-      'Ngoại tuyến',
-      successMessage,
-      // fallback if color is missing, though we should avoid hardcoding
-      backgroundColor: Get.theme.colorScheme.secondary,
-      colorText: Get.theme.colorScheme.onSecondary,
-    );
+    if (showSnackbar) {
+      Get.snackbar(
+        'Ngoại tuyến',
+        successMessage,
+        // fallback if color is missing, though we should avoid hardcoding
+        backgroundColor: Get.theme.colorScheme.secondary,
+        colorText: Get.theme.colorScheme.onSecondary,
+      );
+    }
     return true; // Đã xử lý (đưa vào queue thành công)
+  }
+
+  bool checkAndShowManualQueueFull() {
+    if (manualQueueCount.value >= MAX_MANUAL_TASKS) {
+      OfflineQueueFullDialog.show(
+        currentCount: manualQueueCount.value,
+        maxCount: MAX_MANUAL_TASKS,
+        isAiTask: false,
+      );
+      return true;
+    }
+    return false;
   }
 
   /// Đưa tác vụ thủ công (tạo giao dịch, tạo danh mục) vào hàng đợi.

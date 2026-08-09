@@ -108,7 +108,6 @@ class _ConfirmTransactionBottomSheetState
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
                 ),
-                
               ),
               onChanged: (value) {
                 final cleanString = value.replaceAll(RegExp(r'[^0-9]'), '');

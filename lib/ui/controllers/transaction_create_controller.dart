@@ -4,12 +4,20 @@ import 'dart:io';
 import 'package:appintern/core/services/budget_service.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/core/utils/offline_helper.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/data/models/budget_category.dart';
+import 'package:appintern/data/models/transfer_log_model.dart';
+import 'package:appintern/data/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/goal_repository.dart';
+import 'package:appintern/data/repositories/transfer_log_repository.dart';
+import 'package:appintern/ui/widgets/dialogs/permission_dialog.dart';
+import 'package:appintern/ui/widgets/dialogs/post_adjustment_warning_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/utils/logger.dart';
@@ -21,12 +29,10 @@ import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/data/repositories/storage_repository.dart';
-import 'package:appintern/ui/widgets/dialogs/post_adjustment_warning_dialog.dart';
-import 'package:appintern/ui/widgets/dialogs/permission_dialog.dart';
-import 'package:intl/intl.dart';
-import 'package:collection/collection.dart';
+import 'package:appintern/core/utils/offline_aware_mixin.dart';
 
-class TransactionCreateController extends BaseController with BudgetAware {
+class TransactionCreateController extends BaseController
+    with BudgetAware, OfflineAware {
   final storage = Get.find<StorageService>();
   final TransactionRepository transactionRepository =
       Get.find<TransactionRepository>();
@@ -82,11 +88,9 @@ class TransactionCreateController extends BaseController with BudgetAware {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF4CAF50), // Header background color
-              onPrimary: Colors.white, // Header text color
-              onSurface: Colors.black, // Body text color
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: const Color(0xFF4CAF50)),
           ),
           child: child!,
         );
@@ -148,23 +152,15 @@ class TransactionCreateController extends BaseController with BudgetAware {
   }
 
   void _onAmountChanged() {
-    String text = amountController.text
-        .replaceAll('.', '')
-        .replaceAll(',', '')
-        
-        .trim();
-    if (text.isEmpty) {
+    if (amountController.text.trim().isEmpty) {
       amountValue.value = 0.0;
       isValidAmount.value = true;
-    } else {
-      double? val = double.tryParse(text);
-      if (val != null) {
-        amountValue.value = val;
-        isValidAmount.value = true;
-      } else {
-        isValidAmount.value = false;
-      }
+      return;
     }
+
+    double val = CurrencyFormatter.parse(amountController.text);
+    amountValue.value = val;
+    isValidAmount.value = true;
   }
 
   Future<void> fetchData() async {
@@ -177,10 +173,8 @@ class TransactionCreateController extends BaseController with BudgetAware {
       if (!budgetService.isDataLoaded.value) {
         await budgetService.refreshData();
       }
-      // Lọc ra các categories KHÔNG thuộc nhóm "Tiết kiệm lâu dài" (Goal Savings)
-      // Vì Goal Savings có luồng nạp/rút riêng, không thể thêm giao dịch thông thường.
+      // Lấy danh sách category từ budgetService (đã lọc các category bị ẩn, chỉ bao gồm Goal đã hoàn thành)
       final validCategories = budgetService.activeCategoryGroups
-          .where((group) => group.typeName != 'Tiết kiệm lâu dài')
           .expand((group) => group.categories)
           .toList();
 
@@ -208,8 +202,9 @@ class TransactionCreateController extends BaseController with BudgetAware {
         editingDetail = Get.arguments['detail'] as TransactionDetailModel?;
 
         if (editingTransaction != null) {
-          
-          amountController.text = CurrencyFormatter.format(editingTransaction!.amount);
+          amountController.text = CurrencyFormatter.formatNumberOnly(
+            editingTransaction!.amount,
+          );
           noteController.text =
               editingDetail?.note ?? editingTransaction!.note ?? '';
           selectedDate.value = editingTransaction!.transactionDate;
@@ -221,6 +216,22 @@ class TransactionCreateController extends BaseController with BudgetAware {
             selectedCategory.value = matchedCategory;
             oldCategory = matchedCategory.categoryModel;
           }
+        }
+      } else if (Get.arguments != null &&
+          Get.arguments['prefillCategory'] != null) {
+        // Xử lý pre-fill từ Goal
+        final matchedCategory = categories.firstWhereOrNull(
+          (c) => c.categoryModel.id == Get.arguments['prefillCategory'],
+        );
+        if (matchedCategory != null) {
+          selectedCategory.value = matchedCategory;
+        }
+        if (Get.arguments['prefillAmount'] != null) {
+          amountController.text = CurrencyFormatter.formatNumberOnly(
+            Get.arguments['prefillAmount'],
+          );
+          amountValue.value = (Get.arguments['prefillAmount'] as num)
+              .toDouble();
         }
       }
     }, tag: "FETCH_TRANSACTION_CREATE");
@@ -367,13 +378,28 @@ class TransactionCreateController extends BaseController with BudgetAware {
     final result = await ErrorHandler.execute(() async {
       final networkService = Get.find<NetworkService>();
       final offlineSyncService = Get.find<OfflineSyncService>();
+
+      if (networkService.isOffline.value &&
+          offlineSyncService.checkAndShowManualQueueFull()) {
+        return;
+      }
+
       final localDb = Get.find<LocalDatabaseService>();
 
-      List<String> uploadedFileIds = imagePaths.toList();
+      List<String> uploadedFileIds = [];
+      if (!isOffline && imagePaths.isNotEmpty) {
+        final storageRepo = Get.find<StorageRepository>();
+        for (var path in imagePaths) {
+          final fileId = await storageRepo.uploadReceiptImage(File(path));
+          uploadedFileIds.add(fileId);
+        }
+      } else {
+        uploadedFileIds = imagePaths.toList();
+      }
 
-      final tempId = 'offline_\${DateTime.now().millisecondsSinceEpoch}';
+      final tempId = OfflineHelper.generateTempId();
       final tx = TransactionModel(
-        id: networkService.isOffline.value ? tempId : '',
+        id: isOffline ? tempId : '',
         categoryId: selectedCategory.value!.categoryModel.id,
         amount: amountValue.value,
         type: 'EXPENSE',
@@ -383,24 +409,25 @@ class TransactionCreateController extends BaseController with BudgetAware {
       );
 
       final detail = TransactionDetailModel(
-        id: networkService.isOffline.value ? tempId : '',
-        transactionId: networkService.isOffline.value ? tempId : '',
+        id: isOffline ? tempId : '',
+        transactionId: isOffline ? tempId : '',
         note: noteController.text.trim(),
         receiptFileIds: uploadedFileIds,
         rawInputText: '',
         confidenceScore: 1.0,
       );
 
-      if (networkService.isOffline.value) {
+      if (isOffline) {
         final payload = jsonEncode({
           'transaction': tx.toMap()..['\$id'] = tx.id,
           'detail': detail.toMap()..['\$id'] = detail.id,
           'category': selectedCategory.value!.categoryModel.toMap(),
+          'tempId': tempId,
         });
         await offlineSyncService.queueManualTask('CREATE_MANUAL_TX', payload);
 
         final monthYearStr =
-            "\${selectedDate.value.month.toString().padLeft(2, '0')}-\${selectedDate.value.year}";
+            "${selectedDate.value.month.toString().padLeft(2, '0')}-${selectedDate.value.year}";
         await localDb.updateLocalBudgetSpent(
           tx.categoryId,
           monthYearStr,
@@ -413,6 +440,128 @@ class TransactionCreateController extends BaseController with BudgetAware {
           transactionDetail: detail,
           currentCategory: selectedCategory.value!.categoryModel,
         );
+      }
+
+      // AUTO-SWEEP LOGIC FOR GOALS
+      final budgetService = Get.find<BudgetService>();
+      final goal = budgetService.goals.firstWhereOrNull(
+        (g) => g.categoryId == tx.categoryId,
+      );
+      if (goal != null) {
+        double savedAmount =
+            budgetService.categories
+                .firstWhereOrNull((c) => c.categoryModel.id == goal.categoryId)
+                ?.remaining ??
+            0.0;
+        double difference = tx.amount - savedAmount; // spent - saved
+        final monthYearStr =
+            "${selectedDate.value.month.toString().padLeft(2, '0')}-${selectedDate.value.year}";
+
+        if (difference != 0) {
+          double currentBudget =
+              budgetService
+                  .getBudgetForCategory(goal.categoryId)
+                  ?.budgetedAmount ??
+              0.0;
+          double newBudget = currentBudget + difference;
+
+          if (isOffline) {
+            final allocations = [
+              {'categoryId': goal.categoryId, 'amount': newBudget},
+            ];
+            final transferLogs = [
+              {
+                'amount': difference.abs(),
+                'fromCategoryId': difference > 0 ? null : goal.categoryId,
+                'toCategoryId': difference > 0 ? goal.categoryId : null,
+                'note': 'Auto-sweep chênh lệch mục tiêu',
+              },
+            ];
+            final payload = jsonEncode({
+              'monthYear': monthYearStr,
+              'allocations': allocations,
+              'transferLogs': transferLogs,
+            });
+            await offlineSyncService.queueManualTask('UPDATE_BUDGET', payload);
+
+            if (difference > 0) {
+              await localDb.transferBudgetLocal(
+                null,
+                goal.categoryId,
+                difference,
+                monthYearStr,
+              );
+            } else {
+              await localDb.transferBudgetLocal(
+                goal.categoryId,
+                null,
+                -difference,
+                monthYearStr,
+              );
+            }
+          } else {
+            final categoryRepo = Get.find<CategoryRepository>();
+            final mbTarget = budgetService.getBudgetForCategory(
+              goal.categoryId,
+            );
+            if (mbTarget != null) {
+              await categoryRepo.updateMonthlyBudget(mbTarget.id, newBudget);
+            } else {
+              await categoryRepo.createMonthlyBudget(
+                categoryId: goal.categoryId,
+                monthYear: monthYearStr,
+                budgetedAmount: newBudget,
+              );
+            }
+
+            final transferRepo = Get.find<TransferLogRepository>();
+            await transferRepo.createTransferLog(
+              TransferLogModel(
+                id: '',
+                ownerId: currentUserId.value,
+                amount: difference.abs(),
+                fromCategoryId: difference > 0
+                    ? 'unallocated'
+                    : goal.categoryId,
+                toCategoryId: difference > 0 ? goal.categoryId : 'unallocated',
+                note: 'Auto-sweep chênh lệch mục tiêu',
+                createdAt: DateTime.now(),
+              ),
+            );
+          }
+        }
+
+        if (goal.status != 'COMPLETED') {
+          final updatedGoal = goal.copyWith(status: 'COMPLETED');
+          if (isOffline) {
+            await localDb.updateLocalGoal(updatedGoal.toMap());
+            await offlineSyncService.queueManualTask(
+              'UPDATE_GOAL',
+              jsonEncode(updatedGoal.toMap()),
+            );
+          } else {
+            await Get.find<GoalRepository>().updateGoal(updatedGoal);
+            await localDb.updateLocalGoal(updatedGoal.toMap());
+          }
+        }
+
+        if (difference > 0) {
+          Future.delayed(
+            const Duration(milliseconds: 500),
+            () => showSuccessMessage(
+              "Cân bằng ngân sách",
+              "Đã lấy ${CurrencyFormatter.format(difference)} từ ví chung bù vào mục tiêu.",
+            ),
+          );
+        } else if (difference < 0) {
+          Future.delayed(
+            const Duration(milliseconds: 500),
+            () => showSuccessMessage(
+              "Cân bằng ngân sách",
+              "Đã hoàn ${CurrencyFormatter.format(-difference)} tiền thừa về ví.",
+            ),
+          );
+        }
       }
     }, tag: "ADD_TRANSACTION");
 
@@ -449,6 +598,12 @@ class TransactionCreateController extends BaseController with BudgetAware {
     final result = await ErrorHandler.execute(() async {
       final networkService = Get.find<NetworkService>();
       final offlineSyncService = Get.find<OfflineSyncService>();
+
+      if (networkService.isOffline.value &&
+          offlineSyncService.checkAndShowManualQueueFull()) {
+        return;
+      }
+
       final localDb = Get.find<LocalDatabaseService>();
 
       List<String> uploadedFileIds = imagePaths.toList();
@@ -474,7 +629,7 @@ class TransactionCreateController extends BaseController with BudgetAware {
         confidenceScore: editingDetail?.confidenceScore ?? 1.0,
       );
 
-      if (networkService.isOffline.value) {
+      if (isOffline) {
         final payload = jsonEncode({
           'transaction': newTx.toMap(),
           'detail': newDetail.toMap(),
@@ -497,9 +652,9 @@ class TransactionCreateController extends BaseController with BudgetAware {
         );
 
         final oldMonthYear =
-            "\${editingTransaction!.transactionDate.month.toString().padLeft(2, '0')}-\${editingTransaction!.transactionDate.year}";
+            "${editingTransaction!.transactionDate.month.toString().padLeft(2, '0')}-${editingTransaction!.transactionDate.year}";
         final newMonthYear =
-            "\${selectedDate.value.month.toString().padLeft(2, '0')}-\${selectedDate.value.year}";
+            "${selectedDate.value.month.toString().padLeft(2, '0')}-${selectedDate.value.year}";
 
         if (editingTransaction!.categoryId == newTx.categoryId &&
             oldMonthYear == newMonthYear) {

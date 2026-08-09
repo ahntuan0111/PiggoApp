@@ -14,14 +14,18 @@ import 'package:appintern/core/errors/error_handler.dart';
 import 'package:intl/intl.dart';
 import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
+import 'package:appintern/core/utils/offline_helper.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'dart:convert';
+import 'dart:async';
+import 'package:appintern/core/utils/offline_aware_mixin.dart';
 
-class WalletController extends BaseController with BudgetAware {
+class WalletController extends BaseController with BudgetAware, OfflineAware {
   final TransactionRepository transactionRepository =
       Get.find<TransactionRepository>();
   final storage = Get.find<StorageService>();
 
+  StreamSubscription? _txSubscription;
   var recentTransactions = <Map<String, dynamic>>[].obs;
   var isLoadingWallets = false.obs;
 
@@ -41,6 +45,12 @@ class WalletController extends BaseController with BudgetAware {
   final RxBool isDefault = false.obs;
   var inputAmount = 0.0.obs;
 
+  var isAmountHidden = false.obs;
+
+  void toggleAmountHidden() {
+    isAmountHidden.value = !isAmountHidden.value;
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -58,8 +68,9 @@ class WalletController extends BaseController with BudgetAware {
         editingDetail = Get.arguments['detail'] as TransactionDetailModel?;
 
         if (editingTransaction != null) {
-          
-          balanceController.text = CurrencyFormatter.format(editingTransaction!.amount);
+          balanceController.text = CurrencyFormatter.format(
+            editingTransaction!.amount,
+          );
           noteController.text =
               editingDetail?.note ?? editingTransaction!.note ?? '';
           isAdding.value = editingTransaction!.type == 'INCOME';
@@ -69,10 +80,7 @@ class WalletController extends BaseController with BudgetAware {
   }
 
   void _onBalanceChanged() {
-    final raw = balanceController.text
-        .replaceAll('.', '')
-        
-        .trim();
+    final raw = balanceController.text.replaceAll('.', '').trim();
     inputAmount.value = double.tryParse(raw) ?? 0.0;
   }
 
@@ -86,12 +94,13 @@ class WalletController extends BaseController with BudgetAware {
     }
   }
 
+  @override
   void onReady() {
     super.onReady();
     fetchRecentTransactions();
 
     // Lắng nghe sự thay đổi của giao dịch
-    transactionRepository.onTransactionUpdated.listen((_) {
+    _txSubscription = transactionRepository.onTransactionUpdated.listen((_) {
       fetchRecentTransactions();
       budgetService.refreshData();
     });
@@ -110,6 +119,7 @@ class WalletController extends BaseController with BudgetAware {
 
   @override
   void onClose() {
+    _txSubscription?.cancel();
     balanceController.removeListener(_onBalanceChanged);
     nameController.dispose();
     balanceController.dispose();
@@ -195,8 +205,12 @@ class WalletController extends BaseController with BudgetAware {
     final offlineSyncService = Get.find<OfflineSyncService>();
     final localDb = Get.find<LocalDatabaseService>();
 
-    if (networkService.isOffline.value) {
-      final tempId = 'offline_\${DateTime.now().millisecondsSinceEpoch}';
+    if (isOffline) {
+      if (offlineSyncService.checkAndShowManualQueueFull()) {
+        hideLoading();
+        return;
+      }
+      final tempId = OfflineHelper.generateTempId();
 
       if (isEditTransactionMode.value && editingTransaction != null) {
         final newTx = TransactionModel(
@@ -232,7 +246,7 @@ class WalletController extends BaseController with BudgetAware {
         await localDb.saveTransactions([newTx]);
 
         String monthYearStr =
-            "\${newTx.transactionDate.month.toString().padLeft(2, '0')}-\${newTx.transactionDate.year}";
+            "${newTx.transactionDate.month.toString().padLeft(2, '0')}-${newTx.transactionDate.year}";
 
         // Revert old transaction in summary
         double oldIncomeChange = editingTransaction!.type == 'INCOME'
@@ -278,6 +292,7 @@ class WalletController extends BaseController with BudgetAware {
         final payload = jsonEncode({
           'transaction': transaction.toMap()..['\$id'] = transaction.id,
           'detail': transactionDetail.toMap()..['\$id'] = transactionDetail.id,
+          'tempId': tempId,
         });
         await offlineSyncService.queueManualTask(
           'CREATE_WALLET_ADJUSTMENT',
@@ -288,7 +303,7 @@ class WalletController extends BaseController with BudgetAware {
         await localDb.saveTransactions([transaction]);
 
         String monthYearStr =
-            "\${transaction.transactionDate.month.toString().padLeft(2, '0')}-\${transaction.transactionDate.year}";
+            "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
         double incomeChange = transaction.type == 'INCOME'
             ? transaction.amount
             : 0;
