@@ -91,18 +91,18 @@ class AuthRepository with AppwriteErrorHandler {
 
       for (var tableId in tables) {
         while (true) {
-          final response = await _appwriteService.tables.listRows(
+          final response = await _appwriteService.databases.listDocuments(
             databaseId: _appwriteService.databaseId,
-            tableId: tableId,
+            collectionId: tableId,
             queries: [Query.limit(100)],
           );
-          if (response.rows.isEmpty) break;
-          for (var row in response.rows) {
-            await _appwriteService.tables
-                .deleteRow(
+          if (response.documents.isEmpty) break;
+          for (var doc in response.documents) {
+            await _appwriteService.databases
+                .deleteDocument(
                   databaseId: _appwriteService.databaseId,
-                  tableId: tableId,
-                  rowId: row.$id,
+                  collectionId: tableId,
+                  documentId: doc.$id,
                 )
                 .catchError((_) => null);
           }

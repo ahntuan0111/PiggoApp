@@ -98,7 +98,6 @@ class LocalDatabaseService extends LocalDatabaseBase
     await db.execute('''
       CREATE TABLE category_types(
         id TEXT PRIMARY KEY,
-        ownerId TEXT,
         name TEXT,
         priority INTEGER
       )
@@ -162,7 +161,6 @@ class LocalDatabaseService extends LocalDatabaseBase
     await db.execute('''
       CREATE TABLE transferlogs(
         id TEXT PRIMARY KEY,
-        ownerId TEXT,
         amount REAL,
         fromCategoryId TEXT,
         toCategoryId TEXT,
@@ -183,7 +181,6 @@ class LocalDatabaseService extends LocalDatabaseBase
       await db.execute('''
         CREATE TABLE IF NOT EXISTS category_types(
           id TEXT PRIMARY KEY,
-          ownerId TEXT,
           name TEXT,
           priority INTEGER
         )
@@ -248,7 +245,6 @@ class LocalDatabaseService extends LocalDatabaseBase
       await db.execute('''
         CREATE TABLE IF NOT EXISTS transferlogs(
           id TEXT PRIMARY KEY,
-          ownerId TEXT,
           amount REAL,
           fromCategoryId TEXT,
           toCategoryId TEXT,

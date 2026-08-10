@@ -31,16 +31,6 @@ web/main.dart.wasm
 # Environment & Sensitive files (QUAN TRỌNG)
 .env
 *.env
-test_key.py
-
-# Temporary & Media files trong project của bạn
-*.mp3
-*.tar.gz
-temp_extract_function/
-
-# Các script và tài liệu ngoài lề không thuộc Flutter (như Python, Word)
-*.py
-*.docx
 
 # Bỏ qua tất cả các file Markdown
 *.md

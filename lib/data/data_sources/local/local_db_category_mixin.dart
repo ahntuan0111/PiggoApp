@@ -15,7 +15,6 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
     for (var type in types) {
       batch.insert('category_types', {
         'id': type['id'],
-        'ownerId': type['ownerId'],
         'name': type['name'],
         'priority': type['priority'],
       }, conflictAlgorithm: ConflictAlgorithm.replace);

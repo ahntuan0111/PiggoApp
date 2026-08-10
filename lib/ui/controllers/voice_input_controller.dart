@@ -17,6 +17,7 @@ import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/ui/widgets/dialogs/permission_dialog.dart';
 import 'package:appintern/ui/widgets/dialogs/ai_parse_error_dialog.dart';
+import 'package:appintern/core/services/network_service.dart';
 
 class VoiceInputController extends BaseController
     with BudgetAware, GetSingleTickerProviderStateMixin {
@@ -39,6 +40,25 @@ class VoiceInputController extends BaseController
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    if (Get.find<NetworkService>().isOffline.value) {
+      Get.defaultDialog(
+        title: "Không có kết nối mạng",
+        middleText: "Tính năng Nhập liệu bằng Giọng nói yêu cầu kết nối Internet để phân tích. Vui lòng kiểm tra kết nối mạng và thử lại.",
+        barrierDismissible: false,
+        textConfirm: "Đóng",
+        confirmTextColor: Colors.white,
+        buttonColor: const Color(0xFFF9C03C),
+        onConfirm: () {
+          Get.back(); // Đóng dialog
+          Get.back(); // Quay lại màn hình trước
+        },
+      );
+    }
   }
 
   @override

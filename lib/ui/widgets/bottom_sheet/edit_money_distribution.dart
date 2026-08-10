@@ -58,7 +58,7 @@ class _EditMoneyDistributionBottomSheetState
       if (_isAdding && _offsetAmount > _selectedSourceAvailableAmount!) {
         Get.snackbar(
           "Lỗi",
-          "Nguồn tiền không đủ để lấy. Tối đa chỉ có thể lấy ${CurrencyFormatter.format(_selectedSourceAvailableAmount!)}đ.",
+          "Nguồn tiền không đủ để lấy. Tối đa chỉ có thể lấy ${CurrencyFormatter.format(_selectedSourceAvailableAmount!)}.",
           backgroundColor: Colors.red,
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM,
@@ -359,8 +359,8 @@ class _EditMoneyDistributionBottomSheetState
 
             Text(
               _isAdding
-                  ? "Lấy ${CurrencyFormatter.format(_offsetAmount)}đ từ ${_selectedSourceName ?? '...'}"
-                  : "Chuyển ${CurrencyFormatter.format(_offsetAmount)}đ đến ${_selectedSourceName ?? '...'}",
+                  ? "Lấy ${CurrencyFormatter.format(_offsetAmount)} từ ${_selectedSourceName ?? '...'}"
+                  : "Chuyển ${CurrencyFormatter.format(_offsetAmount)} đến ${_selectedSourceName ?? '...'}",
               style: TextStyle(fontSize: 12.sp, color: const Color(0xFF616161)),
             ),
             SizedBox(height: 8.h),

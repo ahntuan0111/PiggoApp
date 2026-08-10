@@ -49,7 +49,7 @@ class SplashController extends BaseController {
             Get.offAllNamed(Routes.ONBOARDING);
             Get.snackbar(
               "Phiên đăng nhập hết hạn",
-              "Vui lòng đăng nhập lại (Do IP máy chủ thay đổi hoặc phiên hết hạn).",
+              "Vui lòng đăng nhập lại",
               backgroundColor: Colors.orange,
               colorText: Colors.white,
             );
@@ -120,7 +120,7 @@ class SplashController extends BaseController {
         },
       );
     } catch (e) {
-      // Production safety net: nếu có lỗi không mong đợi, 
+      // Production safety net: nếu có lỗi không mong đợi,
       // đảm bảo splash luôn được gỡ và app không bị treo
       debugPrint('❌ SplashController unexpected error: $e');
       FlutterNativeSplash.remove();

@@ -278,7 +278,11 @@ class SmartInputController extends BaseController with BudgetAware {
         textController.clear();
         Get.back(
           result: count,
-        ); // Trả về số giao dịch - Caller hiển thị Snackbar
+        );
+        showSuccessMessage(
+          "Thành công",
+          "Đã ghi nhận $count giao dịch",
+        );
       },
     );
   }

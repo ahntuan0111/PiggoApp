@@ -108,7 +108,6 @@ class CategoryController extends BaseController with OfflineAware {
 
       final newType = CategoryTypeModel(
         id: tempId,
-        ownerId: userId,
         name: name.trim(),
         priority: maxPriority + 1,
       );
@@ -212,7 +211,7 @@ class CategoryController extends BaseController with OfflineAware {
         },
         (_) async {
           Get.back();
-          showSuccessMessage('Thành công', 'Đã thêm danh mục mới');
+          // showSuccessMessage('Thành công', 'Đã thêm danh mục mới');
           await fetchData();
         },
       );

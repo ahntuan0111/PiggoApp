@@ -69,8 +69,6 @@ class CategoryGroupWidget extends GetView<CategoryController> {
                 ),
               ),
             ),
-            Icon(Icons.arrow_drop_up, color: Colors.grey, size: 24.r),
-            Icon(Icons.arrow_drop_down, color: Colors.black87, size: 24.r),
           ],
         ),
         SizedBox(height: 12.h),

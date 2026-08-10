@@ -270,12 +270,44 @@ class TransactionCreateController extends BaseController
 
       // Xử lý kết quả
       if ((status.isGranted || status.isLimited) && cameraStatus.isGranted) {
-        final ImagePicker picker = ImagePicker();
-        final XFile? image = await picker.pickImage(
-          source: ImageSource.gallery,
+        final ImageSource? source = await Get.bottomSheet<ImageSource>(
+          Material(
+            color: Get.theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Thêm ảnh giao dịch',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      leading: const Icon(Icons.camera_alt, color: Colors.blue),
+                      title: const Text('Chụp từ Máy ảnh'),
+                      onTap: () => Get.back(result: ImageSource.camera),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.photo_library, color: Colors.green),
+                      title: const Text('Chọn từ Thư viện'),
+                      onTap: () => Get.back(result: ImageSource.gallery),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         );
-        if (image != null) {
-          imagePaths.add(image.path);
+
+        if (source != null) {
+          final ImagePicker picker = ImagePicker();
+          final XFile? image = await picker.pickImage(source: source);
+          if (image != null) {
+            imagePaths.add(image.path);
+          }
         }
       } else if (status.isPermanentlyDenied ||
           cameraStatus.isPermanentlyDenied) {
@@ -386,16 +418,7 @@ class TransactionCreateController extends BaseController
 
       final localDb = Get.find<LocalDatabaseService>();
 
-      List<String> uploadedFileIds = [];
-      if (!isOffline && imagePaths.isNotEmpty) {
-        final storageRepo = Get.find<StorageRepository>();
-        for (var path in imagePaths) {
-          final fileId = await storageRepo.uploadReceiptImage(File(path));
-          uploadedFileIds.add(fileId);
-        }
-      } else {
-        uploadedFileIds = imagePaths.toList();
-      }
+      List<String> uploadedFileIds = imagePaths.toList();
 
       final tempId = OfflineHelper.generateTempId();
       final tx = TransactionModel(
@@ -518,7 +541,6 @@ class TransactionCreateController extends BaseController
             await transferRepo.createTransferLog(
               TransferLogModel(
                 id: '',
-                ownerId: currentUserId.value,
                 amount: difference.abs(),
                 fromCategoryId: difference > 0
                     ? 'unallocated'

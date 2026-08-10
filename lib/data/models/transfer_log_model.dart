@@ -2,7 +2,6 @@ import 'dart:convert';
 
 class TransferLogModel {
   final String id;
-  final String ownerId;
   final double amount;
   final String fromCategoryId;
   final String toCategoryId;
@@ -11,7 +10,6 @@ class TransferLogModel {
 
   TransferLogModel({
     required this.id,
-    required this.ownerId,
     required this.amount,
     required this.fromCategoryId,
     required this.toCategoryId,
@@ -21,7 +19,6 @@ class TransferLogModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'ownerId': ownerId,
       'amount': amount,
       'fromCategoryId': fromCategoryId,
       'toCategoryId': toCategoryId,
@@ -32,7 +29,6 @@ class TransferLogModel {
   factory TransferLogModel.fromMap(Map<String, dynamic> map, {String? docId}) {
     return TransferLogModel(
       id: docId ?? map['\$id'] ?? '',
-      ownerId: map['ownerId'] ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
       fromCategoryId: map['fromCategoryId'] ?? '',
       toCategoryId: map['toCategoryId'] ?? '',

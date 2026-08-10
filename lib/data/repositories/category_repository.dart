@@ -21,12 +21,11 @@ class CategoryRepository with AppwriteErrorHandler {
       ];
 
       for (var type in defaultTypes) {
-        await _appwrite.tables.createRow(
+        await _appwrite.databases.createDocument(
           databaseId: _appwrite.databaseId,
-          tableId: _appwrite.categoriesTypeTableId,
-          rowId: ID.unique(),
+          collectionId: _appwrite.categoriesTypeTableId,
+          documentId: ID.unique(),
           data: {
-            'ownerId': userId,
             'name': type['name'],
             'priority': type['priority'],
           },
@@ -37,15 +36,15 @@ class CategoryRepository with AppwriteErrorHandler {
 
   Future<List<CategoryTypeModel>> getCategoryTypes(String userId) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.listRows(
+      final response = await _appwrite.databases.listDocuments(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.categoriesTypeTableId,
-        queries: [Query.equal('ownerId', userId), Query.orderAsc('priority')],
+        collectionId: _appwrite.categoriesTypeTableId,
+        queries: [Query.orderAsc('priority')],
       );
-      return response.rows
+      return response.documents
           .map(
-            (row) => CategoryTypeModel.fromMap(
-              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+            (doc) => CategoryTypeModel.fromMap(
+              Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
             ),
           )
           .toList();
@@ -54,26 +53,24 @@ class CategoryRepository with AppwriteErrorHandler {
 
   Future<CategoryTypeModel> getOrCreateSavingCategoryType(String userId) async {
     return handleAppwriteError(() async {
-      final typeResponse = await _appwrite.tables.listRows(
+      final typeResponse = await _appwrite.databases.listDocuments(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.categoriesTypeTableId,
+        collectionId: _appwrite.categoriesTypeTableId,
         queries: [
           Query.equal('name', 'Tiết kiệm lâu dài'),
-          Query.equal('ownerId', userId),
         ],
       );
-      if (typeResponse.rows.isNotEmpty) {
+      if (typeResponse.documents.isNotEmpty) {
         return CategoryTypeModel.fromMap(
-          Map<String, dynamic>.from(typeResponse.rows.first.data)
-            ..['\$id'] = typeResponse.rows.first.$id,
+          Map<String, dynamic>.from(typeResponse.documents.first.data)
+            ..['\$id'] = typeResponse.documents.first.$id,
         );
       } else {
-        final newTypeResponse = await _appwrite.tables.createRow(
+        final newTypeResponse = await _appwrite.databases.createDocument(
           databaseId: _appwrite.databaseId,
-          tableId: _appwrite.categoriesTypeTableId,
-          rowId: ID.unique(),
+          collectionId: _appwrite.categoriesTypeTableId,
+          documentId: ID.unique(),
           data: {
-            'ownerId': userId,
             'name': 'Tiết kiệm lâu dài',
             'priority': 99,
           },
@@ -92,15 +89,15 @@ class CategoryRepository with AppwriteErrorHandler {
       List<CategoryModel> allCategories = [];
 
       for (String typeId in typeIds) {
-        final response = await _appwrite.tables.listRows(
+        final response = await _appwrite.databases.listDocuments(
           databaseId: _appwrite.databaseId,
-          tableId: _appwrite.categoriesTableId,
+          collectionId: _appwrite.categoriesTableId,
           queries: [Query.equal('categoryTypes', typeId)],
         );
 
-        for (var row in response.rows) {
+        for (var doc in response.documents) {
           CategoryModel cat = CategoryModel.fromMap(
-            Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+            Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
           );
           allCategories.add(cat);
         }
@@ -113,15 +110,15 @@ class CategoryRepository with AppwriteErrorHandler {
     String monthYearStr,
   ) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.listRows(
+      final response = await _appwrite.databases.listDocuments(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.monthlyBudgetsTableId,
+        collectionId: _appwrite.monthlyBudgetsTableId,
         queries: [Query.equal('monthYear', monthYearStr)],
       );
-      return response.rows
+      return response.documents
           .map(
-            (row) => MonthlyBudgetModel.fromMap(
-              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+            (doc) => MonthlyBudgetModel.fromMap(
+              Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
             ),
           )
           .where((mb) => mb.categoryId.isNotEmpty)
@@ -131,15 +128,14 @@ class CategoryRepository with AppwriteErrorHandler {
 
   Future<List<MonthlySummaryModel>> getAllMonthlySummaries() async {
     return handleAppwriteError(() async {
-      // Vì đã cấu hình Document Security, listRows tự động lọc theo ownerId của current user
-      final response = await _appwrite.tables.listRows(
+      final response = await _appwrite.databases.listDocuments(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.monthlySummariesTableId,
+        collectionId: _appwrite.monthlySummariesTableId,
       );
-      return response.rows
+      return response.documents
           .map(
-            (row) => MonthlySummaryModel.fromMap(
-              Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+            (doc) => MonthlySummaryModel.fromMap(
+              Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
             ),
           )
           .toList();
@@ -152,11 +148,11 @@ class CategoryRepository with AppwriteErrorHandler {
     int priority,
   ) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.createRow(
+      final response = await _appwrite.databases.createDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.categoriesTypeTableId,
-        rowId: ID.unique(),
-        data: {'ownerId': userId, 'name': name, 'priority': priority},
+        collectionId: _appwrite.categoriesTypeTableId,
+        documentId: ID.unique(),
+        data: {'name': name, 'priority': priority},
       );
       return CategoryTypeModel.fromMap(
         Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
@@ -172,10 +168,10 @@ class CategoryRepository with AppwriteErrorHandler {
     bool isActive = true,
   }) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.createRow(
+      final response = await _appwrite.databases.createDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.categoriesTableId,
-        rowId: ID.unique(),
+        collectionId: _appwrite.categoriesTableId,
+        documentId: ID.unique(),
         data: {
           'categoryTypes': typeId,
           'name': name,
@@ -195,10 +191,10 @@ class CategoryRepository with AppwriteErrorHandler {
     String name,
   ) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.updateRow(
+      final response = await _appwrite.databases.updateDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.categoriesTypeTableId,
-        rowId: typeId,
+        collectionId: _appwrite.categoriesTypeTableId,
+        documentId: typeId,
         data: {'name': name},
       );
       return CategoryTypeModel.fromMap(
@@ -209,10 +205,10 @@ class CategoryRepository with AppwriteErrorHandler {
 
   Future<void> deleteCategoryType(String typeId) async {
     return handleAppwriteError(() async {
-      await _appwrite.tables.deleteRow(
+      await _appwrite.databases.deleteDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.categoriesTypeTableId,
-        rowId: typeId,
+        collectionId: _appwrite.categoriesTypeTableId,
+        documentId: typeId,
       );
     });
   }
@@ -233,10 +229,10 @@ class CategoryRepository with AppwriteErrorHandler {
       if (defaultBudget != null) {
         data['defaultBudget'] = defaultBudget;
       }
-      final response = await _appwrite.tables.updateRow(
+      final response = await _appwrite.databases.updateDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.categoriesTableId,
-        rowId: categoryId,
+        collectionId: _appwrite.categoriesTableId,
+        documentId: categoryId,
         data: data,
       );
       return CategoryModel.fromMap(
@@ -250,10 +246,10 @@ class CategoryRepository with AppwriteErrorHandler {
     double budgetedAmount,
   ) async {
     return handleAppwriteError(() async {
-      await _appwrite.tables.updateRow(
+      await _appwrite.databases.updateDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.monthlyBudgetsTableId,
-        rowId: budgetId,
+        collectionId: _appwrite.monthlyBudgetsTableId,
+        documentId: budgetId,
         data: {'budgetedAmount': budgetedAmount},
       );
     });
@@ -267,10 +263,10 @@ class CategoryRepository with AppwriteErrorHandler {
     double spentAmount = 0.0,
   }) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.createRow(
+      final response = await _appwrite.databases.createDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.monthlyBudgetsTableId,
-        rowId: ID.unique(),
+        collectionId: _appwrite.monthlyBudgetsTableId,
+        documentId: ID.unique(),
         data: {
           'categories': categoryId,
           'monthYear': monthYear,
@@ -288,41 +284,41 @@ class CategoryRepository with AppwriteErrorHandler {
   Future<void> deleteCategory(String categoryId) async {
     return handleAppwriteError(() async {
       // 1. Tìm tất cả các giao dịch liên kết với danh mục này và ngắt liên kết (categories = null)
-      final txResponse = await _appwrite.tables.listRows(
+      final txResponse = await _appwrite.databases.listDocuments(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.transactionsTableId,
+        collectionId: _appwrite.transactionsTableId,
         queries: [Query.equal('categories', categoryId)],
       );
 
-      for (var row in txResponse.rows) {
-        await _appwrite.tables.updateRow(
+      for (var doc in txResponse.documents) {
+        await _appwrite.databases.updateDocument(
           databaseId: _appwrite.databaseId,
-          tableId: _appwrite.transactionsTableId,
-          rowId: row.$id,
+          collectionId: _appwrite.transactionsTableId,
+          documentId: doc.$id,
           data: {'categories': null},
         );
       }
 
       // 2. Tìm tất cả MonthlyBudget liên kết với danh mục này và xóa chúng
-      final budgetResponse = await _appwrite.tables.listRows(
+      final budgetResponse = await _appwrite.databases.listDocuments(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.monthlyBudgetsTableId,
+        collectionId: _appwrite.monthlyBudgetsTableId,
         queries: [Query.equal('categories', categoryId)],
       );
 
-      for (var row in budgetResponse.rows) {
-        await _appwrite.tables.deleteRow(
+      for (var doc in budgetResponse.documents) {
+        await _appwrite.databases.deleteDocument(
           databaseId: _appwrite.databaseId,
-          tableId: _appwrite.monthlyBudgetsTableId,
-          rowId: row.$id,
+          collectionId: _appwrite.monthlyBudgetsTableId,
+          documentId: doc.$id,
         );
       }
 
       // 3. Xóa danh mục
-      await _appwrite.tables.deleteRow(
+      await _appwrite.databases.deleteDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.categoriesTableId,
-        rowId: categoryId,
+        collectionId: _appwrite.categoriesTableId,
+        documentId: categoryId,
       );
     });
   }

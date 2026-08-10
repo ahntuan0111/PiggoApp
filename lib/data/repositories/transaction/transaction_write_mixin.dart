@@ -10,7 +10,6 @@ import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 import 'transaction_repository_base.dart';
-import 'package:appintern/core/utils/logger.dart';
 
 mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
   Future<void> _updateMonthlySummary(
@@ -19,21 +18,21 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     double expenseChange,
   ) async {
     if (incomeChange == 0 && expenseChange == 0) return;
-    final response = await appwrite.tables.listRows(
+    final response = await appwrite.databases.listDocuments(
       databaseId: appwrite.databaseId,
-      tableId: appwrite.monthlySummariesTableId,
+      collectionId: appwrite.monthlySummariesTableId,
       queries: [Query.equal('monthYear', monthYearStr), Query.limit(1)],
     );
 
-    if (response.rows.isNotEmpty) {
-      final doc = response.rows.first;
+    if (response.documents.isNotEmpty) {
+      final doc = response.documents.first;
       double currentIncome = (doc.data['totalIncome'] ?? 0).toDouble();
       double currentExpense = (doc.data['totalExpense'] ?? 0).toDouble();
 
-      await appwrite.tables.updateRow(
+      await appwrite.databases.updateDocument(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.monthlySummariesTableId,
-        rowId: doc.$id,
+        collectionId: appwrite.monthlySummariesTableId,
+        documentId: doc.$id,
         data: {
           'totalIncome': (currentIncome + incomeChange) < 0
               ? 0
@@ -44,10 +43,10 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         },
       );
     } else {
-      await appwrite.tables.createRow(
+      await appwrite.databases.createDocument(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.monthlySummariesTableId,
-        rowId: ID.unique(),
+        collectionId: appwrite.monthlySummariesTableId,
+        documentId: ID.unique(),
         data: {
           'monthYear': monthYearStr,
           'totalIncome': incomeChange < 0 ? 0 : incomeChange,
@@ -69,7 +68,7 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
 
     // Upload files
     for (String path in transactionDetail.receiptFileIds) {
-      if (!path.startsWith('http')) {
+      if (!path.startsWith('http') && File(path).existsSync()) {
         try {
           String fileId = await storageRepo.uploadReceiptImage(File(path));
           uploadedFileIds.add(fileId);
@@ -88,10 +87,10 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
 
         try {
           // 1. Tạo bản ghi Transaction
-          final txResponse = await appwrite.tables.createRow(
+          final txResponse = await appwrite.databases.createDocument(
             databaseId: appwrite.databaseId,
-            tableId: appwrite.transactionsTableId,
-            rowId: ID.unique(),
+            collectionId: appwrite.transactionsTableId,
+            documentId: ID.unique(),
             data: transaction.toMap(),
           );
 
@@ -102,10 +101,10 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
           detailData['receiptFileId'] = uploadedFileIds.join(',');
           detailData['transactions'] = createdTxId;
 
-          final detailResponse = await appwrite.tables.createRow(
+          final detailResponse = await appwrite.databases.createDocument(
             databaseId: appwrite.databaseId,
-            tableId: appwrite.transactionDetailsTableId,
-            rowId: ID.unique(),
+            collectionId: appwrite.transactionDetailsTableId,
+            documentId: ID.unique(),
             data: detailData,
           );
 
@@ -123,36 +122,36 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
                 ? transaction.amount
                 : -transaction.amount;
 
-            final budgetResponse = await appwrite.tables.listRows(
+            final budgetResponse = await appwrite.databases.listDocuments(
               databaseId: appwrite.databaseId,
-              tableId: appwrite.monthlyBudgetsTableId,
+              collectionId: appwrite.monthlyBudgetsTableId,
               queries: [
                 Query.equal('categories', currentCategory.id),
                 Query.equal('monthYear', monthYearStr),
               ],
             );
 
-            if (budgetResponse.rows.isNotEmpty) {
-              final existingBudget = budgetResponse.rows.first;
+            if (budgetResponse.documents.isNotEmpty) {
+              final existingBudget = budgetResponse.documents.first;
               double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
                   .toDouble();
               double newSpent = currentSpent + amountChange;
               if (newSpent < 0) newSpent = 0;
 
-              await appwrite.tables.updateRow(
+              await appwrite.databases.updateDocument(
                 databaseId: appwrite.databaseId,
-                tableId: appwrite.monthlyBudgetsTableId,
-                rowId: existingBudget.$id,
+                collectionId: appwrite.monthlyBudgetsTableId,
+                documentId: existingBudget.$id,
                 data: {'spentAmount': newSpent},
               );
             } else {
               double newSpent = amountChange;
               if (newSpent < 0) newSpent = 0;
 
-              await appwrite.tables.createRow(
+              await appwrite.databases.createDocument(
                 databaseId: appwrite.databaseId,
-                tableId: appwrite.monthlyBudgetsTableId,
-                rowId: ID.unique(),
+                collectionId: appwrite.monthlyBudgetsTableId,
+                documentId: ID.unique(),
                 data: {
                   'categories': currentCategory.id,
                   'monthYear': monthYearStr,
@@ -187,17 +186,17 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
           // để tránh rác Database (Orphaned records).
           try {
             if (createdDetailId != null) {
-              await appwrite.tables.deleteRow(
+              await appwrite.databases.deleteDocument(
                 databaseId: appwrite.databaseId,
-                tableId: appwrite.transactionDetailsTableId,
-                rowId: createdDetailId,
+                collectionId: appwrite.transactionDetailsTableId,
+                documentId: createdDetailId,
               );
             }
             if (createdTxId != null) {
-              await appwrite.tables.deleteRow(
+              await appwrite.databases.deleteDocument(
                 databaseId: appwrite.databaseId,
-                tableId: appwrite.transactionsTableId,
-                rowId: createdTxId,
+                collectionId: appwrite.transactionsTableId,
+                documentId: createdTxId,
               );
             }
           } catch (rollbackError) {
@@ -232,10 +231,10 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
 
       try {
         // 1. Tạo bản ghi Transaction (Không liên kết category)
-        final txResponse = await appwrite.tables.createRow(
+        final txResponse = await appwrite.databases.createDocument(
           databaseId: appwrite.databaseId,
-          tableId: appwrite.transactionsTableId,
-          rowId: ID.unique(),
+          collectionId: appwrite.transactionsTableId,
+          documentId: ID.unique(),
           data: transaction.toMap(),
         );
 
@@ -245,10 +244,10 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         final detailData = transactionDetail.toMap();
         detailData['transactions'] = createdTxId;
 
-        final detailResponse = await appwrite.tables.createRow(
+        final detailResponse = await appwrite.databases.createDocument(
           databaseId: appwrite.databaseId,
-          tableId: appwrite.transactionDetailsTableId,
-          rowId: ID.unique(),
+          collectionId: appwrite.transactionDetailsTableId,
+          documentId: ID.unique(),
           data: detailData,
         );
         createdDetailId = detailResponse.$id;
@@ -273,17 +272,17 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
       } catch (e) {
         try {
           if (createdDetailId != null) {
-            await appwrite.tables.deleteRow(
+            await appwrite.databases.deleteDocument(
               databaseId: appwrite.databaseId,
-              tableId: appwrite.transactionDetailsTableId,
-              rowId: createdDetailId,
+              collectionId: appwrite.transactionDetailsTableId,
+              documentId: createdDetailId,
             );
           }
           if (createdTxId != null) {
-            await appwrite.tables.deleteRow(
+            await appwrite.databases.deleteDocument(
               databaseId: appwrite.databaseId,
-              tableId: appwrite.transactionsTableId,
-              rowId: createdTxId,
+              collectionId: appwrite.transactionsTableId,
+              documentId: createdTxId,
             );
           }
         } catch (rollbackError) {
@@ -307,7 +306,7 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
 
     if (newTransactionDetail != null) {
       for (String path in newTransactionDetail.receiptFileIds) {
-        if (!path.startsWith('http')) {
+        if (!path.startsWith('http') && File(path).existsSync()) {
           try {
             String fileId = await storageRepo.uploadReceiptImage(File(path));
             uploadedFileIds.add(fileId);
@@ -326,24 +325,24 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         if (oldTransaction.type == 'EXPENSE' && oldCategory != null) {
           String oldMonthYearStr =
               "${oldTransaction.transactionDate.month.toString().padLeft(2, '0')}-${oldTransaction.transactionDate.year}";
-          final oldBudgetResponse = await appwrite.tables.listRows(
+          final oldBudgetResponse = await appwrite.databases.listDocuments(
             databaseId: appwrite.databaseId,
-            tableId: appwrite.monthlyBudgetsTableId,
+            collectionId: appwrite.monthlyBudgetsTableId,
             queries: [
               Query.equal('categories', oldCategory.id),
               Query.equal('monthYear', oldMonthYearStr),
             ],
           );
-          if (oldBudgetResponse.rows.isNotEmpty) {
-            final existingBudget = oldBudgetResponse.rows.first;
+          if (oldBudgetResponse.documents.isNotEmpty) {
+            final existingBudget = oldBudgetResponse.documents.first;
             double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
                 .toDouble();
             double newSpent = currentSpent - oldTransaction.amount;
             if (newSpent < 0) newSpent = 0;
-            await appwrite.tables.updateRow(
+            await appwrite.databases.updateDocument(
               databaseId: appwrite.databaseId,
-              tableId: appwrite.monthlyBudgetsTableId,
-              rowId: existingBudget.$id,
+              collectionId: appwrite.monthlyBudgetsTableId,
+              documentId: existingBudget.$id,
               data: {'spentAmount': newSpent},
             );
           }
@@ -353,32 +352,32 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         if (newTransaction.type == 'EXPENSE' && newCategory != null) {
           String newMonthYearStr =
               "${newTransaction.transactionDate.month.toString().padLeft(2, '0')}-${newTransaction.transactionDate.year}";
-          final newBudgetResponse = await appwrite.tables.listRows(
+          final newBudgetResponse = await appwrite.databases.listDocuments(
             databaseId: appwrite.databaseId,
-            tableId: appwrite.monthlyBudgetsTableId,
+            collectionId: appwrite.monthlyBudgetsTableId,
             queries: [
               Query.equal('categories', newCategory.id),
               Query.equal('monthYear', newMonthYearStr),
             ],
           );
 
-          if (newBudgetResponse.rows.isNotEmpty) {
-            final existingBudget = newBudgetResponse.rows.first;
+          if (newBudgetResponse.documents.isNotEmpty) {
+            final existingBudget = newBudgetResponse.documents.first;
             double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
                 .toDouble();
             double newSpent = currentSpent + newTransaction.amount;
             if (newSpent < 0) newSpent = 0;
-            await appwrite.tables.updateRow(
+            await appwrite.databases.updateDocument(
               databaseId: appwrite.databaseId,
-              tableId: appwrite.monthlyBudgetsTableId,
-              rowId: existingBudget.$id,
+              collectionId: appwrite.monthlyBudgetsTableId,
+              documentId: existingBudget.$id,
               data: {'spentAmount': newSpent},
             );
           } else {
-            await appwrite.tables.createRow(
+            await appwrite.databases.createDocument(
               databaseId: appwrite.databaseId,
-              tableId: appwrite.monthlyBudgetsTableId,
-              rowId: ID.unique(),
+              collectionId: appwrite.monthlyBudgetsTableId,
+              documentId: ID.unique(),
               data: {
                 'categories': newCategory.id,
                 'monthYear': newMonthYearStr,
@@ -391,18 +390,18 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         }
 
         // 5. Cập nhật bản ghi Transaction
-        await appwrite.tables.updateRow(
+        await appwrite.databases.updateDocument(
           databaseId: appwrite.databaseId,
-          tableId: appwrite.transactionsTableId,
-          rowId: oldTransaction.id,
+          collectionId: appwrite.transactionsTableId,
+          documentId: oldTransaction.id,
           data: newTransaction.toMap(),
         );
 
         // 6. Cập nhật bản ghi TransactionDetail
         if (newTransactionDetail != null) {
-          final detailResponse = await appwrite.tables.listRows(
+          final detailResponse = await appwrite.databases.listDocuments(
             databaseId: appwrite.databaseId,
-            tableId: appwrite.transactionDetailsTableId,
+            collectionId: appwrite.transactionDetailsTableId,
             queries: [
               Query.equal('transactions', oldTransaction.id),
               Query.limit(1),
@@ -415,18 +414,18 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
               : newTransactionDetail.receiptFileIds.join(',');
           detailData['transactions'] = oldTransaction.id;
 
-          if (detailResponse.rows.isNotEmpty) {
-            await appwrite.tables.updateRow(
+          if (detailResponse.documents.isNotEmpty) {
+            await appwrite.databases.updateDocument(
               databaseId: appwrite.databaseId,
-              tableId: appwrite.transactionDetailsTableId,
-              rowId: detailResponse.rows.first.$id,
+              collectionId: appwrite.transactionDetailsTableId,
+              documentId: detailResponse.documents.first.$id,
               data: detailData,
             );
           } else {
-            await appwrite.tables.createRow(
+            await appwrite.databases.createDocument(
               databaseId: appwrite.databaseId,
-              tableId: appwrite.transactionDetailsTableId,
-              rowId: ID.unique(),
+              collectionId: appwrite.transactionDetailsTableId,
+              documentId: ID.unique(),
               data: detailData,
             );
           }
@@ -503,17 +502,17 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     required TransactionDetailModel? newTransactionDetail,
   }) async {
     return handleAppwriteError(() async {
-      await appwrite.tables.updateRow(
+      await appwrite.databases.updateDocument(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.transactionsTableId,
-        rowId: oldTransaction.id,
+        collectionId: appwrite.transactionsTableId,
+        documentId: oldTransaction.id,
         data: newTransaction.toMap(),
       );
 
       if (newTransactionDetail != null) {
-        final detailResponse = await appwrite.tables.listRows(
+        final detailResponse = await appwrite.databases.listDocuments(
           databaseId: appwrite.databaseId,
-          tableId: appwrite.transactionDetailsTableId,
+          collectionId: appwrite.transactionDetailsTableId,
           queries: [
             Query.equal('transactions', oldTransaction.id),
             Query.limit(1),
@@ -523,18 +522,18 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         final detailData = newTransactionDetail.toMap();
         detailData['transactions'] = oldTransaction.id;
 
-        if (detailResponse.rows.isNotEmpty) {
-          await appwrite.tables.updateRow(
+        if (detailResponse.documents.isNotEmpty) {
+          await appwrite.databases.updateDocument(
             databaseId: appwrite.databaseId,
-            tableId: appwrite.transactionDetailsTableId,
-            rowId: detailResponse.rows.first.$id,
+            collectionId: appwrite.transactionDetailsTableId,
+            documentId: detailResponse.documents.first.$id,
             data: detailData,
           );
         } else {
-          await appwrite.tables.createRow(
+          await appwrite.databases.createDocument(
             databaseId: appwrite.databaseId,
-            tableId: appwrite.transactionDetailsTableId,
-            rowId: ID.unique(),
+            collectionId: appwrite.transactionDetailsTableId,
+            documentId: ID.unique(),
             data: detailData,
           );
         }
@@ -599,35 +598,35 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         String monthYearStr =
             "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
 
-        final budgetResponse = await appwrite.tables.listRows(
+        final budgetResponse = await appwrite.databases.listDocuments(
           databaseId: appwrite.databaseId,
-          tableId: appwrite.monthlyBudgetsTableId,
+          collectionId: appwrite.monthlyBudgetsTableId,
           queries: [
             Query.equal('categories', currentCategory.id),
             Query.equal('monthYear', monthYearStr),
           ],
         );
 
-        if (budgetResponse.rows.isNotEmpty) {
-          final existingBudget = budgetResponse.rows.first;
+        if (budgetResponse.documents.isNotEmpty) {
+          final existingBudget = budgetResponse.documents.first;
           double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
               .toDouble();
           double newSpent = currentSpent - transaction.amount;
           if (newSpent < 0) newSpent = 0;
 
-          await appwrite.tables.updateRow(
+          await appwrite.databases.updateDocument(
             databaseId: appwrite.databaseId,
-            tableId: appwrite.monthlyBudgetsTableId,
-            rowId: existingBudget.$id,
+            collectionId: appwrite.monthlyBudgetsTableId,
+            documentId: existingBudget.$id,
             data: {'spentAmount': newSpent},
           );
         }
       }
 
-      await appwrite.tables.updateRow(
+      await appwrite.databases.updateDocument(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.transactionsTableId,
-        rowId: transaction.id,
+        collectionId: appwrite.transactionsTableId,
+        documentId: transaction.id,
         data: {'status': 'DELETED'},
       );
 

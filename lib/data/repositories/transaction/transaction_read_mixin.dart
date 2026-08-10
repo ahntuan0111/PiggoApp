@@ -51,45 +51,49 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
       }
 
       // 1. Fetch transactions by categoryId
-      final response = await appwrite.tables.listRows(
+      final response = await appwrite.databases.listDocuments(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.transactionsTableId,
+        collectionId: appwrite.transactionsTableId,
         queries: queries,
       );
 
-      List<Map<String, dynamic>> results = [];
+      if (response.documents.isEmpty) return [];
 
-      // 2. Fetch details cho từng transaction
-      final futures = response.rows.map((row) async {
-        final tx = TransactionModel.fromMap(
-          Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+      final txIds = response.documents.map((doc) => doc.$id).toList();
+
+      // 2. Batch fetch details
+      final detailsResponse = await appwrite.databases.listDocuments(
+        databaseId: appwrite.databaseId,
+        collectionId: appwrite.transactionDetailsTableId,
+        queries: [
+          Query.equal('transactions', txIds),
+          Query.limit(txIds.length),
+        ],
+      );
+
+      final Map<String, TransactionDetailModel> detailMap = {};
+      for (var doc in detailsResponse.documents) {
+        final detail = TransactionDetailModel.fromMap(
+          Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
         );
-
-        final detailResponse = await appwrite.tables.listRows(
-          databaseId: appwrite.databaseId,
-          tableId: appwrite.transactionDetailsTableId,
-          queries: [Query.equal('transactions', tx.id), Query.limit(1)],
-        );
-
-        TransactionDetailModel? detail;
-        if (detailResponse.rows.isNotEmpty) {
-          final detailRow = detailResponse.rows.first;
-          detail = TransactionDetailModel.fromMap(
-            Map<String, dynamic>.from(detailRow.data)..['\$id'] = detailRow.$id,
-          );
+        final txData = doc.data['transactions'];
+        String? linkedTxId;
+        if (txData is Map) {
+          linkedTxId = txData['\$id'];
+        } else if (txData is String) {
+          linkedTxId = txData;
         }
+        if (linkedTxId != null) {
+          detailMap[linkedTxId] = detail;
+        }
+      }
 
-        return {'transaction': tx, 'detail': detail};
-      });
-
-      results = await Future.wait(futures);
-
-      // Sắp xếp lại vì Future.wait có thể làm mất thứ tự
-      results.sort((a, b) {
-        final txA = a['transaction'] as TransactionModel;
-        final txB = b['transaction'] as TransactionModel;
-        return txB.transactionDate.compareTo(txA.transactionDate);
-      });
+      List<Map<String, dynamic>> results = response.documents.map((doc) {
+        final tx = TransactionModel.fromMap(
+          Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
+        );
+        return {'transaction': tx, 'detail': detailMap[tx.id]};
+      }).toList();
 
       return results;
     });
@@ -135,43 +139,48 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         );
       }
 
-      final response = await appwrite.tables.listRows(
+      final response = await appwrite.databases.listDocuments(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.transactionsTableId,
+        collectionId: appwrite.transactionsTableId,
         queries: queries,
       );
 
-      List<Map<String, dynamic>> results = [];
+      if (response.documents.isEmpty) return [];
 
-      final futures = response.rows.map((row) async {
-        final tx = TransactionModel.fromMap(
-          Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+      final txIds = response.documents.map((doc) => doc.$id).toList();
+
+      final detailsResponse = await appwrite.databases.listDocuments(
+        databaseId: appwrite.databaseId,
+        collectionId: appwrite.transactionDetailsTableId,
+        queries: [
+          Query.equal('transactions', txIds),
+          Query.limit(txIds.length),
+        ],
+      );
+
+      final Map<String, TransactionDetailModel> detailMap = {};
+      for (var doc in detailsResponse.documents) {
+        final detail = TransactionDetailModel.fromMap(
+          Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
         );
-
-        final detailResponse = await appwrite.tables.listRows(
-          databaseId: appwrite.databaseId,
-          tableId: appwrite.transactionDetailsTableId,
-          queries: [Query.equal('transactions', tx.id), Query.limit(1)],
-        );
-
-        TransactionDetailModel? detail;
-        if (detailResponse.rows.isNotEmpty) {
-          final detailRow = detailResponse.rows.first;
-          detail = TransactionDetailModel.fromMap(
-            Map<String, dynamic>.from(detailRow.data)..['\$id'] = detailRow.$id,
-          );
+        final txData = doc.data['transactions'];
+        String? linkedTxId;
+        if (txData is Map) {
+          linkedTxId = txData['\$id'];
+        } else if (txData is String) {
+          linkedTxId = txData;
         }
+        if (linkedTxId != null) {
+          detailMap[linkedTxId] = detail;
+        }
+      }
 
-        return {'transaction': tx, 'detail': detail};
-      });
-
-      results = await Future.wait(futures);
-
-      results.sort((a, b) {
-        final txA = a['transaction'] as TransactionModel;
-        final txB = b['transaction'] as TransactionModel;
-        return txB.transactionDate.compareTo(txA.transactionDate);
-      });
+      List<Map<String, dynamic>> results = response.documents.map((doc) {
+        final tx = TransactionModel.fromMap(
+          Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
+        );
+        return {'transaction': tx, 'detail': detailMap[tx.id]};
+      }).toList();
 
       final models = results
           .map((e) => e['transaction'] as TransactionModel)
@@ -261,37 +270,48 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
         queries.add(Query.cursorAfter(cursorAfter));
       }
 
-      final response = await appwrite.tables.listRows(
+      final response = await appwrite.databases.listDocuments(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.transactionsTableId,
+        collectionId: appwrite.transactionsTableId,
         queries: queries,
       );
 
-      List<Map<String, dynamic>> results = [];
+      if (response.documents.isEmpty) return [];
 
-      final futures = response.rows.map((row) async {
-        final tx = TransactionModel.fromMap(
-          Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+      final txIds = response.documents.map((doc) => doc.$id).toList();
+
+      final detailsResponse = await appwrite.databases.listDocuments(
+        databaseId: appwrite.databaseId,
+        collectionId: appwrite.transactionDetailsTableId,
+        queries: [
+          Query.equal('transactions', txIds),
+          Query.limit(txIds.length),
+        ],
+      );
+
+      final Map<String, TransactionDetailModel> detailMap = {};
+      for (var doc in detailsResponse.documents) {
+        final detail = TransactionDetailModel.fromMap(
+          Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
         );
-
-        final detailResponse = await appwrite.tables.listRows(
-          databaseId: appwrite.databaseId,
-          tableId: appwrite.transactionDetailsTableId,
-          queries: [Query.equal('transactions', tx.id), Query.limit(1)],
-        );
-
-        TransactionDetailModel? detail;
-        if (detailResponse.rows.isNotEmpty) {
-          final detailRow = detailResponse.rows.first;
-          detail = TransactionDetailModel.fromMap(
-            Map<String, dynamic>.from(detailRow.data)..['\$id'] = detailRow.$id,
-          );
+        final txData = doc.data['transactions'];
+        String? linkedTxId;
+        if (txData is Map) {
+          linkedTxId = txData['\$id'];
+        } else if (txData is String) {
+          linkedTxId = txData;
         }
+        if (linkedTxId != null) {
+          detailMap[linkedTxId] = detail;
+        }
+      }
 
-        return {'transaction': tx, 'detail': detail};
-      });
-
-      results = await Future.wait(futures);
+      List<Map<String, dynamic>> results = response.documents.map((doc) {
+        final tx = TransactionModel.fromMap(
+          Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
+        );
+        return {'transaction': tx, 'detail': detailMap[tx.id]};
+      }).toList();
 
       final models = results
           .map((e) => e['transaction'] as TransactionModel)
@@ -310,10 +330,10 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     }
 
     return handleAppwriteError(() async {
-      final response = await appwrite.tables.getRow(
+      final response = await appwrite.databases.getDocument(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.transactionsTableId,
-        rowId: transactionId,
+        collectionId: appwrite.transactionsTableId,
+        documentId: transactionId,
       );
       return TransactionModel.fromMap(
         Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
@@ -333,16 +353,16 @@ mixin TransactionReadMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     }
 
     return handleAppwriteError(() async {
-      final response = await appwrite.tables.listRows(
+      final response = await appwrite.databases.listDocuments(
         databaseId: appwrite.databaseId,
-        tableId: appwrite.transactionDetailsTableId,
+        collectionId: appwrite.transactionDetailsTableId,
         queries: [Query.equal('transactions', transactionId), Query.limit(1)],
       );
 
-      if (response.rows.isNotEmpty) {
-        final row = response.rows.first;
+      if (response.documents.isNotEmpty) {
+        final doc = response.documents.first;
         return TransactionDetailModel.fromMap(
-          Map<String, dynamic>.from(row.data)..['\$id'] = row.$id,
+          Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
         );
       }
       return null;

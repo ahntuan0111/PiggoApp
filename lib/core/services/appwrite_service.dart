@@ -4,19 +4,15 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 
 class AppwriteService extends GetxService {
-  // Private instances to prevent direct modification
   late final Client _client;
   late final Databases _databases;
-  late final TablesDB _tablesDB;
   late final Account _account;
   late final Functions _functions;
 
   late final Storage _storage;
 
-  // Getters for read-only access
   Client get client => _client;
   Databases get databases => _databases;
-  TablesDB get tables => _tablesDB;
   Account get account => _account;
   Functions get functions => _functions;
   Storage get storage => _storage;
@@ -35,7 +31,7 @@ class AppwriteService extends GetxService {
   String get functionParseReceiptVision =>
       dotenv.env['APPWRITE_FUNCTION_PARSE_RECEIPT_VISION']!;
 
-  // Constants for table IDs
+  // Collection IDs
   final String categoriesTypeTableId = 'categorytypes';
   final String categoriesTableId = 'categories';
   final String monthlyBudgetsTableId = 'monthlybudgets';
@@ -59,7 +55,6 @@ class AppwriteService extends GetxService {
         .setSelfSigned(status: true);
 
     _databases = Databases(_client);
-    _tablesDB = TablesDB(_client);
     _account = Account(_client);
     _functions = Functions(_client);
     _storage = Storage(_client);

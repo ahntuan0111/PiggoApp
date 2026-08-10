@@ -175,7 +175,6 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
           'id': OfflineHelper.generateTempId(
             '${fromId ?? "unallocated"}_${toId ?? "unallocated"}',
           ),
-          'ownerId': '', // Will be set on server or ignored locally
           'amount': amount,
           'fromCategoryId': fromId ?? '',
           'toCategoryId': toId ?? '',

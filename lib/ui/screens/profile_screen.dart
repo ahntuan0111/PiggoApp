@@ -193,26 +193,26 @@ class ProfileScreen extends GetView<ProfileController> {
                     ),
                     onTap: () => Get.toNamed(Routes.BUDGET_SETTINGS),
                   ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.dark_mode_outlined),
-                    title: const Text("Giao diện"),
-                    trailing: DropdownButton<String>(
-                      value: controller.settingsService.themeMode.value,
-                      underline: const SizedBox(),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.grey,
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'light', child: Text("Sáng")),
-                        DropdownMenuItem(value: 'dark', child: Text("Tối")),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) controller.changeThemeMode(val);
-                      },
-                    ),
-                  ),
+                  // const Divider(),
+                  // ListTile(
+                  //   leading: const Icon(Icons.dark_mode_outlined),
+                  //   title: const Text("Giao diện"),
+                  //   trailing: DropdownButton<String>(
+                  //     value: controller.settingsService.themeMode.value,
+                  //     underline: const SizedBox(),
+                  //     icon: const Icon(
+                  //       Icons.keyboard_arrow_down,
+                  //       color: Colors.grey,
+                  //     ),
+                  //     items: const [
+                  //       DropdownMenuItem(value: 'light', child: Text("Sáng")),
+                  //       DropdownMenuItem(value: 'dark', child: Text("Tối")),
+                  //     ],
+                  //     onChanged: (val) {
+                  //       if (val != null) controller.changeThemeMode(val);
+                  //     },
+                  //   ),
+                  // ),
                   const Divider(),
                   Obx(
                     () => SwitchListTile(

@@ -13,10 +13,10 @@ class TransferLogRepository with AppwriteErrorHandler {
 
   Future<void> createTransferLog(TransferLogModel log) async {
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.createRow(
+      await _appwrite.databases.createDocument(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.transferLogsTableId,
-        rowId: ID.unique(),
+        collectionId: _appwrite.transferLogsTableId,
+        documentId: ID.unique(),
         data: log.toMap(),
       );
     });
@@ -40,9 +40,9 @@ class TransferLogRepository with AppwriteErrorHandler {
     }
 
     return handleAppwriteError(() async {
-      final response = await _appwrite.tables.listRows(
+      final response = await _appwrite.databases.listDocuments(
         databaseId: _appwrite.databaseId,
-        tableId: _appwrite.transferLogsTableId,
+        collectionId: _appwrite.transferLogsTableId,
         queries: [
           Query.or([
             Query.equal('fromCategoryId', categoryId),
@@ -53,8 +53,8 @@ class TransferLogRepository with AppwriteErrorHandler {
         ],
       );
 
-      return response.rows
-          .map((row) => TransferLogModel.fromMap(row.data, docId: row.$id))
+      return response.documents
+          .map((doc) => TransferLogModel.fromMap(doc.data, docId: doc.$id))
           .toList();
     });
   }

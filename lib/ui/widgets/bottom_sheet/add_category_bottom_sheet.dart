@@ -172,6 +172,15 @@ class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
               onPressed: _isLoading
                   ? null
                   : () async {
+                      if (selectedIcon.value.trim().isEmpty) {
+                        Get.snackbar(
+                          "Lỗi",
+                          "Vui lòng chọn một biểu tượng (Icon) cho danh mục",
+                          backgroundColor: Colors.red,
+                          colorText: Colors.white,
+                        );
+                        return;
+                      }
                       setState(() => _isLoading = true);
                       try {
                         await widget.onSave(
