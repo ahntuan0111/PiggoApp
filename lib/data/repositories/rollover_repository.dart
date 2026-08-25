@@ -157,7 +157,10 @@ class RolloverRepository with AppwriteErrorHandler {
     });
   }
 
-  Future<void> executeHardReset(String userId) async {
+  Future<void> executeHardReset(
+    String userId, {
+    Set<String> goalCategoryIds = const {},
+  }) async {
     return handleAppwriteError(() async {
       final now = DateTime.now();
       final currentMonthStr =
@@ -183,6 +186,7 @@ class RolloverRepository with AppwriteErrorHandler {
 
       for (var catDoc in categories) {
         final catId = catDoc.$id;
+        final bool isGoal = goalCategoryIds.contains(catId);
 
         await _appwrite.databases.createDocument(
           databaseId: _appwrite.databaseId,
@@ -191,7 +195,8 @@ class RolloverRepository with AppwriteErrorHandler {
           data: {
             'categories': catId,
             'monthYear': currentMonthStr,
-            'budgetedAmount': 0.0,
+            // Goal categories luôn có budgetedAmount = 0 (tiền nằm ở rollover)
+            'budgetedAmount': isGoal ? 0.0 : 0.0,
             'rolloverAmount': 0.0,
             'spentAmount': 0.0,
           },
@@ -203,8 +208,9 @@ class RolloverRepository with AppwriteErrorHandler {
   Future<void> executeRollover(
     String userId,
     Map<String, double> updatedBudgets,
-    Map<String, double> rolloverAmounts,
-  ) async {
+    Map<String, double> rolloverAmounts, {
+    Set<String> goalCategoryIds = const {},
+  }) async {
     return handleAppwriteError(() async {
       final now = DateTime.now();
       final currentMonthStr =
@@ -230,10 +236,14 @@ class RolloverRepository with AppwriteErrorHandler {
 
       for (var catDoc in categories) {
         final catId = catDoc.$id;
-        // Lấy từ updatedBudgets (user đã sửa) hoặc mặc định.
-        final defaultBudget =
-            updatedBudgets[catId] ??
-            (catDoc.data['defaultBudget'] ?? 0).toDouble();
+        final bool isGoal = goalCategoryIds.contains(catId);
+
+        // Goal categories: budgetedAmount luôn = 0, tiền nằm ở rolloverAmount
+        // Expense categories: lấy từ updatedBudgets (user đã sửa) hoặc defaultBudget
+        final defaultBudget = isGoal
+            ? 0.0
+            : (updatedBudgets[catId] ??
+                (catDoc.data['defaultBudget'] ?? 0).toDouble());
 
         final rolloverAmt = rolloverAmounts[catId] ?? 0.0;
 

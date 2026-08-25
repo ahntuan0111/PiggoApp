@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:get/get.dart';
@@ -94,6 +96,19 @@ class BudgetService extends GetxService {
         .toList();
   }
 
+  final _rawGoals = <GoalModel>[].obs;
+
+  // Getter cho Rollover module — không bị filter bởi activeCategories
+  List<GoalModel> get allActiveGoals => _rawGoals
+      .where((g) =>
+          g.status == 'ACTIVE' &&
+          g.targetAmount > 0 &&
+          g.name.trim().isNotEmpty)
+      .toList();
+
+  // Set categoryIds thuộc Goal Saving (dùng để filter ra khỏi Rollover Decision list)
+  Set<String> get goalCategoryIds => _rawGoals.map((g) => g.categoryId).toSet();
+
   final goals = <GoalModel>[].obs;
   final monthlyBudgets = <MonthlyBudgetModel>[].obs;
 
@@ -162,6 +177,38 @@ class BudgetService extends GetxService {
         }
 
         final fetchedGoals = await goalRepository.getGoals();
+
+        // --- BẮT ĐẦU FIX LỖI DOUBLE QUEUEING ---
+        // Lấy tất cả các task pending từ Offline Queue để loại bỏ dữ liệu rác
+        final db = await localDb.database;
+        final pendingDeleteTasks = await db.query(
+          'offline_tasks_queue',
+          where: 'task_type IN (?, ?) AND status != ?',
+          whereArgs: ['DELETE_GOAL', 'DELETE_CATEGORY', 'SUCCESS'],
+        );
+
+        final deletedGoalIds = <String>{};
+        final deletedCatIds = <String>{};
+
+        for (var t in pendingDeleteTasks) {
+          final payloadStr = t['payload'] as String?;
+          if (payloadStr != null) {
+            try {
+              final payload = jsonDecode(payloadStr);
+              if (t['task_type'] == 'DELETE_GOAL') {
+                if (payload['goalId'] != null) deletedGoalIds.add(payload['goalId'].toString());
+                if (payload['categoryId'] != null) deletedCatIds.add(payload['categoryId'].toString());
+              } else if (t['task_type'] == 'DELETE_CATEGORY') {
+                if (payload['categoryId'] != null) deletedCatIds.add(payload['categoryId'].toString());
+              }
+            } catch (_) {}
+          }
+        }
+
+        // Lọc bỏ các mục đang chờ xóa khỏi danh sách kéo từ Cloud (để bảo vệ Optimistic UI)
+        fetchedGoals.removeWhere((g) => deletedGoalIds.contains(g.id));
+        cats.removeWhere((c) => deletedCatIds.contains(c.id));
+        // --- KẾT THÚC FIX LỖI DOUBLE QUEUEING ---
 
         // Lấy tất cả MonthlySummaries của user để tính dòng tiền
         final allSummaries = await categoryRepository.getAllMonthlySummaries();
@@ -303,6 +350,8 @@ class BudgetService extends GetxService {
       return GoalModel.fromMap(map);
     }).toList();
 
+    _rawGoals.value = fetchedGoals;
+
     // Filter goals exactly as previously done in GoalController
     final userGoals = fetchedGoals
         .where(
@@ -337,7 +386,12 @@ class BudgetService extends GetxService {
     currentMonthExpense.value = (currentSummary?['totalExpense'] ?? 0.0)
         .toDouble();
 
-    double totalRemainingBudgets = tempCategories.fold(
+    // Chỉ tính allocatedAmount cho Expense categories (loại trừ Goal Saving)
+    final expenseCategories = tempCategories
+        .where((c) => !goalCategoryIds.contains(c.categoryModel.id))
+        .toList();
+
+    double totalRemainingBudgets = expenseCategories.fold(
       0.0,
       (sum, c) => sum + (c.allocated - c.spent),
     );
@@ -346,10 +400,59 @@ class BudgetService extends GetxService {
 
     // Số tiền chưa phân bổ = Tổng ngân sách - Tổng đã phân bổ (còn lại)
     unallocatedAmount.value = totalWalletBalance.value - totalRemainingBudgets;
+
+    // Cleanup fully spent completed goals
+    _checkAndCleanUpSpentGoals(tempCategories);
   }
 
   MonthlyBudgetModel? getBudgetForCategory(String categoryId) {
     return monthlyBudgets.firstWhereOrNull((m) => m.categoryId == categoryId);
+  }
+
+  void _checkAndCleanUpSpentGoals(List<BudgetCategory> currentCategories) {
+    final goalsToClean = goals.where((g) {
+      if (g.status != 'COMPLETED') return false;
+      final cat = currentCategories.firstWhereOrNull((c) => c.categoryModel.id == g.categoryId);
+      if (cat == null) return false;
+      return (cat.allocated - cat.spent) <= 0;
+    }).toList();
+
+    if (goalsToClean.isEmpty) return;
+
+    for (var goal in goalsToClean) {
+      // 1. Update UI (RAM) immediately
+      goals.removeWhere((g) => g.id == goal.id);
+      _rawGoals.removeWhere((g) => g.id == goal.id);
+      categories.removeWhere((c) => c.categoryModel.id == goal.categoryId);
+      for (var group in categoryGroups) {
+        group.categories.removeWhere((c) => c.categoryModel.id == goal.categoryId);
+      }
+      
+      // 2. Perform DB operations in background
+      _executeGoalCleanup(goal);
+    }
+    
+    // Refresh groups list to trigger UI update
+    categoryGroups.refresh();
+    categories.refresh();
+  }
+
+  Future<void> _executeGoalCleanup(GoalModel goal) async {
+    try {
+      final localDb = Get.find<LocalDatabaseService>();
+      final offlineSyncService = Get.find<OfflineSyncService>();
+      
+      await localDb.deleteLocalGoal(goal.id);
+      await localDb.deleteCategory(goal.categoryId);
+      
+      final payload = jsonEncode({
+        'goalId': goal.id,
+        'categoryId': goal.categoryId,
+      });
+      await offlineSyncService.queueManualTask('DELETE_GOAL', payload);
+    } catch (e) {
+      AppLogger.error("CLEANUP_GOAL", "Failed to cleanup goal ${goal.id}: $e");
+    }
   }
 
   @override

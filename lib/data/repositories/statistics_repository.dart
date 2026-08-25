@@ -39,6 +39,11 @@ class StatisticsRepository with AppwriteErrorHandler {
     });
   }
 
+  Future<bool> hasAnyTransactions() async {
+    final localDb = Get.find<LocalDatabaseService>();
+    return await localDb.hasAnyTransactions();
+  }
+
   Future<Map<String, dynamic>> getOfflineStatistics(String timeframe) async {
     final localDb = Get.find<LocalDatabaseService>();
     final now = DateTime.now();

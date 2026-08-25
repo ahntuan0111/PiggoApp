@@ -42,7 +42,7 @@ mixin AppwriteErrorHandler {
           e.toString().contains('Network is unreachable')) {
         throw NetworkException("Không có kết nối mạng, vui lòng kiểm tra lại.");
       }
-      throw ServerException("Lỗi hệ thống không xác định: $e");
+      throw ServerException("Đã xảy ra lỗi, vui lòng thử lại sau.");
     }
   }
 

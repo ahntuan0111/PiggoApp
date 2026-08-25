@@ -583,6 +583,24 @@ class SyncEngineService extends GetxService {
       allocations,
       transferLogs: transferLogs,
     );
+
+    // Đảm bảo monthly_budgets được cập nhật trên Appwrite (Bypass Cloud Function)
+    for (var alloc in allocations) {
+      final categoryId = alloc['categoryId'];
+      final newBudget = (alloc['amount'] as num).toDouble();
+      final mb = _budgetService.getBudgetForCategory(categoryId);
+      if (mb != null) {
+        await _categoryRepo.updateMonthlyBudget(mb.id, newBudget);
+      } else {
+        final cat = _budgetService.categories.firstWhereOrNull((c) => c.categoryModel.id == categoryId);
+        await _categoryRepo.createMonthlyBudget(
+          categoryId: categoryId,
+          monthYear: monthYear,
+          budgetedAmount: newBudget,
+          spentAmount: cat?.spent ?? 0.0,
+        );
+      }
+    }
   }
 
   Future<void> _handleDeleteOrphanedFile(Map<String, dynamic> data) async {

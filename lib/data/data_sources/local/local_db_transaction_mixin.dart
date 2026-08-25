@@ -21,6 +21,13 @@ mixin LocalDbTransactionMixin on LocalDatabaseBase {
     await batch.commit(noResult: true);
   }
 
+  Future<bool> hasAnyTransactions() async {
+    final db = await database;
+    final count = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM transactions'));
+    return (count ?? 0) > 0;
+  }
+
   Future<List<TransactionModel>> getTransactionsByMonth(
     String monthYearStr,
   ) async {

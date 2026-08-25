@@ -5,7 +5,7 @@ import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:get/get.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:appintern/ui/widgets/dialogs/offline_queue_full_dialog.dart';
+import 'package:appintern/ui/features/sync/widgets/offline_queue_full_dialog.dart';
 
 class OfflineSyncService extends GetxService {
   final LocalDatabaseService _localDb = Get.find<LocalDatabaseService>();

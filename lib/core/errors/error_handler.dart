@@ -57,9 +57,12 @@ class ErrorHandler {
       AppLogger.error(tag, e.message);
       return left(Failure(message: e.message));
     } catch (e, stack) {
-      final message = "Lỗi hệ thống không xác định: ${e.toString()}";
-      AppLogger.error(tag, message, stack);
-      return left(Failure(message: message));
+      final technicalMessage = e.toString();
+      AppLogger.error(tag, "Lỗi hệ thống không xác định: $technicalMessage", stack);
+      return left(Failure(
+        message: technicalMessage,
+        userMessage: 'Đã xảy ra lỗi, vui lòng thử lại sau.',
+      ));
     }
   }
 }
