@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/services/storage_service.dart';
-import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/core/services/notification_service.dart';
 
 class SettingsService extends GetxService {
@@ -55,35 +53,7 @@ class SettingsService extends GetxService {
   }
 
   Future<void> loadFromCloud() async {
-    try {
-      final appwrite = Get.find<AppwriteService>();
-      final prefs = (await appwrite.account.getPrefs()).data;
-
-      bool changed = false;
-      if (prefs.containsKey('currencyCode')) {
-        currencyCode.value = prefs['currencyCode'];
-        changed = true;
-      }
-      if (prefs.containsKey('numberFormat')) {
-        numberFormat.value = prefs['numberFormat'];
-        changed = true;
-      }
-      if (prefs.containsKey('symbolPosition')) {
-        symbolPosition.value = prefs['symbolPosition'];
-        changed = true;
-      }
-
-      if (prefs.containsKey('themeMode')) {
-        themeMode.value = prefs['themeMode'];
-        changed = true;
-      }
-
-      if (changed) {
-        _saveToLocal();
-      }
-    } catch (e) {
-      AppLogger.error('SETTINGS', "Failed to load settings from cloud: $e");
-    }
+    // Migration Phase C: In offline/local mode, settings are loaded from GetStorage.
   }
 
   void save(String newCurrency, String newFormat, String newPosition) {
@@ -92,13 +62,11 @@ class SettingsService extends GetxService {
     symbolPosition.value = newPosition;
 
     _saveToLocal();
-    _syncToCloud();
   }
 
   void saveTheme(String newTheme) {
     themeMode.value = newTheme;
     _storage.write('themeMode', newTheme);
-    _syncToCloud();
 
     if (newTheme == 'light')
       Get.changeThemeMode(ThemeMode.light);
@@ -116,7 +84,6 @@ class SettingsService extends GetxService {
     _storage.write('reminderTime', time);
 
     _applyNotificationSettings();
-    _syncToCloud();
   }
 
   void _applyNotificationSettings() {
@@ -143,21 +110,7 @@ class SettingsService extends GetxService {
     _storage.write(AppKeys.symbolPosition, symbolPosition.value);
   }
 
-  void _syncToCloud() async {
-    try {
-      final appwrite = Get.find<AppwriteService>();
-      await appwrite.account.updatePrefs(
-        prefs: {
-          'currencyCode': currencyCode.value,
-          'numberFormat': numberFormat.value,
-          'symbolPosition': symbolPosition.value,
-          'themeMode': themeMode.value,
-          'isDailyReminderEnabled': isDailyReminderEnabled.value,
-          'reminderTime': reminderTime.value,
-        },
-      );
-    } catch (e) {
-      AppLogger.error('SETTINGS', "Failed to sync settings to cloud: $e");
-    }
+  void _syncToCloud() {
+    // Migration Phase C: Local-first persistence only. No cloud sync required.
   }
 }

@@ -1,18 +1,18 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:appintern/core/utils/logger.dart';
 import 'package:get/get.dart';
-import 'package:appwrite/models.dart' as appwrite_models;
+import 'package:appintern/data/models/user_profile_model.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 import 'package:appintern/data/repositories/auth_repository.dart';
 import 'package:appintern/data/repositories/category_repository.dart';
+import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/services/budget_service.dart';
 import 'package:appintern/core/services/settings_service.dart';
-import 'package:appintern/core/services/sync_engine_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/services/notification_service.dart';
 import 'package:appintern/core/services/network_service.dart';
@@ -24,10 +24,8 @@ class ProfileController extends BaseController {
   final StorageService storageService = Get.find<StorageService>();
   final CategoryRepository categoryRepo = Get.find<CategoryRepository>();
   final SettingsService settingsService = Get.find<SettingsService>();
-  final SyncEngineService syncEngine = Get.find<SyncEngineService>();
-  final OfflineSyncService offlineSync = Get.find<OfflineSyncService>();
 
-  final Rx<appwrite_models.User?> currentUser = Rx<appwrite_models.User?>(null);
+  final Rx<UserProfileModel?> currentUser = Rx<UserProfileModel?>(null);
   final Rx<Uint8List?> avatarBytes = Rx<Uint8List?>(null);
 
   @override
@@ -48,6 +46,12 @@ class ProfileController extends BaseController {
       ),
       (user) {
         currentUser.value = user;
+        if (user != null && user.avatarPath != null && user.avatarPath!.isNotEmpty) {
+          final file = File(user.avatarPath!);
+          if (file.existsSync()) {
+            avatarBytes.value = file.readAsBytesSync();
+          }
+        }
       },
     );
   }
@@ -59,27 +63,33 @@ class ProfileController extends BaseController {
     if (image != null) {
       final bytes = await image.readAsBytes();
       avatarBytes.value = bytes;
-      // In a real app we'd upload to Appwrite Storage and update prefs.
-      showSuccessMessage('Thành công', 'Đã cập nhật ảnh đại diện cục bộ.');
+
+      final user = currentUser.value;
+      if (user != null) {
+        try {
+          final storageRepo = Get.find<StorageRepository>();
+          final localDb = Get.find<LocalDatabaseService>();
+          final savedPath = await storageRepo.saveAvatarImage(File(image.path), user.id);
+          final updatedUser = user.copyWith(avatarPath: savedPath);
+          await localDb.saveUserProfile(updatedUser);
+          currentUser.value = updatedUser;
+          storageService.write(AppKeys.avatarUrl, savedPath);
+        } catch (e) {
+          AppLogger.error('PROFILE', 'Failed to save avatar image: $e');
+        }
+      }
+      showSuccessMessage('Thành công', 'Đã cập nhật ảnh đại diện.');
     }
   }
 
   Future<void> forceSync() async {
-    final networkService = Get.find<NetworkService>();
-    if (networkService.isOffline.value) {
-      showWarningMessage('Ngoại tuyến', 'Không thể đồng bộ khi không có mạng.');
-      return;
-    }
-
     showLoading();
     try {
-      await syncEngine.startForegroundSync();
       final budgetService = Get.find<BudgetService>();
       await budgetService.refreshData();
-      offlineSync.refreshQueueCount();
-      showSuccessMessage('Đồng bộ', 'Dữ liệu đã được đồng bộ thành công.');
+      showSuccessMessage('Làm mới', 'Dữ liệu đã được cập nhật thành công.');
     } catch (e) {
-      showErrorMessage('Lỗi đồng bộ', 'Không thể đồng bộ: ${e.toString()}');
+      showErrorMessage('Lỗi', 'Không thể cập nhật dữ liệu: ${e.toString()}');
     } finally {
       hideLoading();
     }
@@ -137,10 +147,15 @@ class ProfileController extends BaseController {
 
   Future<void> deleteAccount() async {
     showLoading();
+    final user = currentUser.value;
+    final userId = user?.id ?? storageService.read<String>(AppKeys.userId);
+
     final result = await ErrorHandler.execute(() async {
-      await authRepository.clearAllUserData();
-      await authRepository.logout();
-      await Get.find<LocalDatabaseService>().clearAllData();
+      if (userId != null && userId.isNotEmpty) {
+        await authRepository.deleteUserAccount(userId);
+      } else {
+        await authRepository.clearAllUserData();
+      }
     }, tag: 'DELETE_ACCOUNT');
     hideLoading();
 
@@ -160,7 +175,6 @@ class ProfileController extends BaseController {
     showLoading();
     final result = await ErrorHandler.execute(() async {
       await authRepository.logout();
-      await Get.find<LocalDatabaseService>().clearAllData();
     }, tag: 'LOGOUT');
     hideLoading();
 
@@ -169,7 +183,6 @@ class ProfileController extends BaseController {
         showErrorMessage('Lỗi đăng xuất', failure.message);
       },
       (data) {
-        storageService.clearAll();
         Get.offAllNamed(Routes.ONBOARDING);
       },
     );

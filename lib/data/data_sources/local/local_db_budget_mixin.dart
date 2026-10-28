@@ -23,7 +23,7 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
     for (var mb in budgets) {
       batch.insert('monthly_budgets', {
         'id': mb['id'],
-        'categoryId': mb['categories'] ?? mb['categoryId'],
+        'categoryId': mb['categoryId'] ?? mb['categories'],
         'monthYear': mb['monthYear'],
         'budgetedAmount': mb['budgetedAmount'],
         'rolloverAmount': mb['rolloverAmount'],
@@ -71,12 +71,13 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
     String? toId,
     double amount,
     String monthYear, {
+    String? note,
     bool isOffline = true,
   }) async {
     final db = await database;
     await db.transaction((txn) async {
       // 1. Update fromId if provided (and not 'unallocated')
-      if (fromId != null && fromId != 'unallocated') {
+      if (fromId != null && fromId.isNotEmpty && fromId != 'unallocated') {
         final fromCatResult = await txn.query(
           'categories',
           where: 'id = ?',
@@ -113,18 +114,36 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
           );
         } else {
           await txn.insert('monthly_budgets', {
-            'id': OfflineHelper.generateTempId(fromId!),
+            'id': OfflineHelper.generateTempId(fromId),
             'categoryId': fromId,
             'monthYear': monthYear,
             'budgetedAmount': 0.0,
             'rolloverAmount': 0.0,
             'spentAmount': 0.0,
+            'createdAt': DateTime.now().toIso8601String(),
           });
+        }
+      } else if (fromId == 'unallocated') {
+        final summaryResult = await txn.query(
+          'monthly_summaries',
+          where: 'monthYear = ?',
+          whereArgs: [monthYear],
+        );
+        if (summaryResult.isNotEmpty) {
+          double currentUnallocated =
+              (summaryResult.first['unallocatedBalance'] as num?)?.toDouble() ?? 0.0;
+          double newUnallocated = currentUnallocated - amount;
+          await txn.update(
+            'monthly_summaries',
+            {'unallocatedBalance': newUnallocated},
+            where: 'id = ?',
+            whereArgs: [summaryResult.first['id']],
+          );
         }
       }
 
       // 2. Update toId
-      if (toId != null && toId != 'unallocated') {
+      if (toId != null && toId.isNotEmpty && toId != 'unallocated') {
         final toCatResult = await txn.query(
           'categories',
           where: 'id = ?',
@@ -159,28 +178,57 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
           );
         } else {
           await txn.insert('monthly_budgets', {
-            'id': OfflineHelper.generateTempId(toId!),
+            'id': OfflineHelper.generateTempId(toId),
             'categoryId': toId,
             'monthYear': monthYear,
             'budgetedAmount': amount,
             'rolloverAmount': 0.0,
             'spentAmount': 0.0,
+            'createdAt': DateTime.now().toIso8601String(),
+          });
+        }
+      } else if (toId == 'unallocated') {
+        final summaryResult = await txn.query(
+          'monthly_summaries',
+          where: 'monthYear = ?',
+          whereArgs: [monthYear],
+        );
+        if (summaryResult.isNotEmpty) {
+          double currentUnallocated =
+              (summaryResult.first['unallocatedBalance'] as num?)?.toDouble() ?? 0.0;
+          double newUnallocated = currentUnallocated + amount;
+          await txn.update(
+            'monthly_summaries',
+            {'unallocatedBalance': newUnallocated},
+            where: 'id = ?',
+            whereArgs: [summaryResult.first['id']],
+          );
+        } else {
+          await txn.insert('monthly_summaries', {
+            'id': DateTime.now().millisecondsSinceEpoch.toString(),
+            'monthYear': monthYear,
+            'totalIncome': 0.0,
+            'totalExpense': 0.0,
+            'unallocatedBalance': amount,
+            'createdAt': DateTime.now().toIso8601String(),
           });
         }
       }
 
-      // 3. Insert into transferlogs
+      // 3. Insert into transfer_logs (and compatibility table transferlogs)
       if (amount > 0) {
-        await txn.insert('transferlogs', {
-          'id': OfflineHelper.generateTempId(
-            '${fromId ?? "unallocated"}_${toId ?? "unallocated"}',
-          ),
+        final logId = OfflineHelper.generateTempId(
+          '${fromId ?? "unallocated"}_${toId ?? "unallocated"}',
+        );
+        final logMap = {
+          'id': logId,
           'amount': amount,
           'fromCategoryId': fromId ?? '',
           'toCategoryId': toId ?? '',
-          'note': 'Cân bằng ngân sách',
+          'note': note ?? 'Cân bằng ngân sách',
           'createdAt': DateTime.now().toIso8601String(),
-        });
+        };
+        await txn.insert('transfer_logs', logMap, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }
@@ -258,12 +306,16 @@ mixin LocalDbBudgetMixin on LocalDatabaseBase {
     int limit = 5,
   }) async {
     final db = await database;
-    return await db.query(
-      'transferlogs',
-      where: 'fromCategoryId = ? OR toCategoryId = ?',
-      whereArgs: [categoryId, categoryId],
-      orderBy: 'createdAt DESC',
-      limit: limit,
-    );
+    try {
+      return await db.query(
+        'transfer_logs',
+        where: 'fromCategoryId = ? OR toCategoryId = ?',
+        whereArgs: [categoryId, categoryId],
+        orderBy: 'createdAt DESC',
+        limit: limit,
+      );
+    } catch (_) {
+      return [];
+    }
   }
 }

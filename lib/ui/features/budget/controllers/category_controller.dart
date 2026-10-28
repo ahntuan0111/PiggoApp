@@ -6,68 +6,51 @@ import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
-import 'package:appintern/core/utils/offline_helper.dart';
-import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/core/services/budget_service.dart';
-import 'dart:convert';
 
-import 'package:appintern/core/utils/offline_aware_mixin.dart';
-
-class CategoryController extends BaseController with OfflineAware {
+class CategoryController extends BaseController {
   final CategoryRepository categoryRepo = Get.find<CategoryRepository>();
 
   // Danh sách các nhóm (Mong muốn, Thiết yếu...)
   var categoryTypes = <CategoryTypeModel>[].obs;
   // Danh sách chi tiết các danh mục (Cafe, Ăn uống)
   var categories = <CategoryModel>[].obs;
-
-  var isInitialLoading = true.obs;
+  var isInitialLoading = false.obs;
 
   @override
-  void onReady() {
-    super.onReady();
+  void onInit() {
+    super.onInit();
     fetchData();
   }
 
   Future<void> fetchData() async {
-    final storage = Get.find<StorageService>();
-    final userId = storage.read<String>(AppKeys.userId) ?? '';
-    if (userId.isEmpty) return;
+    isInitialLoading.value = true;
+    showLoading();
+    final result = await ErrorHandler.execute(() async {
+      final types = await categoryRepo.getCategoryTypes();
+      final cats = await categoryRepo.getCategories();
+      return {'types': types, 'categories': cats};
+    }, tag: "FETCH_CATEGORIES");
 
-    final localDb = Get.find<LocalDatabaseService>();
-    final typesData = await localDb.getCategoryTypes();
-    final catsData = await localDb.getCategories();
-
-    // Nếu có mạng, đồng bộ mới nhất trước khi gán
-    // Nếu có mạng, đồng bộ mới nhất trước khi gán
-    if (!isOffline) {
-      await Get.find<BudgetService>().refreshData();
-      final freshTypes = await localDb.getCategoryTypes();
-      final freshCats = await localDb.getCategories();
-      categoryTypes.assignAll(
-        freshTypes.map((e) => CategoryTypeModel.fromMap(e)).toList(),
-      );
-      categories.assignAll(
-        freshCats
-            .map((e) => CategoryModel.fromMap(e))
-            .where((c) => c.isActive)
-            .toList(),
-      );
-    } else {
-      categoryTypes.assignAll(
-        typesData.map((e) => CategoryTypeModel.fromMap(e)).toList(),
-      );
-      categories.assignAll(
-        catsData
-            .map((e) => CategoryModel.fromMap(e))
-            .where((c) => c.isActive)
-            .toList(),
-      );
-    }
-
+    hideLoading();
     isInitialLoading.value = false;
+    result.fold(
+      (failure) {
+        showErrorMessage("Lỗi", failure.message);
+      },
+      (data) {
+        categoryTypes.assignAll(data['types'] as List<CategoryTypeModel>);
+        categories.assignAll(data['categories'] as List<CategoryModel>);
+        Get.find<BudgetService>().refreshData();
+      },
+    );
+  }
+
+  // Lấy các category thuộc về 1 Type cụ thể (chỉ lấy các danh mục đang hoạt động)
+  List<CategoryModel> getCategoriesForType(String typeId) {
+    return categories
+        .where((c) => c.categoryTypeId == typeId && c.isActive)
+        .toList();
   }
 
   Future<void> createCategoryType(String name) async {
@@ -76,9 +59,6 @@ class CategoryController extends BaseController with OfflineAware {
     showLoading();
     final storage = Get.find<StorageService>();
     final userId = storage.read<String>(AppKeys.userId) ?? '';
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
 
     if (userId.isEmpty) {
       hideLoading();
@@ -93,62 +73,28 @@ class CategoryController extends BaseController with OfflineAware {
           .reduce((a, b) => a > b ? a : b);
     }
 
-    if (isOffline) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final tempId = OfflineHelper.generateTempId();
-      final payload = jsonEncode({
-        'name': name.trim(),
-        'priority': maxPriority + 1,
-        'tempId': tempId,
-      });
-      await offlineSyncService.queueManualTask('CREATE_CATEGORY_TYPE', payload);
-
-      final newType = CategoryTypeModel(
-        id: tempId,
-        name: name.trim(),
-        priority: maxPriority + 1,
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.createCategoryType(
+        userId,
+        name.trim(),
+        maxPriority + 1,
       );
+    }, tag: "CREATE_CATEGORY_TYPE");
 
-      final typesDb = List<Map<String, dynamic>>.from(
-        await localDb.getCategoryTypes(),
-      );
-      typesDb.add(newType.toMap());
-      await localDb.saveCategoryTypes(typesDb);
-
-      hideLoading();
-      Get.back();
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
-      );
-      await fetchData();
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await categoryRepo.createCategoryType(
-          userId,
-          name.trim(),
-          maxPriority + 1,
+    hideLoading();
+    await result.fold(
+      (failure) async {
+        showErrorMessage(
+          "Lỗi",
+          "Không thể tạo nhóm danh mục: ${failure.message}",
         );
-      }, tag: "CREATE_CATEGORY_TYPE");
-
-      hideLoading();
-      await result.fold(
-        (failure) async {
-          showErrorMessage(
-            "Lỗi",
-            "Không thể tạo nhóm danh mục: ${failure.message}",
-          );
-        },
-        (_) async {
-          Get.back();
-          showSuccessMessage("Thành công", "Đã thêm nhóm danh mục");
-          await fetchData();
-        },
-      );
-    }
+      },
+      (_) async {
+        Get.back();
+        showSuccessMessage("Thành công", "Đã tạo nhóm danh mục");
+        await fetchData();
+      },
+    );
   }
 
   Future<void> createCategory(
@@ -162,157 +108,70 @@ class CategoryController extends BaseController with OfflineAware {
     }
 
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
     final color = '#FDEBB2';
 
-    if (isOffline) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final tempId = OfflineHelper.generateTempId();
-      final payload = jsonEncode({
-        'typeId': typeId,
-        'name': name.trim(),
-        'iconName': iconName,
-        'color': color,
-        'tempId': tempId,
-      });
-      await offlineSyncService.queueManualTask('CREATE_CATEGORY', payload);
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.createCategory(typeId, name.trim(), iconName, color);
+    }, tag: "CREATE_CATEGORY");
 
-      final newCat = CategoryModel(
-        id: tempId,
-        categoryTypeId: typeId,
-        name: name.trim(),
-        color: color,
-        iconName: iconName,
-      );
-
-      await localDb.insertLocalCategory(newCat.toMap());
-
-      hideLoading();
-      Get.back();
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
-      );
-      await fetchData();
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await categoryRepo.createCategory(typeId, name.trim(), iconName, color);
-      }, tag: "CREATE_CATEGORY");
-
-      hideLoading();
-      await result.fold(
-        (failure) async {
-          showErrorMessage("Lỗi", "Không thể tạo danh mục: ${failure.message}");
-        },
-        (_) async {
-          Get.back();
-          // showSuccessMessage('Thành công', 'Đã thêm danh mục mới');
-          await fetchData();
-        },
-      );
-    }
+    hideLoading();
+    await result.fold(
+      (failure) async {
+        showErrorMessage("Lỗi", "Không thể tạo danh mục: ${failure.message}");
+      },
+      (_) async {
+        Get.back();
+        showSuccessMessage('Thành công', 'Đã thêm danh mục mới');
+        await fetchData();
+      },
+    );
   }
 
   Future<void> updateCategoryType(String typeId, String name) async {
     if (name.trim().isEmpty) return;
 
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
 
-    if (isOffline) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final payload = jsonEncode({'id': typeId, 'name': name.trim()});
-      await offlineSyncService.queueManualTask('UPDATE_CATEGORY_TYPE', payload);
-      await localDb.updateCategoryType(typeId, name.trim());
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.updateCategoryType(typeId, name.trim());
+    }, tag: "UPDATE_CATEGORY_TYPE");
+    hideLoading();
 
-      hideLoading();
-      Get.back();
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
-      );
-      await fetchData();
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await categoryRepo.updateCategoryType(typeId, name.trim());
-      }, tag: "UPDATE_CATEGORY_TYPE");
-      hideLoading();
-
-      await result.fold(
-        (failure) async {
-          showErrorMessage(
-            "Lỗi",
-            failure.message.contains("Invalid `rowId`") ||
-                    failure.message.contains("could not be found")
-                ? "Dữ liệu không tồn tại hoặc đã bị xóa trên hệ thống."
-                : "Không thể cập nhật nhóm danh mục: ${failure.message}",
-          );
-        },
-        (_) async {
-          await fetchData();
-          Get.back(); // Đóng dialog
-          showSuccessMessage(
-            "Thành công",
-            "Đã cập nhật nhóm danh mục",
-          ); // Dialog đã đóng, Route cha vẫn sống
-        },
-      );
-    }
+    await result.fold(
+      (failure) async {
+        showErrorMessage(
+          "Lỗi",
+          "Không thể cập nhật nhóm danh mục: ${failure.message}",
+        );
+      },
+      (_) async {
+        await fetchData();
+        Get.back();
+        showSuccessMessage("Thành công", "Đã cập nhật nhóm danh mục");
+      },
+    );
   }
 
   Future<void> deleteCategoryType(String typeId) async {
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
 
-    if (isOffline) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final payload = jsonEncode({'id': typeId});
-      await offlineSyncService.queueManualTask('DELETE_CATEGORY_TYPE', payload);
-      await localDb.deleteCategoryType(typeId);
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.deleteCategoryType(typeId);
+    }, tag: "DELETE_CATEGORY_TYPE");
+    hideLoading();
 
-      hideLoading();
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
-      );
-      await fetchData();
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await categoryRepo.deleteCategoryType(typeId);
-      }, tag: "DELETE_CATEGORY_TYPE");
-      hideLoading();
-
-      await result.fold(
-        (failure) async {
-          showErrorMessage(
-            "Lỗi",
-            failure.message.contains("Invalid `rowId`") ||
-                    failure.message.contains("could not be found")
-                ? "Dữ liệu không tồn tại hoặc đã bị xóa trên hệ thống."
-                : "Không thể xóa nhóm danh mục: ${failure.message}",
-          );
-        },
-        (_) async {
-          await fetchData();
-          showSuccessMessage("Thành công", "Đã xóa nhóm danh mục");
-        },
-      );
-    }
+    await result.fold(
+      (failure) async {
+        showErrorMessage(
+          "Lỗi",
+          "Không thể xóa nhóm danh mục: ${failure.message}",
+        );
+      },
+      (_) async {
+        await fetchData();
+        showSuccessMessage("Thành công", "Đã xóa nhóm danh mục");
+      },
+    );
   }
 
   Future<void> updateCategory(
@@ -327,106 +186,51 @@ class CategoryController extends BaseController with OfflineAware {
     }
 
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
 
-    if (isOffline) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final payload = jsonEncode({
-        'id': categoryId,
-        'name': name.trim(),
-        'iconName': iconName,
-        'color': color,
-      });
-      await offlineSyncService.queueManualTask('UPDATE_CATEGORY', payload);
-      await localDb.updateCategory(categoryId, name.trim(), iconName, color);
-
-      hideLoading();
-      Get.back();
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.updateCategory(
+        categoryId,
+        name.trim(),
+        iconName,
+        color,
       );
-      await fetchData();
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await categoryRepo.updateCategory(
-          categoryId,
-          name.trim(),
-          iconName,
-          color,
+    }, tag: "UPDATE_CATEGORY");
+    hideLoading();
+
+    await result.fold(
+      (failure) async {
+        showErrorMessage(
+          "Lỗi",
+          "Không thể cập nhật danh mục: ${failure.message}",
         );
-      }, tag: "UPDATE_CATEGORY");
-      hideLoading();
-
-      await result.fold(
-        (failure) async {
-          showErrorMessage(
-            "Lỗi",
-            failure.message.contains("Invalid `rowId`") ||
-                    failure.message.contains("could not be found")
-                ? "Dữ liệu không tồn tại hoặc đã bị xóa trên hệ thống."
-                : "Không thể cập nhật danh mục: ${failure.message}",
-          );
-        },
-        (_) async {
-          await fetchData();
-          Get.back(); // Đóng dialog
-          showSuccessMessage(
-            "Thành công",
-            "Đã cập nhật danh mục",
-          ); // Dialog đã đóng, Route cha vẫn sống
-        },
-      );
-    }
+      },
+      (_) async {
+        await fetchData();
+        Get.back();
+        showSuccessMessage("Thành công", "Đã cập nhật danh mục");
+      },
+    );
   }
 
   Future<void> deleteCategory(String categoryId) async {
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
 
-    if (isOffline) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final payload = jsonEncode({'id': categoryId});
-      await offlineSyncService.queueManualTask('DELETE_CATEGORY', payload);
-      await localDb.deleteCategory(categoryId);
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepo.deleteCategory(categoryId);
+    }, tag: "DELETE_CATEGORY");
+    hideLoading();
 
-      hideLoading();
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
-      );
-      await fetchData();
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await categoryRepo.deleteCategory(categoryId);
-      }, tag: "DELETE_CATEGORY");
-      hideLoading();
-
-      await result.fold(
-        (failure) async {
-          showErrorMessage(
-            "Lỗi",
-            failure.message.contains("Invalid `rowId`") ||
-                    failure.message.contains("could not be found")
-                ? "Dữ liệu không tồn tại hoặc đã bị xóa trên hệ thống."
-                : "Không thể xóa danh mục: ${failure.message}",
-          );
-        },
-        (_) async {
-          await fetchData();
-          showSuccessMessage("Thành công", "Đã xóa danh mục");
-        },
-      );
-    }
+    await result.fold(
+      (failure) async {
+        showErrorMessage(
+          "Lỗi",
+          "Không thể xóa danh mục: ${failure.message}",
+        );
+      },
+      (_) async {
+        await fetchData();
+        showSuccessMessage("Thành công", "Đã xóa danh mục");
+      },
+    );
   }
 }

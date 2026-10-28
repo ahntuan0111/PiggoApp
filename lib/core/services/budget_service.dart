@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:get/get.dart';
@@ -15,7 +12,6 @@ import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/data/repositories/goal_repository.dart';
 import 'package:appintern/data/models/goal_model.dart';
 import 'package:appintern/data/models/monthly_budget_model.dart';
-import 'package:appintern/core/errors/error_handler.dart';
 
 class BudgetService extends GetxService {
   final StorageService storage = Get.find<StorageService>();
@@ -41,22 +37,10 @@ class BudgetService extends GetxService {
 
   bool get isPastMonth {
     final tracking = currentTrackingMonth.value;
-    DateTime referenceTime = DateTime.now();
+    final now = DateTime.now();
 
-    try {
-      final networkService = Get.find<NetworkService>();
-      if (networkService.isOffline.value) {
-        final lastSyncedStr = storage.read<String>(AppKeys.lastSyncedServerTime);
-        if (lastSyncedStr != null) {
-          referenceTime = DateTime.parse(lastSyncedStr).toLocal();
-        }
-      }
-    } catch (_) {
-      // Fallback nếu Get.find lỗi lúc khởi tạo
-    }
-
-    if (tracking.year < referenceTime.year) return true;
-    if (tracking.year == referenceTime.year && tracking.month < referenceTime.month) return true;
+    if (tracking.year < now.year) return true;
+    if (tracking.year == now.year && tracking.month < now.month) return true;
     return false;
   }
 
@@ -135,121 +119,21 @@ class BudgetService extends GetxService {
     if (_isRefreshing) return;
     _isRefreshing = true;
     try {
-      // Luôn đọc lại userId phòng trường hợp vừa login xong
+      // Đọc userId từ session đã lưu trong storage
       currentUserId.value = storage.read(AppKeys.userId) ?? "";
-      final userId = currentUserId.value;
 
-      if (userId.isEmpty) {
-        isError.value = true;
-        errorMessage.value = "Người dùng chưa đăng nhập";
-        // Đánh dấu loaded để tránh kẹt loading ở HomeController
-        isDataLoaded.value = true;
-        return;
+      // LOAD TRỰC TIẾP TỪ LOCAL DATABASE (SINGLE SOURCE OF TRUTH)
+      final hasLoaded = await loadDataFromLocal();
+      if (hasLoaded) {
+        isError.value = false;
+        errorMessage.value = "";
       }
-
-      final localDb = Get.find<LocalDatabaseService>();
-      bool hasLoadedFromCache = false;
-
-      // 1. THỬ LOAD TỪ CACHE (STRUCTURED TABLES) TRƯỚC TIÊN (ZERO LOADING)
-      hasLoadedFromCache = await loadDataFromLocal();
-
-      final networkService = Get.find<NetworkService>();
-      if (networkService.isOffline.value && hasLoadedFromCache) {
-        return;
-      }
-
-      // 2. FETCH TỪ APPWRITE (BACKGROUND SYNC)
-      final result = await ErrorHandler.execute(() async {
-        final types = await categoryRepository.getCategoryTypes(userId);
-        List<CategoryModel> cats = [];
-        List<MonthlyBudgetModel> fetchedMonthlyBudgets = [];
-
-        if (types.isNotEmpty) {
-          final typeIds = types.map((e) => e.id).toList();
-          cats = await categoryRepository.getCategories(typeIds);
-
-          String monthYearStr =
-              "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
-          fetchedMonthlyBudgets = await categoryRepository.getMonthlyBudgets(
-            monthYearStr,
-          );
-          monthlyBudgets.value = fetchedMonthlyBudgets;
-        }
-
-        final fetchedGoals = await goalRepository.getGoals();
-
-        // --- BẮT ĐẦU FIX LỖI DOUBLE QUEUEING ---
-        // Lấy tất cả các task pending từ Offline Queue để loại bỏ dữ liệu rác
-        final db = await localDb.database;
-        final pendingDeleteTasks = await db.query(
-          'offline_tasks_queue',
-          where: 'task_type IN (?, ?) AND status != ?',
-          whereArgs: ['DELETE_GOAL', 'DELETE_CATEGORY', 'SUCCESS'],
-        );
-
-        final deletedGoalIds = <String>{};
-        final deletedCatIds = <String>{};
-
-        for (var t in pendingDeleteTasks) {
-          final payloadStr = t['payload'] as String?;
-          if (payloadStr != null) {
-            try {
-              final payload = jsonDecode(payloadStr);
-              if (t['task_type'] == 'DELETE_GOAL') {
-                if (payload['goalId'] != null) deletedGoalIds.add(payload['goalId'].toString());
-                if (payload['categoryId'] != null) deletedCatIds.add(payload['categoryId'].toString());
-              } else if (t['task_type'] == 'DELETE_CATEGORY') {
-                if (payload['categoryId'] != null) deletedCatIds.add(payload['categoryId'].toString());
-              }
-            } catch (_) {}
-          }
-        }
-
-        // Lọc bỏ các mục đang chờ xóa khỏi danh sách kéo từ Cloud (để bảo vệ Optimistic UI)
-        fetchedGoals.removeWhere((g) => deletedGoalIds.contains(g.id));
-        cats.removeWhere((c) => deletedCatIds.contains(c.id));
-        // --- KẾT THÚC FIX LỖI DOUBLE QUEUEING ---
-
-        // Lấy tất cả MonthlySummaries của user để tính dòng tiền
-        final allSummaries = await categoryRepository.getAllMonthlySummaries();
-
-        // GHI CACHE RAW DATA VÀO STRUCTURED TABLES
-        await localDb.saveCategoryTypes(types.map((e) => e.toMap()).toList());
-        await localDb.saveCategories(cats.map((e) => e.toMap()).toList());
-        String currentMonthStr =
-            "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
-        await localDb.saveMonthlyBudgets(
-          currentMonthStr,
-          fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),
-        );
-        await localDb.saveGoals(fetchedGoals.map((e) => e.toMap()).toList());
-        await localDb.saveMonthlySummaries(
-          allSummaries.map((e) => e.toMap()).toList(),
-        );
-
-        _parseAndSetBudgetData(
-          typesData: types.map((e) => e.toMap()).toList(),
-          catsData: cats.map((e) => e.toMap()).toList(),
-          budgetsData: fetchedMonthlyBudgets.map((e) => e.toMap()).toList(),
-          goalsData: fetchedGoals.map((e) => e.toMap()).toList(),
-          summariesData: allSummaries.map((e) => e.toMap()).toList(),
-        );
-      }, tag: "FETCH_BUDGET_DATA");
-
-      result.fold(
-        (failure) {
-          AppLogger.error("FETCH_BUDGET_DATA", failure.message);
-          if (!hasLoadedFromCache) {
-            isError.value = true;
-            errorMessage.value = failure.message;
-          }
-        },
-        (_) {
-          isError.value = false;
-          errorMessage.value = "";
-          isDataLoaded.value = true;
-        },
-      );
+      isDataLoaded.value = true;
+    } catch (e) {
+      AppLogger.error("REFRESH_BUDGET_DATA", e.toString());
+      isError.value = true;
+      errorMessage.value = e.toString();
+      isDataLoaded.value = true;
     } finally {
       _isRefreshing = false;
     }
@@ -268,7 +152,33 @@ class BudgetService extends GetxService {
       // Removed the harmful logic that forces currentTrackingMonth to fallback to previous month.
       // If budgetsData is empty, it means the month hasn't been rolled over yet, and SyncEngineService will handle it shortly.
       final goalsData = await localDb.getGoals();
-      final summariesData = await localDb.getMonthlySummaries();
+      var summariesData = await localDb.getMonthlySummaries();
+
+      if (summariesData.isEmpty) {
+        final localTxs = await localDb.getAllTransactions();
+        if (localTxs.isNotEmpty) {
+          final Map<String, List<double>> monthMap = {};
+          for (var tx in localTxs) {
+            final mStr =
+                "${tx.transactionDate.month.toString().padLeft(2, '0')}-${tx.transactionDate.year}";
+            monthMap.putIfAbsent(mStr, () => [0.0, 0.0]);
+            if (tx.type == 'INCOME') {
+              monthMap[mStr]![0] += tx.amount;
+            } else if (tx.type == 'EXPENSE') {
+              monthMap[mStr]![1] += tx.amount;
+            }
+          }
+          summariesData = monthMap.entries.map((e) {
+            return {
+              'id': 'healed_${e.key}',
+              'monthYear': e.key,
+              'totalIncome': e.value[0],
+              'totalExpense': e.value[1],
+              'unallocatedBalance': 0.0,
+            };
+          }).toList();
+        }
+      }
 
       if (typesData.isNotEmpty && catsData.isNotEmpty) {
         _parseAndSetBudgetData(
@@ -440,16 +350,9 @@ class BudgetService extends GetxService {
   Future<void> _executeGoalCleanup(GoalModel goal) async {
     try {
       final localDb = Get.find<LocalDatabaseService>();
-      final offlineSyncService = Get.find<OfflineSyncService>();
-      
       await localDb.deleteLocalGoal(goal.id);
+      // Soft delete category (isActive = 0) để bảo toàn khóa ngoại với transactions
       await localDb.deleteCategory(goal.categoryId);
-      
-      final payload = jsonEncode({
-        'goalId': goal.id,
-        'categoryId': goal.categoryId,
-      });
-      await offlineSyncService.queueManualTask('DELETE_GOAL', payload);
     } catch (e) {
       AppLogger.error("CLEANUP_GOAL", "Failed to cleanup goal ${goal.id}: $e");
     }

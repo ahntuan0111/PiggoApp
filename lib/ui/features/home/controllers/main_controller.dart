@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/ui/features/smart/controllers/smart_input_controller.dart';
+import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 
 class MainController extends BaseController
     with GetSingleTickerProviderStateMixin, BudgetAware {
@@ -39,10 +40,16 @@ class MainController extends BaseController
 
   bool canCreateTransaction() {
     // Kiem tra truc tiep tu BudgetService
-    return budgetService.categories.isNotEmpty && !budgetService.isPastMonth;
+    return budgetService.activeCategories.isNotEmpty && !budgetService.isPastMonth;
   }
 
   Future<void> openCameraReceiptScan() async {
+    if (!canCreateTransaction()) {
+      if (Get.context != null) {
+        showCategoryRequiredDialog(Get.context!);
+      }
+      return;
+    }
     toggleFab();
     await Future.delayed(const Duration(milliseconds: 260));
     final smartInputController = Get.find<SmartInputController>();

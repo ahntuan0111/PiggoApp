@@ -10,7 +10,6 @@ import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/ui/features/transaction/widgets/select_source_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 
 class OverspentCompensationController extends BaseController with BudgetAware {
@@ -144,9 +143,6 @@ class OverspentCompensationController extends BaseController with BudgetAware {
     }
 
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
     final now = budgetService.currentTrackingMonth.value;
     final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
@@ -194,58 +190,12 @@ class OverspentCompensationController extends BaseController with BudgetAware {
         )
         .toList();
 
-    if (networkService.isOffline.value) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final payload = jsonEncode({
-        'monthYear': monthYearStr,
-        'allocations': allocations,
-        'transferLogs': transferLogs,
-      });
-      await offlineSyncService.queueManualTask('TRANSFER_BUDGET', payload);
-
-      for (var source in sources) {
-        if (source.amountToCompensate > 0) {
-          await localDb.transferBudgetLocal(
-            source.sourceId == 'unallocated' ? null : source.sourceId,
-            targetBudget.categoryModel.id,
-            source.amountToCompensate,
-            monthYearStr,
-          );
-        }
-      }
-
-      hideLoading();
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
-      );
-      budgetService.refreshData(); // Refresh UI
-      Get.back(result: true);
-      return;
-    }
-
     final result = await ErrorHandler.execute(() async {
       await _categoryRepo.transferBudget(
         monthYearStr,
         allocations,
         transferLogs: transferLogs,
       );
-
-      // Update local db directly for fast UI sync
-      for (var source in sources) {
-        if (source.amountToCompensate > 0) {
-          await localDb.transferBudgetLocal(
-            source.sourceId == 'unallocated' ? null : source.sourceId,
-            targetBudget.categoryModel.id,
-            source.amountToCompensate,
-            monthYearStr,
-            isOffline: false,
-          );
-        }
-      }
     }, tag: "SAVE_COMPENSATION");
 
     hideLoading();

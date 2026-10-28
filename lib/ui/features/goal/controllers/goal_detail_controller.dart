@@ -1,17 +1,12 @@
 import 'package:appintern/core/base/base_controller.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
-import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/goal_model.dart';
 import 'package:appintern/data/repositories/goal_repository.dart';
 import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/data/repositories/transfer_log_repository.dart';
-import 'dart:convert';
 import 'package:get/get.dart';
-import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
-import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/core/routes/app_routes.dart';
 
 class GoalDetailController extends BaseController with BudgetAware {
@@ -38,7 +33,6 @@ class GoalDetailController extends BaseController with BudgetAware {
   }
 
   bool get hasDropped {
-    // Nếu có bất kỳ lịch sử rút tiền nào, coi như bị tụt
     return transactions.any((t) => t['type'] == 'EXPENSE');
   }
 
@@ -58,8 +52,7 @@ class GoalDetailController extends BaseController with BudgetAware {
       if (!goalsList.any((g) => g.id == goal.value.id)) {
         if (Get.currentRoute == Routes.GOAL_DETAIL) {
           showSuccessMessage("Hoàn thành", "Mục tiêu đã được đạt và tự động đóng.");
-          Get.until((route) =>
-              route.settings.name == Routes.MAIN);
+          Get.until((route) => route.settings.name == Routes.MAIN);
         }
       }
     });
@@ -89,7 +82,7 @@ class GoalDetailController extends BaseController with BudgetAware {
           'note': detail?.note ?? 'Rút quỹ',
           'date': tx.transactionDate,
           'walletName': 'Ngân sách',
-          'categoryName': 'Chi tiêu', // Hoặc để trống, widget tự xử lý
+          'categoryName': 'Chi tiêu',
         });
       }
 
@@ -97,9 +90,8 @@ class GoalDetailController extends BaseController with BudgetAware {
       for (var log in transferLogs) {
         bool isOutbound = goal.value.categoryId == log.fromCategoryId;
         if (!isOutbound) {
-          // Tiền chuyển vào = Nạp ngân sách
           displayList.add({
-            'type': 'INCOME', // giả lập loại nạp
+            'type': 'INCOME',
             'amount': log.amount,
             'note': log.note ?? 'Nạp ngân sách tiết kiệm',
             'date': log.createdAt,
@@ -107,7 +99,6 @@ class GoalDetailController extends BaseController with BudgetAware {
             'categoryName': 'Nạp tiền',
           });
         } else {
-          // Tiền chuyển ra
           displayList.add({
             'type': 'EXPENSE',
             'amount': log.amount,
@@ -119,7 +110,6 @@ class GoalDetailController extends BaseController with BudgetAware {
         }
       }
 
-      // Sort theo thời gian mới nhất
       displayList.sort(
         (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
       );
@@ -147,15 +137,6 @@ class GoalDetailController extends BaseController with BudgetAware {
     if (amount <= 0) return;
 
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    
-    if (networkService.isOffline.value && offlineSyncService.checkAndShowManualQueueFull()) {
-      hideLoading();
-      return;
-    }
-    
-    final localDb = Get.find<LocalDatabaseService>();
     final now = budgetService.currentTrackingMonth.value;
     final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
@@ -181,87 +162,34 @@ class GoalDetailController extends BaseController with BudgetAware {
       'note': 'Chuyển tiền nhàn rỗi',
     });
 
-    if (networkService.isOffline.value) {
-      final payload = jsonEncode({
-        'monthYear': monthYearStr,
-        'allocations': allocations,
-        'transferLogs': transferLogs,
-      });
-      await offlineSyncService.queueManualTask('UPDATE_BUDGET', payload);
-      await localDb.transferBudgetLocal(
-        null,
-        category.id,
-        amount,
+    final result = await ErrorHandler.execute(() async {
+      await categoryRepository.transferBudget(
         monthYearStr,
-        isOffline: true,
+        allocations,
+        transferLogs: transferLogs,
       );
+    }, tag: "UPDATE_BUDGET");
+    hideLoading();
 
-      hideLoading();
+    result.fold((failure) => showErrorMessage('Lỗi', failure.message), (
+      _,
+    ) async {
       showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
+        'Thành công',
+        'Đã chuyển tiền nhàn rỗi vào mục tiêu!',
       );
       await budgetService.refreshData();
       await fetchHistory();
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await categoryRepository.transferBudget(
-          monthYearStr,
-          allocations,
-          transferLogs: transferLogs,
-        );
-        await localDb.transferBudgetLocal(
-          null,
-          category.id,
-          amount,
-          monthYearStr,
-          isOffline: false,
-        );
-      }, tag: "UPDATE_BUDGET");
-      hideLoading();
-
-      result.fold((failure) => showErrorMessage('Lỗi', failure.message), (
-        _,
-      ) async {
-        showSuccessMessage(
-          'Thành công',
-          'Đã chuyển tiền nhàn rỗi vào mục tiêu!',
-        );
-        await budgetService.refreshData();
-        await fetchHistory();
-      });
-    }
+    });
   }
 
   Future<bool> deleteGoal() async {
     showLoading();
     final result = await ErrorHandler.execute(() async {
-      final networkService = Get.find<NetworkService>();
-      final offlineSyncService = Get.find<OfflineSyncService>();
-      final localDb = Get.find<LocalDatabaseService>();
-      final isOffline = networkService.isOffline.value;
-
-      if (isOffline && offlineSyncService.checkAndShowManualQueueFull()) {
-        return; // Dừng lại, ErrorHandler sẽ trả về data null và hideLoading()
-      }
-
-      if (isOffline) {
-        // Xóa local db
-        await localDb.deleteLocalGoal(goal.value.id);
-        await localDb.deleteCategory(goal.value.categoryId);
-
-        // Queue offline tasks
-        final payload = jsonEncode({
-          'goalId': goal.value.id,
-          'categoryId': goal.value.categoryId,
-        });
-        await offlineSyncService.queueManualTask('DELETE_GOAL', payload);
-      } else {
-        // Xóa Goal trước vì Goal reference tới Category
-        await goalRepository.deleteGoal(goal.value.id);
-        // Xóa Category sau, logic xóa quan hệ đã được đưa vào CategoryRepository
-        await categoryRepository.deleteCategory(goal.value.categoryId);
-      }
+      // Xóa Goal trước vì Goal reference tới Category
+      await goalRepository.deleteGoal(goal.value.id);
+      // Xóa Category sau, logic xóa quan hệ đã được đưa vào CategoryRepository
+      await categoryRepository.deleteCategory(goal.value.categoryId);
     }, tag: "DELETE_GOAL");
 
     hideLoading();
@@ -272,7 +200,7 @@ class GoalDetailController extends BaseController with BudgetAware {
         return false;
       },
       (success) async {
-        await budgetService.refreshData(); // Đồng bộ dữ liệu ngầm trước
+        await budgetService.refreshData();
         return true;
       },
     );
@@ -286,55 +214,18 @@ class GoalDetailController extends BaseController with BudgetAware {
   ) async {
     showLoading();
     final result = await ErrorHandler.execute(() async {
-      final networkService = Get.find<NetworkService>();
-      final offlineSyncService = Get.find<OfflineSyncService>();
-      final localDb = Get.find<LocalDatabaseService>();
-      final isOffline = networkService.isOffline.value;
-
-      if (isOffline && offlineSyncService.checkAndShowManualQueueFull()) {
-        return;
-      }
-
       // 1. Cập nhật Category
       final category = budgetService.categories.firstWhereOrNull(
         (c) => c.categoryModel.id == goal.value.categoryId,
       );
 
-      Map<String, dynamic>? categoryUpdateMap;
-
       if (category != null) {
-        if (isOffline) {
-          final catModel = category.categoryModel;
-          final updatedCat = CategoryModel(
-            id: catModel.id,
-            categoryTypeId: catModel.categoryTypeId,
-            name: newName,
-            color: catModel.color,
-            iconName: newIcon,
-            defaultBudget: catModel.defaultBudget,
-            isActive: catModel.isActive,
-            spent: catModel.spent,
-          );
-          await localDb.updateCategory(
-            catModel.id,
-            newName,
-            newIcon,
-            catModel.color,
-          );
-          categoryUpdateMap = {
-            'id': catModel.id,
-            'name': newName,
-            'iconName': newIcon,
-            'color': catModel.color,
-          };
-        } else {
-          await categoryRepository.updateCategory(
-            category.categoryModel.id,
-            newName,
-            newIcon,
-            category.categoryModel.color,
-          );
-        }
+        await categoryRepository.updateCategory(
+          category.categoryModel.id,
+          newName,
+          newIcon,
+          category.categoryModel.color,
+        );
       }
 
       // 2. Cập nhật Goal
@@ -350,19 +241,8 @@ class GoalDetailController extends BaseController with BudgetAware {
         status: newStatus,
       );
 
-      if (isOffline) {
-        final goalMap = updatedGoal.toMap()..['id'] = updatedGoal.id;
-        await localDb.updateLocalGoal(goalMap);
-        final payload = jsonEncode({
-          'goal': goalMap,
-          if (categoryUpdateMap != null) 'categoryUpdate': categoryUpdateMap,
-        });
-        await offlineSyncService.queueManualTask('UPDATE_GOAL', payload);
-        goal.value = updatedGoal;
-      } else {
-        final savedGoal = await goalRepository.updateGoal(updatedGoal);
-        goal.value = savedGoal;
-      }
+      final savedGoal = await goalRepository.updateGoal(updatedGoal);
+      goal.value = savedGoal;
     }, tag: "UPDATE_GOAL");
 
     hideLoading();
@@ -374,7 +254,7 @@ class GoalDetailController extends BaseController with BudgetAware {
       },
       (success) {
         showSuccessMessage("Thành công", "Đã cập nhật mục tiêu tiết kiệm");
-        budgetService.refreshData(); // Đồng bộ lại category thay đổi
+        budgetService.refreshData();
         return true;
       },
     );

@@ -1,9 +1,10 @@
-import 'package:appintern/core/services/appwrite_service.dart';
-import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
-import 'package:appwrite/appwrite.dart';
 import 'package:appintern/data/models/monthly_summary_model.dart';
 import 'package:appintern/data/models/monthly_budget_model.dart';
 import 'package:appintern/data/models/category_model.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
+import 'package:appintern/core/utils/offline_helper.dart';
+import 'package:get/get.dart';
+import 'package:sqflite/sqflite.dart';
 
 enum RolloverState { noPending, normalRollover, multiMonthGap, newAccount }
 
@@ -28,311 +29,308 @@ class RolloverData {
   });
 }
 
-class RolloverRepository with AppwriteErrorHandler {
-  final AppwriteService _appwrite;
+class RolloverRepository {
+  final LocalDatabaseService _localDb;
 
-  RolloverRepository(this._appwrite);
+  RolloverRepository()
+      : _localDb = Get.find<LocalDatabaseService>();
 
-  Future<RolloverStateResult> checkRolloverState() async {
-    return handleAppwriteError(() async {
-      final now = DateTime.now();
-      final currentMonthStr =
-          "${now.month.toString().padLeft(2, '0')}-${now.year}";
+  /// Kiểm tra trạng thái Rollover dựa trên dữ liệu SQLite cục bộ
+  /// Bảo toàn 100% logic xác định: newAccount, noPending, normalRollover, multiMonthGap
+  Future<RolloverStateResult> checkRolloverState([String? userId]) async {
+    final db = await _localDb.database;
+    final now = DateTime.now();
+    final currentMonthStr =
+        "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-      // 1. Kiểm tra tháng hiện tại đã khởi tạo chưa
-      final currentBudgets = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        queries: [
-          Query.equal('monthYear', currentMonthStr),
-          Query.limit(1), // Chỉ cần tìm thấy 1 dòng là biết đã khởi tạo
-        ],
-      );
-
-      if (currentBudgets.documents.isNotEmpty) {
-        return RolloverStateResult(RolloverState.noPending);
-      }
-
-      // 2. Tìm tháng gần nhất có dữ liệu (để xem là Normal, Gap hay New Account)
-      final prevMonth = DateTime(now.year, now.month - 1, 1);
-      final prevMonthStr =
-          "${prevMonth.month.toString().padLeft(2, '0')}-${prevMonth.year}";
-
-      final prevBudgets = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        queries: [Query.equal('monthYear', prevMonthStr), Query.limit(1)],
-      );
-
-      if (prevBudgets.documents.isNotEmpty) {
-        return RolloverStateResult(
-          RolloverState.normalRollover,
-          lastActiveMonthYear: prevMonthStr,
-        );
-      }
-
-      // 3. Nếu không có tháng trước, thử tìm xem có BẤT KỲ budget nào trong lịch sử không
-      final anyHistory = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        queries: [Query.limit(1)],
-      );
-
-      if (anyHistory.documents.isNotEmpty) {
-        return RolloverStateResult(RolloverState.multiMonthGap);
-      }
-
+    // 0. Xác định danh mục của người dùng hiện tại
+    final types = await db.query('category_types');
+    if (types.isEmpty) {
       return RolloverStateResult(RolloverState.newAccount);
-    });
+    }
+
+    final categories = await db.query('categories');
+    if (categories.isEmpty) {
+      return RolloverStateResult(RolloverState.newAccount);
+    }
+
+    // 1. Kiểm tra tháng hiện tại đã khởi tạo chưa
+    final currentBudgets = await db.query(
+      'monthly_budgets',
+      where: 'monthYear = ?',
+      whereArgs: [currentMonthStr],
+      limit: 1,
+    );
+
+    if (currentBudgets.isNotEmpty) {
+      return RolloverStateResult(RolloverState.noPending);
+    }
+
+    // 2. Tìm tháng liền trước gần nhất có dữ liệu
+    final prevMonth = DateTime(now.year, now.month - 1, 1);
+    final prevMonthStr =
+        "${prevMonth.month.toString().padLeft(2, '0')}-${prevMonth.year}";
+
+    final prevBudgets = await db.query(
+      'monthly_budgets',
+      where: 'monthYear = ?',
+      whereArgs: [prevMonthStr],
+      limit: 1,
+    );
+
+    if (prevBudgets.isNotEmpty) {
+      return RolloverStateResult(
+        RolloverState.normalRollover,
+        lastActiveMonthYear: prevMonthStr,
+      );
+    }
+
+    // 3. Nếu không có tháng trước, kiểm tra xem có BẤT KỲ budget nào trong lịch sử không
+    final anyHistory = await db.query(
+      'monthly_budgets',
+      where: 'monthYear != ?',
+      whereArgs: [currentMonthStr],
+      orderBy: 'createdAt DESC',
+      limit: 1,
+    );
+
+    if (anyHistory.isNotEmpty) {
+      final lastMonth = anyHistory.first['monthYear'] as String?;
+      return RolloverStateResult(
+        RolloverState.multiMonthGap,
+        lastActiveMonthYear: lastMonth,
+      );
+    }
+
+    return RolloverStateResult(RolloverState.newAccount);
   }
 
+  /// Lấy dữ liệu Rollover cho tháng được chỉ định từ SQLite cục bộ
   Future<RolloverData> getRolloverData(String userId, String monthYear) async {
-    return handleAppwriteError(() async {
-      // 1. Fetch Summary
-      final summaryResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlySummariesTableId,
-        queries: [Query.equal('monthYear', monthYear), Query.limit(1)],
-      );
+    final db = await _localDb.database;
 
-      MonthlySummaryModel? summary;
-      if (summaryResponse.documents.isNotEmpty) {
-        final summaryDoc = summaryResponse.documents.first;
-        summary = MonthlySummaryModel.fromMap(
-          Map<String, dynamic>.from(summaryDoc.data)..['\$id'] = summaryDoc.$id,
-        );
-      }
+    // 1. Fetch Categories
+    final catRows = await db.query('categories');
+    final categories = catRows.map((r) => CategoryModel.fromMap(r)).toList();
 
-      // 2. Fetch Budgets
-      final budgetsResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        queries: [Query.equal('monthYear', monthYear)],
-      );
+    // 2. Fetch Summary của monthYear
+    final summaryRows = await db.query(
+      'monthly_summaries',
+      where: 'monthYear = ?',
+      whereArgs: [monthYear],
+      limit: 1,
+    );
 
-      List<MonthlyBudgetModel> budgets = budgetsResponse.documents
-          .map(
-            (doc) => MonthlyBudgetModel.fromMap(
-              Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
-            ),
-          )
-          .toList();
+    MonthlySummaryModel? summary;
+    if (summaryRows.isNotEmpty) {
+      summary = MonthlySummaryModel.fromMap(summaryRows.first);
+    }
 
-      // 3. Fetch Categories (Document Security tự lọc theo user)
-      final typesResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTypeTableId,
-      );
+    // 3. Fetch Budgets của monthYear
+    final budgetRows = await db.query(
+      'monthly_budgets',
+      where: 'monthYear = ?',
+      whereArgs: [monthYear],
+    );
 
-      final typeIds = typesResponse.documents.map((doc) => doc.$id).toList();
-      List<CategoryModel> categories = [];
-      if (typeIds.isNotEmpty) {
-        for (String typeId in typeIds) {
-          final cats = await _appwrite.databases.listDocuments(
-            databaseId: _appwrite.databaseId,
-            collectionId: _appwrite.categoriesTableId,
-            queries: [Query.equal('categoryTypes', typeId)],
-          );
-          categories.addAll(
-            cats.documents
-                .map(
-                  (doc) => CategoryModel.fromMap(
-                    Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
-                  ),
-                )
-                .toList(),
-          );
-        }
-      }
+    final budgets =
+        budgetRows.map((b) => MonthlyBudgetModel.fromMap(b)).toList();
 
-      // 4. (REMOVED) Fetch Wallets cho Total Wallet Balance
-      double totalWalletBalance = 0.0;
+    double totalWalletBalance = 0.0;
 
-      return RolloverData(
-        summary: summary,
-        budgets: budgets,
-        categories: categories,
-        totalWalletBalance: totalWalletBalance,
-      );
-    });
+    return RolloverData(
+      summary: summary,
+      budgets: budgets,
+      categories: categories,
+      totalWalletBalance: totalWalletBalance,
+    );
   }
 
+  /// Khởi tạo ngân sách sạch cho tài khoản mới hoặc khi Hard Reset sau Multi-Month Gap
   Future<void> executeHardReset(
     String userId, {
     Set<String> goalCategoryIds = const {},
   }) async {
-    return handleAppwriteError(() async {
-      final now = DateTime.now();
-      final currentMonthStr =
-          "${now.month.toString().padLeft(2, '0')}-${now.year}";
+    final db = await _localDb.database;
+    final now = DateTime.now();
+    final currentMonthStr =
+        "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-      final typesResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTypeTableId,
-      );
+    final categories = await db.query('categories');
+    if (categories.isEmpty) return;
 
-      final typeIds = typesResponse.documents.map((doc) => doc.$id).toList();
-      if (typeIds.isEmpty) return;
-
-      List<dynamic> categories = [];
-      for (String typeId in typeIds) {
-        final cats = await _appwrite.databases.listDocuments(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.categoriesTableId,
-          queries: [Query.equal('categoryTypes', typeId)],
-        );
-        categories.addAll(cats.documents);
-      }
-
+    await db.transaction((txn) async {
       for (var catDoc in categories) {
-        final catId = catDoc.$id;
+        final catId = catDoc['id'] as String;
         final bool isGoal = goalCategoryIds.contains(catId);
 
-        await _appwrite.databases.createDocument(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.monthlyBudgetsTableId,
-          documentId: ID.unique(),
-          data: {
-            'categories': catId,
+        await txn.insert(
+          'monthly_budgets',
+          {
+            'id': OfflineHelper.generateTempId('mb_${catId}_$currentMonthStr'),
+            'categoryId': catId,
             'monthYear': currentMonthStr,
-            // Goal categories luôn có budgetedAmount = 0 (tiền nằm ở rollover)
             'budgetedAmount': isGoal ? 0.0 : 0.0,
             'rolloverAmount': 0.0,
             'spentAmount': 0.0,
+            'createdAt': DateTime.now().toIso8601String(),
+            'updatedAt': DateTime.now().toIso8601String(),
           },
+          conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
+
+      // Ghi snapshot chốt sổ chu kỳ vào bảng budgets_history
+      await txn.insert(
+        'budgets_history',
+        {
+          'id': OfflineHelper.generateTempId('bh_$currentMonthStr'),
+          'monthYear': currentMonthStr,
+          'totalInflow': 0.0,
+          'totalOutflow': 0.0,
+          'rolloverMethod': 'HARD_RESET',
+          'createdAt': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     });
   }
 
+  /// Thực hiện kết chuyển Rollover từ chu kỳ cũ sang chu kỳ mới
   Future<void> executeRollover(
     String userId,
     Map<String, double> updatedBudgets,
     Map<String, double> rolloverAmounts, {
     Set<String> goalCategoryIds = const {},
   }) async {
-    return handleAppwriteError(() async {
-      final now = DateTime.now();
-      final currentMonthStr =
-          "${now.month.toString().padLeft(2, '0')}-${now.year}";
+    final db = await _localDb.database;
+    final now = DateTime.now();
+    final currentMonthStr =
+        "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-      final typesResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTypeTableId,
-      );
+    final categories = await db.query('categories');
+    if (categories.isEmpty) return;
 
-      final typeIds = typesResponse.documents.map((doc) => doc.$id).toList();
-      if (typeIds.isEmpty) return;
+    double totalInflow = 0.0;
+    double totalOutflow = 0.0;
 
-      List<dynamic> categories = [];
-      for (String typeId in typeIds) {
-        final cats = await _appwrite.databases.listDocuments(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.categoriesTableId,
-          queries: [Query.equal('categoryTypes', typeId)],
-        );
-        categories.addAll(cats.documents);
-      }
-
+    await db.transaction((txn) async {
       for (var catDoc in categories) {
-        final catId = catDoc.$id;
+        final catId = catDoc['id'] as String;
         final bool isGoal = goalCategoryIds.contains(catId);
 
-        // Goal categories: budgetedAmount luôn = 0, tiền nằm ở rolloverAmount
-        // Expense categories: lấy từ updatedBudgets (user đã sửa) hoặc defaultBudget
         final defaultBudget = isGoal
             ? 0.0
             : (updatedBudgets[catId] ??
-                (catDoc.data['defaultBudget'] ?? 0).toDouble());
+                (catDoc['defaultBudget'] as num? ?? 0).toDouble());
 
         final rolloverAmt = rolloverAmounts[catId] ?? 0.0;
 
-        await _appwrite.databases.createDocument(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.monthlyBudgetsTableId,
-          documentId: ID.unique(),
-          data: {
-            'categories': catId,
+        totalInflow += defaultBudget;
+        totalOutflow += rolloverAmt;
+
+        await txn.insert(
+          'monthly_budgets',
+          {
+            'id': OfflineHelper.generateTempId('mb_${catId}_$currentMonthStr'),
+            'categoryId': catId,
             'monthYear': currentMonthStr,
             'budgetedAmount': defaultBudget,
             'rolloverAmount': rolloverAmt,
             'spentAmount': 0.0,
+            'createdAt': DateTime.now().toIso8601String(),
+            'updatedAt': DateTime.now().toIso8601String(),
           },
+          conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
+
+      // Ghi snapshot chốt sổ chu kỳ vào bảng budgets_history theo chuẩn spec Q5
+      await txn.insert(
+        'budgets_history',
+        {
+          'id': OfflineHelper.generateTempId('bh_$currentMonthStr'),
+          'monthYear': currentMonthStr,
+          'totalInflow': totalInflow,
+          'totalOutflow': totalOutflow,
+          'rolloverMethod': 'ROLLOVER_ALL',
+          'createdAt': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     });
   }
 
-  Future<void> clearMonthData(String monthYear) async {
-    return handleAppwriteError(() async {
-      // 1. Phân tích monthYear (MM-yyyy) để lấy khoảng thời gian
-      final parts = monthYear.split('-');
-      if (parts.length != 2)
-        throw Exception("Định dạng tháng năm không hợp lệ");
-      final month = int.parse(parts[0]);
-      final year = int.parse(parts[1]);
+  /// Xóa toàn bộ dữ liệu trong một tháng chỉ định (Giao dịch, ngân sách tháng, tổng kết tháng)
+  Future<void> clearMonthData(String monthYear, [String? userId]) async {
+    final parts = monthYear.split('-');
+    if (parts.length != 2) {
+      throw Exception("Định dạng tháng năm không hợp lệ");
+    }
+    final month = int.parse(parts[0]);
+    final year = int.parse(parts[1]);
 
-      final start = DateTime(year, month, 1);
-      final end = DateTime(
-        year,
-        month + 1,
-        1,
-      ).subtract(const Duration(milliseconds: 1));
+    final start = DateTime(year, month, 1);
+    final end = DateTime(
+      year,
+      month + 1,
+      1,
+    ).subtract(const Duration(milliseconds: 1));
 
-      final startIso = start.toIso8601String();
-      final endIso = end.toIso8601String();
+    final startIso = start.toIso8601String();
+    final endIso = end.toIso8601String();
 
-      // 4. Xóa tất cả giao dịch trong tháng đó
-      final txResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.transactionsTableId,
-        queries: [
-          Query.between('transactionDate', startIso, endIso),
-          Query.limit(500),
-        ],
+    final db = await _localDb.database;
+    final Set<String> receiptFilesToDelete = {};
+
+    await db.transaction((txn) async {
+      // 0. Thu thập danh sách receiptFileId để dọn dẹp file ảnh biên lai vật lý (tránh orphan files)
+      final details = await txn.rawQuery(
+        '''
+        SELECT td.receiptFileId
+        FROM transaction_details td
+        JOIN transactions t ON td.transactionId = t.id
+        WHERE t.transactionDate BETWEEN ? AND ?
+        ''',
+        [startIso, endIso],
       );
 
-      for (var doc in txResponse.documents) {
-        await _appwrite.databases
-            .deleteDocument(
-              databaseId: _appwrite.databaseId,
-              collectionId: _appwrite.transactionsTableId,
-              documentId: doc.$id,
-            )
-            .catchError((_) => null);
+      for (final row in details) {
+        final receiptStr = row['receiptFileId'] as String?;
+        if (receiptStr != null && receiptStr.isNotEmpty) {
+          final parts = receiptStr
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty);
+          receiptFilesToDelete.addAll(parts);
+        }
       }
 
-      // 5. Xóa tất cả ngân sách tháng (monthlybudgets) trong tháng đó
-      final budgetsResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        queries: [Query.equal('monthYear', monthYear), Query.limit(500)],
+      // 1. Xóa các transactions trong tháng
+      await txn.delete(
+        'transactions',
+        where: 'transactionDate BETWEEN ? AND ?',
+        whereArgs: [startIso, endIso],
       );
-      for (var doc in budgetsResponse.documents) {
-        await _appwrite.databases
-            .deleteDocument(
-              databaseId: _appwrite.databaseId,
-              collectionId: _appwrite.monthlyBudgetsTableId,
-              documentId: doc.$id,
-            )
-            .catchError((_) => null);
-      }
 
-      // 6. Xóa tất cả báo cáo tháng (monthlysummaries) trong tháng đó
-      final summariesResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlySummariesTableId,
-        queries: [Query.equal('monthYear', monthYear), Query.limit(500)],
+      // 2. Xóa ngân sách tháng của tháng đó
+      await txn.delete(
+        'monthly_budgets',
+        where: 'monthYear = ?',
+        whereArgs: [monthYear],
       );
-      for (var doc in summariesResponse.documents) {
-        await _appwrite.databases
-            .deleteDocument(
-              databaseId: _appwrite.databaseId,
-              collectionId: _appwrite.monthlySummariesTableId,
-              documentId: doc.$id,
-            )
-            .catchError((_) => null);
-      }
+
+      // 3. Xóa báo cáo tháng trong tháng đó
+      await txn.delete(
+        'monthly_summaries',
+        where: 'monthYear = ?',
+        whereArgs: [monthYear],
+      );
     });
+
+    // 4. Dọn dẹp vĩnh viễn các file ảnh biên lai vật lý trên ổ cứng thiết bị
+    for (final fileId in receiptFilesToDelete) {
+      await _localDb.deletePhysicalReceiptFile(fileId);
+    }
   }
 }

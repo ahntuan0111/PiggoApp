@@ -1,43 +1,8 @@
-import 'dart:convert';
-import 'package:appintern/core/constants/app_keys.dart';
-import 'package:appintern/core/services/appwrite_service.dart';
-import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
-import 'package:appintern/data/models/transaction_model.dart';
 import 'package:get/get.dart';
-import 'package:appintern/core/services/storage_service.dart';
-import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
 
-class StatisticsRepository with AppwriteErrorHandler {
-  final AppwriteService _appwrite;
-
-  StatisticsRepository(this._appwrite);
-
-  Future<Map<String, dynamic>> getOnlineStatistics(String timeframe) async {
-    final storage = Get.find<StorageService>();
-    final userId = storage.read(AppKeys.userId) ?? '';
-
-    return handleAppwriteError(() async {
-      final response = await _appwrite.functions.createExecution(
-        functionId: _appwrite.functionStatisticsInsight,
-        body: jsonEncode({'timeframe': timeframe, 'userId': userId}),
-        xasync: false,
-      );
-
-      if (response.responseStatusCode != 200) {
-        throw Exception('Lỗi Server: ${response.responseStatusCode}');
-      }
-
-      final responseBody = jsonDecode(response.responseBody);
-      if (responseBody['success'] == true) {
-        return responseBody['data'];
-      } else {
-        throw Exception(
-          responseBody['message'] ?? 'Lỗi không xác định từ Server',
-        );
-      }
-    });
-  }
+class StatisticsRepository {
+  StatisticsRepository();
 
   Future<bool> hasAnyTransactions() async {
     final localDb = Get.find<LocalDatabaseService>();

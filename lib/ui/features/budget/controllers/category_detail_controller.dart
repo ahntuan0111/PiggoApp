@@ -12,9 +12,6 @@ import 'package:appintern/core/errors/error_handler.dart';
 import 'dart:convert';
 import 'package:appintern/ui/widgets/dialogs/confirm_dialog_widget.dart';
 import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
-import 'package:appintern/data/data_sources/local/local_database_service.dart';
-import 'package:appwrite/appwrite.dart';
 
 class CategoryDetailController extends BaseController with BudgetAware {
   final TransactionRepository _transactionRepo =
@@ -200,29 +197,17 @@ class CategoryDetailController extends BaseController with BudgetAware {
 
   Future<void> updateCategory(String name, String icon) async {
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
-
-    if (networkService.isOffline.value) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final payload = jsonEncode({
-        'id': category.id,
-        'name': name.trim(),
-        'iconName': icon,
-        'color': category.color,
-      });
-      await offlineSyncService.queueManualTask('UPDATE_CATEGORY', payload);
-      await localDb.updateCategory(
+    final result = await ErrorHandler.execute(() async {
+      await _categoryRepo.updateCategory(
         category.id,
         name.trim(),
         icon,
         category.color,
       );
+    }, tag: "UPDATE_CATEGORY");
 
+    hideLoading();
+    result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) {
       category = CategoryModel(
         id: category.id,
         categoryTypeId: category.categoryTypeId,
@@ -232,40 +217,10 @@ class CategoryDetailController extends BaseController with BudgetAware {
         defaultBudget: category.defaultBudget,
         spent: category.spent,
       );
-
-      hideLoading();
       update();
       refreshBudget();
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
-      );
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await _categoryRepo.updateCategory(
-          category.id,
-          name.trim(),
-          icon,
-          category.color,
-        );
-      }, tag: "UPDATE_CATEGORY");
-
-      hideLoading();
-      result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) {
-        category = CategoryModel(
-          id: category.id,
-          categoryTypeId: category.categoryTypeId,
-          name: name.trim(),
-          color: category.color,
-          iconName: icon,
-          defaultBudget: category.defaultBudget,
-          spent: category.spent,
-        );
-        update();
-        refreshBudget();
-        showSuccessMessage('Thành công', 'Cập nhật danh mục thành công!');
-      });
-    }
+      showSuccessMessage('Thành công', 'Cập nhật danh mục thành công!');
+    });
   }
 
   Future<void> updateBudget(
@@ -275,26 +230,18 @@ class CategoryDetailController extends BaseController with BudgetAware {
     String? note,
   }) async {
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
     final now = budgetService.currentTrackingMonth.value;
     final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-    if (networkService.isOffline.value) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final allocations = [
-        {'categoryId': category.id, 'amount': newBudget},
-        if (sourceCategoryId != null &&
-            sourceCategoryId != 'unallocated' &&
-            sourceCategoryNewBudget != null)
-          {'categoryId': sourceCategoryId, 'amount': sourceCategoryNewBudget},
-      ];
+    final allocations = [
+      {'categoryId': category.id, 'amount': newBudget},
+      if (sourceCategoryId != null &&
+          sourceCategoryId != 'unallocated' &&
+          sourceCategoryNewBudget != null)
+        {'categoryId': sourceCategoryId, 'amount': sourceCategoryNewBudget},
+    ];
 
-      // Amount transferred is difference between new target budget and old target budget
+    final result = await ErrorHandler.execute(() async {
       double currentBudget =
           budgetService.getBudgetForCategory(category.id)?.budgetedAmount ??
           category.defaultBudget;
@@ -303,7 +250,6 @@ class CategoryDetailController extends BaseController with BudgetAware {
       final transferLogs = <Map<String, dynamic>>[];
       if (amountChange > 0) {
         transferLogs.add({
-          '\$id': ID.unique(),
           'amount': amountChange,
           'fromCategoryId':
               (sourceCategoryId == null || sourceCategoryId == 'unallocated')
@@ -314,7 +260,6 @@ class CategoryDetailController extends BaseController with BudgetAware {
         });
       } else if (amountChange < 0) {
         transferLogs.add({
-          '\$id': ID.unique(),
           'amount': -amountChange,
           'fromCategoryId': category.id,
           'toCategoryId':
@@ -325,127 +270,31 @@ class CategoryDetailController extends BaseController with BudgetAware {
         });
       }
 
-      final payload = jsonEncode({
-        'monthYear': monthYearStr,
-        'allocations': allocations,
-        'transferLogs': transferLogs,
-      });
-      await offlineSyncService.queueManualTask('UPDATE_BUDGET', payload);
-
-      if (amountChange > 0) {
-        await localDb.transferBudgetLocal(
-          (sourceCategoryId == null || sourceCategoryId == 'unallocated')
-              ? null
-              : sourceCategoryId,
-          category.id,
-          amountChange,
-          monthYearStr,
-        );
-      } else if (amountChange < 0) {
-        await localDb.transferBudgetLocal(
-          category.id,
-          (sourceCategoryId == null || sourceCategoryId == 'unallocated')
-              ? null
-              : sourceCategoryId,
-          -amountChange,
-          monthYearStr,
-        );
-      }
-
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
+      await _categoryRepo.transferBudget(
+        monthYearStr,
+        allocations,
+        transferLogs: transferLogs,
       );
-      await budgetService.loadDataFromLocal(); // Refresh UI
-    } else {
-      final allocations = [
-        {'categoryId': category.id, 'amount': newBudget},
-        if (sourceCategoryId != null &&
-            sourceCategoryId != 'unallocated' &&
-            sourceCategoryNewBudget != null)
-          {'categoryId': sourceCategoryId, 'amount': sourceCategoryNewBudget},
-      ];
+    }, tag: "UPDATE_BUDGET");
 
-      final result = await ErrorHandler.execute(() async {
-        double currentBudget =
-            budgetService.getBudgetForCategory(category.id)?.budgetedAmount ??
-            category.defaultBudget;
-        double amountChange = newBudget - currentBudget;
-
-        final transferLogs = <Map<String, dynamic>>[];
-        if (amountChange > 0) {
-          transferLogs.add({
-            '\$id': ID.unique(),
-            'amount': amountChange,
-            'fromCategoryId':
-                (sourceCategoryId == null || sourceCategoryId == 'unallocated')
-                ? null
-                : sourceCategoryId,
-            'toCategoryId': category.id,
-            'note': note ?? 'Cân bằng ngân sách',
-          });
-        } else if (amountChange < 0) {
-          transferLogs.add({
-            '\$id': ID.unique(),
-            'amount': -amountChange,
-            'fromCategoryId': category.id,
-            'toCategoryId':
-                (sourceCategoryId == null || sourceCategoryId == 'unallocated')
-                ? null
-                : sourceCategoryId,
-            'note': note ?? 'Cân bằng ngân sách',
-          });
-        }
-
-        await _categoryRepo.transferBudget(
-          monthYearStr,
-          allocations,
-          transferLogs: transferLogs,
-        );
-
-        // Cập nhật LocalDB trực tiếp để UI phản hồi nhanh
-        if (amountChange > 0) {
-          await localDb.transferBudgetLocal(
-            (sourceCategoryId == null || sourceCategoryId == 'unallocated')
-                ? null
-                : sourceCategoryId,
-            category.id,
-            amountChange,
-            monthYearStr,
-            isOffline: false,
-          );
-        } else if (amountChange < 0) {
-          await localDb.transferBudgetLocal(
-            category.id,
-            (sourceCategoryId == null || sourceCategoryId == 'unallocated')
-                ? null
-                : sourceCategoryId,
-            -amountChange,
-            monthYearStr,
-            isOffline: false,
-          );
-        }
-      }, tag: "UPDATE_BUDGET");
-
-      hideLoading();
-      result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) async {
-        category = CategoryModel(
-          id: category.id,
-          categoryTypeId: category.categoryTypeId,
-          name: category.name,
-          color: category.color,
-          iconName: category.iconName,
-          defaultBudget: newBudget,
-          spent: category.spent,
-        );
-        update();
-        await budgetService.loadDataFromLocal();
-        showSuccessMessage(
-          'Thành công',
-          'Cập nhật số tiền phân bổ thành công!',
-        );
-      });
-    }
+    hideLoading();
+    result.fold((failure) => showErrorMessage('Lỗi', failure.message), (_) async {
+      category = CategoryModel(
+        id: category.id,
+        categoryTypeId: category.categoryTypeId,
+        name: category.name,
+        color: category.color,
+        iconName: category.iconName,
+        defaultBudget: newBudget,
+        spent: category.spent,
+      );
+      update();
+      await budgetService.loadDataFromLocal();
+      showSuccessMessage(
+        'Thành công',
+        'Cập nhật số tiền phân bổ thành công!',
+      );
+    });
   }
 
   bool get hasLinkedGoal {
@@ -454,45 +303,20 @@ class CategoryDetailController extends BaseController with BudgetAware {
 
   Future<void> deleteCategory() async {
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
+    final result = await ErrorHandler.execute(() async {
+      await _categoryRepo.deleteCategory(category.id);
+    }, tag: "DELETE_CATEGORY");
+    hideLoading();
 
-    if (networkService.isOffline.value) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final payload = jsonEncode({'id': category.id});
-      await offlineSyncService.queueManualTask('DELETE_CATEGORY', payload);
-
-      // Update local db
-      await localDb.deleteCategory(category.id);
-
-      hideLoading();
-      refreshBudget(); // Đồng bộ lại Service
-      Get.back(result: true); // Quay lại trang trước và báo refresh
-      showSuccessMessage(
-        "Đã lưu (Ngoại tuyến)",
-        "Danh mục sẽ được xóa trên máy chủ khi có mạng",
-      );
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await _categoryRepo.deleteCategory(category.id);
-        await localDb.deleteCategory(category.id);
-      }, tag: "DELETE_CATEGORY");
-      hideLoading();
-
-      await result.fold(
-        (failure) async {
-          showErrorMessage("Lỗi", "Không thể xóa danh mục: ${failure.message}");
-        },
-        (_) async {
-          refreshBudget(); // Đồng bộ lại Service
-          Get.back(result: true); // Quay lại trang trước và báo refresh
-          showSuccessMessage("Thành công", "Đã xóa danh mục");
-        },
-      );
-    }
+    await result.fold(
+      (failure) async {
+        showErrorMessage("Lỗi", "Không thể xóa danh mục: ${failure.message}");
+      },
+      (_) async {
+        refreshBudget(); // Đồng bộ lại Service
+        Get.back(result: true); // Quay lại trang trước và báo refresh
+        showSuccessMessage("Thành công", "Đã xóa danh mục");
+      },
+    );
   }
 }

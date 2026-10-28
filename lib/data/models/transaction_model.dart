@@ -22,7 +22,7 @@ class TransactionModel {
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
     return TransactionModel(
       id: map['\$id'] ?? map['id'] ?? '',
-      categoryId: _extractId(map['categories']) ?? map['categoryId'] ?? '',
+      categoryId: map['categoryId'] ?? _extractId(map['categories']) ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
       type: map['type'] ?? 'EXPENSE',
       transactionDate: map['transactionDate'] != null
@@ -41,16 +41,16 @@ class TransactionModel {
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
+      'id': id,
       'amount': amount,
       'type': type,
       'transactionDate': transactionDate.toUtc().toIso8601String(),
       'status': status,
+      'note': note ?? '',
     };
     if (categoryId.isNotEmpty) {
-      map['categories'] = categoryId;
+      map['categoryId'] = categoryId;
     }
-    // Remove note because Appwrite transactions table does not have note attribute
-    // The note is saved in transaction_details table instead.
     if (updatedAt != null) {
       map['updatedAt'] = updatedAt!.toUtc().toIso8601String();
     }

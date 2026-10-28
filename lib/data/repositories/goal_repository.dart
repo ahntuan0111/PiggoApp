@@ -1,72 +1,41 @@
-import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/data/models/goal_model.dart';
-import 'package:appwrite/appwrite.dart';
-import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
+import 'package:get/get.dart';
 
-class GoalRepository with AppwriteErrorHandler {
-  final AppwriteService _appwrite;
+class GoalRepository {
+  GoalRepository();
 
-  GoalRepository(this._appwrite);
+  Future<List<GoalModel>> getGoals({List<String>? categoryIds}) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    final rows = await localDb.getGoals();
+    var list = rows.map((e) => GoalModel.fromMap(e)).toList();
 
-  Future<List<GoalModel>> getGoals() async {
-    return handleAppwriteError(() async {
-      final response = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.goalsTableId,
-        queries: [Query.orderDesc('\$createdAt')],
-      );
+    if (categoryIds != null) {
+      if (categoryIds.isEmpty) return [];
+      list = list.where((g) => categoryIds.contains(g.categoryId)).toList();
+    }
 
-      return response.documents
-          .map(
-            (e) => GoalModel.fromMap(
-              Map<String, dynamic>.from(e.data)..['\$id'] = e.$id,
-            ),
-          )
-          .toList();
-    });
+    return list;
   }
 
-  Future<GoalModel> createGoal(GoalModel goal) async {
-    return handleAppwriteError(() async {
-      final data = goal.toMap();
-      data.remove('id');
-      
-      final response = await _appwrite.databases.createDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.goalsTableId,
-        documentId: ID.unique(),
-        data: data,
-      );
-      return GoalModel.fromMap(
-        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
-      );
-    });
+  Future<GoalModel> createGoal(GoalModel goal, [String? userId]) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    final goalToInsert = goal.id.isEmpty
+        ? goal.copyWith(id: 'goal_${DateTime.now().millisecondsSinceEpoch}')
+        : goal;
+
+    await localDb.insertLocalGoal(goalToInsert.toMap());
+    return goalToInsert;
   }
 
   Future<GoalModel> updateGoal(GoalModel goal) async {
-    return handleAppwriteError(() async {
-      final data = goal.toMap();
-      data.remove('id');
-      
-      final response = await _appwrite.databases.updateDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.goalsTableId,
-        documentId: goal.id,
-        data: data,
-      );
-      return GoalModel.fromMap(
-        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
-      );
-    });
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.updateLocalGoal(goal.toMap());
+    return goal;
   }
 
   Future<void> deleteGoal(String id) async {
-    return handleAppwriteError(() async {
-      await _appwrite.databases.deleteDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.goalsTableId,
-        documentId: id,
-      );
-    });
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.deleteLocalGoal(id);
   }
 }

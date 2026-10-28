@@ -5,9 +5,7 @@ import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/data/repositories/auth_repository.dart';
 import 'package:appintern/data/repositories/rollover_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'package:appintern/core/services/network_service.dart';
 import 'package:appintern/core/services/budget_service.dart';
-import 'package:appintern/core/services/settings_service.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -24,17 +22,6 @@ class SplashController extends BaseController {
   Future<void> _verifySessionAndFetchData() async {
     try {
       final budgetService = Get.find<BudgetService>();
-      final network = Get.find<NetworkService>();
-
-      if (network.isOffline.value) {
-        if (!budgetService.isDataLoaded.value) {
-          await budgetService.refreshData(); // Load cache
-        }
-        FlutterNativeSplash.remove();
-        Get.offAllNamed(Routes.MAIN);
-        return;
-      }
-
       final authRepo = Get.find<AuthRepository>();
       final sessionResult = await ErrorHandler.execute(
         () async => await authRepo.getUser(),
@@ -43,28 +30,13 @@ class SplashController extends BaseController {
 
       await sessionResult.fold(
         (failure) async {
-          if (failure.statusCode == 401) {
-            storage.clearAll();
-            FlutterNativeSplash.remove();
-            Get.offAllNamed(Routes.ONBOARDING);
-            Get.snackbar(
-              "Phiên đăng nhập hết hạn",
-              "Vui lòng đăng nhập lại",
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-            );
-          } else {
-            // Lỗi mạng hoặc server không phản hồi -> Coi như Offline
-            if (!budgetService.isDataLoaded.value) {
-              await budgetService.refreshData();
-            }
-            FlutterNativeSplash.remove();
-            Get.offAllNamed(Routes.MAIN);
-          }
+          storage.remove(AppKeys.isLoggedIn);
+          storage.remove(AppKeys.userId);
+          storage.remove(AppKeys.userName);
+          FlutterNativeSplash.remove();
+          Get.offAllNamed(Routes.ONBOARDING);
         },
         (user) async {
-          // Load settings from cloud (fire-and-forget)
-          Get.find<SettingsService>().loadFromCloud();
 
           final rolloverRepo = Get.find<RolloverRepository>();
           final rolloverResult = await ErrorHandler.execute(

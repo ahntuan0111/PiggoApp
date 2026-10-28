@@ -1,72 +1,23 @@
 import 'dart:io';
-import 'dart:convert';
-import 'package:appwrite/appwrite.dart';
 import 'package:get/get.dart';
-import 'package:appintern/core/utils/logger.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/repositories/storage_repository.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
-import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'transaction_repository_base.dart';
 
-mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
-  Future<void> _updateMonthlySummary(
-    String monthYearStr,
-    double incomeChange,
-    double expenseChange,
-  ) async {
-    if (incomeChange == 0 && expenseChange == 0) return;
-    final response = await appwrite.databases.listDocuments(
-      databaseId: appwrite.databaseId,
-      collectionId: appwrite.monthlySummariesTableId,
-      queries: [Query.equal('monthYear', monthYearStr), Query.limit(1)],
-    );
-
-    if (response.documents.isNotEmpty) {
-      final doc = response.documents.first;
-      double currentIncome = (doc.data['totalIncome'] ?? 0).toDouble();
-      double currentExpense = (doc.data['totalExpense'] ?? 0).toDouble();
-
-      await appwrite.databases.updateDocument(
-        databaseId: appwrite.databaseId,
-        collectionId: appwrite.monthlySummariesTableId,
-        documentId: doc.$id,
-        data: {
-          'totalIncome': (currentIncome + incomeChange) < 0
-              ? 0
-              : currentIncome + incomeChange,
-          'totalExpense': (currentExpense + expenseChange) < 0
-              ? 0
-              : currentExpense + expenseChange,
-        },
-      );
-    } else {
-      await appwrite.databases.createDocument(
-        databaseId: appwrite.databaseId,
-        collectionId: appwrite.monthlySummariesTableId,
-        documentId: ID.unique(),
-        data: {
-          'monthYear': monthYearStr,
-          'totalIncome': incomeChange < 0 ? 0 : incomeChange,
-          'totalExpense': expenseChange < 0 ? 0 : expenseChange,
-          'unallocatedBalance': 0.0,
-        },
-      );
-    }
-  }
-
+mixin TransactionWriteMixin on TransactionRepositoryBase {
   Future<TransactionModel> createTransaction({
     required TransactionModel transaction,
     required TransactionDetailModel transactionDetail,
     CategoryModel? currentCategory,
+    String? userId,
   }) async {
     final storageRepo = Get.find<StorageRepository>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
     List<String> uploadedFileIds = [];
 
-    // Upload files
+    // Lưu các file ảnh biên lai local qua StorageRepository
     for (String path in transactionDetail.receiptFileIds) {
       if (!path.startsWith('http') && File(path).existsSync()) {
         try {
@@ -80,217 +31,61 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
       }
     }
 
-    try {
-      return await handleAppwriteError(() async {
-        String? createdTxId;
-        String? createdDetailId;
+    final localDb = Get.find<LocalDatabaseService>();
+    final txToInsert = transaction.id.isEmpty
+        ? TransactionModel(
+            id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+            categoryId: transaction.categoryId,
+            amount: transaction.amount,
+            type: transaction.type,
+            transactionDate: transaction.transactionDate,
+            status: transaction.status,
+            note: transaction.note,
+            updatedAt: transaction.updatedAt,
+          )
+        : transaction;
 
-        try {
-          // 1. Tạo bản ghi Transaction
-          final txResponse = await appwrite.databases.createDocument(
-            databaseId: appwrite.databaseId,
-            collectionId: appwrite.transactionsTableId,
-            documentId: ID.unique(),
-            data: transaction.toMap(),
-          );
+    final detailToInsert = TransactionDetailModel(
+      id: transactionDetail.id.isNotEmpty
+          ? transactionDetail.id
+          : '${txToInsert.id}_detail',
+      transactionId: txToInsert.id,
+      note: transactionDetail.note,
+      receiptFileIds: uploadedFileIds,
+      rawInputText: transactionDetail.rawInputText,
+      confidenceScore: transactionDetail.confidenceScore,
+    );
 
-          createdTxId = txResponse.$id;
-
-          // 2. Tạo bản ghi TransactionDetail
-          final detailData = transactionDetail.toMap();
-          detailData['receiptFileId'] = uploadedFileIds.join(',');
-          detailData['transactions'] = createdTxId;
-
-          final detailResponse = await appwrite.databases.createDocument(
-            databaseId: appwrite.databaseId,
-            collectionId: appwrite.transactionDetailsTableId,
-            documentId: ID.unique(),
-            data: detailData,
-          );
-
-          createdDetailId = detailResponse.$id;
-
-          // 3. (REMOVED) Không còn cập nhật số dư Ví (Wallet Balance) ở đây
-
-          // Định dạng tháng hiện tại (vd: "07-2026")
-          String monthYearStr =
-              "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
-
-          // 4. Cập nhật số tiền đã tiêu (MonthlyBudgets spentAmount)
-          if (currentCategory != null) {
-            double amountChange = transaction.type == 'EXPENSE'
-                ? transaction.amount
-                : -transaction.amount;
-
-            final budgetResponse = await appwrite.databases.listDocuments(
-              databaseId: appwrite.databaseId,
-              collectionId: appwrite.monthlyBudgetsTableId,
-              queries: [
-                Query.equal('categories', currentCategory.id),
-                Query.equal('monthYear', monthYearStr),
-              ],
-            );
-
-            if (budgetResponse.documents.isNotEmpty) {
-              final existingBudget = budgetResponse.documents.first;
-              double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
-                  .toDouble();
-              double newSpent = currentSpent + amountChange;
-              if (newSpent < 0) newSpent = 0;
-
-              await appwrite.databases.updateDocument(
-                databaseId: appwrite.databaseId,
-                collectionId: appwrite.monthlyBudgetsTableId,
-                documentId: existingBudget.$id,
-                data: {'spentAmount': newSpent},
-              );
-            } else {
-              double newSpent = amountChange;
-              if (newSpent < 0) newSpent = 0;
-
-              await appwrite.databases.createDocument(
-                databaseId: appwrite.databaseId,
-                collectionId: appwrite.monthlyBudgetsTableId,
-                documentId: ID.unique(),
-                data: {
-                  'categories': currentCategory.id,
-                  'monthYear': monthYearStr,
-                  'budgetedAmount': currentCategory.defaultBudget,
-                  'rolloverAmount': 0.0,
-                  'spentAmount': newSpent,
-                },
-              );
-            }
-          }
-
-          // 5. Cập nhật MonthlySummary
-          double incomeChange = transaction.type == 'INCOME'
-              ? transaction.amount
-              : 0;
-          double expenseChange = transaction.type == 'EXPENSE'
-              ? transaction.amount
-              : 0;
-          await _updateMonthlySummary(
-            monthYearStr,
-            incomeChange,
-            expenseChange,
-          );
-
-          transactionUpdatedController.add(null);
-          return TransactionModel.fromMap(
-            Map<String, dynamic>.from(txResponse.data)..['\$id'] = txResponse.$id,
-          );
-        } catch (e) {
-          // 🚨 TỰ ĐỘNG ROLLBACK (COMPENSATING TRANSACTION) 🚨
-          // Nếu có lỗi ở bước tạo Detail, Budget hoặc Summary, ta phải xóa Transaction đã tạo
-          // để tránh rác Database (Orphaned records).
-          try {
-            if (createdDetailId != null) {
-              await appwrite.databases.deleteDocument(
-                databaseId: appwrite.databaseId,
-                collectionId: appwrite.transactionDetailsTableId,
-                documentId: createdDetailId,
-              );
-            }
-            if (createdTxId != null) {
-              await appwrite.databases.deleteDocument(
-                databaseId: appwrite.databaseId,
-                collectionId: appwrite.transactionsTableId,
-                documentId: createdTxId,
-              );
-            }
-          } catch (rollbackError) {
-            // Lỗi trong quá trình rollback cũng cần được ghi nhận nhưng ưu tiên quăng lỗi chính
-            AppLogger.error('TransactionWriteMixin', "Rollback failed: \$rollbackError");
-          }
-          rethrow;
-        }
-      });
-    } catch (e) {
-      for (String id in uploadedFileIds) {
-        if (!transactionDetail.receiptFileIds.contains(id)) {
-          try {
-            await storageRepo.deleteFile(id);
-          } catch (deleteError) {
-            final payload = jsonEncode({'fileId': id});
-            await offlineSyncService.queueTask('DELETE_ORPHANED_FILE', payload);
-          }
-        }
-      }
-      rethrow;
-    }
+    await localDb.insertTransactionAtomic(txToInsert, detail: detailToInsert);
+    transactionUpdatedController.add(null);
+    return txToInsert;
   }
 
   Future<TransactionModel> createWalletAdjustmentTransaction({
     required TransactionModel transaction,
     required TransactionDetailModel transactionDetail,
+    String? userId,
   }) async {
-    return handleAppwriteError(() async {
-      String? createdTxId;
-      String? createdDetailId;
+    final localDb = Get.find<LocalDatabaseService>();
+    final txToInsert = transaction.id.isEmpty
+        ? TransactionModel(
+            id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+            categoryId: transaction.categoryId,
+            amount: transaction.amount,
+            type: transaction.type,
+            transactionDate: transaction.transactionDate,
+            status: transaction.status,
+            note: transaction.note,
+            updatedAt: transaction.updatedAt,
+          )
+        : transaction;
 
-      try {
-        // 1. Tạo bản ghi Transaction (Không liên kết category)
-        final txResponse = await appwrite.databases.createDocument(
-          databaseId: appwrite.databaseId,
-          collectionId: appwrite.transactionsTableId,
-          documentId: ID.unique(),
-          data: transaction.toMap(),
-        );
-
-        createdTxId = txResponse.$id;
-
-        // 2. Tạo bản ghi TransactionDetail
-        final detailData = transactionDetail.toMap();
-        detailData['transactions'] = createdTxId;
-
-        final detailResponse = await appwrite.databases.createDocument(
-          databaseId: appwrite.databaseId,
-          collectionId: appwrite.transactionDetailsTableId,
-          documentId: ID.unique(),
-          data: detailData,
-        );
-        createdDetailId = detailResponse.$id;
-
-        // 5. Cập nhật MonthlySummary
-        String monthYearStr =
-            "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
-        double incomeChange = 0;
-        double expenseChange = 0;
-        if (transaction.categoryId != 'SYSTEM_ROLLOVER') {
-          incomeChange = transaction.type == 'INCOME' ? transaction.amount : 0;
-          expenseChange = transaction.type == 'EXPENSE'
-              ? transaction.amount
-              : 0;
-        }
-        await _updateMonthlySummary(monthYearStr, incomeChange, expenseChange);
-
-        transactionUpdatedController.add(null);
-        return TransactionModel.fromMap(
-          Map<String, dynamic>.from(txResponse.data)..['\$id'] = txResponse.$id,
-        );
-      } catch (e) {
-        try {
-          if (createdDetailId != null) {
-            await appwrite.databases.deleteDocument(
-              databaseId: appwrite.databaseId,
-              collectionId: appwrite.transactionDetailsTableId,
-              documentId: createdDetailId,
-            );
-          }
-          if (createdTxId != null) {
-            await appwrite.databases.deleteDocument(
-              databaseId: appwrite.databaseId,
-              collectionId: appwrite.transactionsTableId,
-              documentId: createdTxId,
-            );
-          }
-        } catch (rollbackError) {
-          print("Rollback failed: \$rollbackError");
-        }
-        rethrow;
-      }
-    });
+    await localDb.insertTransactionAtomic(
+      txToInsert,
+      detail: transactionDetail,
+    );
+    transactionUpdatedController.add(null);
+    return txToInsert;
   }
 
   Future<void> updateTransaction({
@@ -301,7 +96,6 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     CategoryModel? newCategory,
   }) async {
     final storageRepo = Get.find<StorageRepository>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
     List<String> uploadedFileIds = [];
 
     if (newTransactionDetail != null) {
@@ -319,181 +113,25 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
       }
     }
 
-    try {
-      return await handleAppwriteError(() async {
-        // 3. Hoàn tác MonthlyBudgets của oldCategory
-        if (oldTransaction.type == 'EXPENSE' && oldCategory != null) {
-          String oldMonthYearStr =
-              "${oldTransaction.transactionDate.month.toString().padLeft(2, '0')}-${oldTransaction.transactionDate.year}";
-          final oldBudgetResponse = await appwrite.databases.listDocuments(
-            databaseId: appwrite.databaseId,
-            collectionId: appwrite.monthlyBudgetsTableId,
-            queries: [
-              Query.equal('categories', oldCategory.id),
-              Query.equal('monthYear', oldMonthYearStr),
-            ],
-          );
-          if (oldBudgetResponse.documents.isNotEmpty) {
-            final existingBudget = oldBudgetResponse.documents.first;
-            double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
-                .toDouble();
-            double newSpent = currentSpent - oldTransaction.amount;
-            if (newSpent < 0) newSpent = 0;
-            await appwrite.databases.updateDocument(
-              databaseId: appwrite.databaseId,
-              collectionId: appwrite.monthlyBudgetsTableId,
-              documentId: existingBudget.$id,
-              data: {'spentAmount': newSpent},
-            );
-          }
-        }
+    final detailToUpdate = newTransactionDetail != null
+        ? TransactionDetailModel(
+            id: newTransactionDetail.id.isNotEmpty
+                ? newTransactionDetail.id
+                : '${newTransaction.id}_detail',
+            transactionId: newTransaction.id,
+            note: newTransactionDetail.note,
+            receiptFileIds: uploadedFileIds,
+            rawInputText: newTransactionDetail.rawInputText,
+            confidenceScore: newTransactionDetail.confidenceScore,
+          )
+        : null;
 
-        // 4. Áp dụng MonthlyBudgets cho newCategory
-        if (newTransaction.type == 'EXPENSE' && newCategory != null) {
-          String newMonthYearStr =
-              "${newTransaction.transactionDate.month.toString().padLeft(2, '0')}-${newTransaction.transactionDate.year}";
-          final newBudgetResponse = await appwrite.databases.listDocuments(
-            databaseId: appwrite.databaseId,
-            collectionId: appwrite.monthlyBudgetsTableId,
-            queries: [
-              Query.equal('categories', newCategory.id),
-              Query.equal('monthYear', newMonthYearStr),
-            ],
-          );
-
-          if (newBudgetResponse.documents.isNotEmpty) {
-            final existingBudget = newBudgetResponse.documents.first;
-            double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
-                .toDouble();
-            double newSpent = currentSpent + newTransaction.amount;
-            if (newSpent < 0) newSpent = 0;
-            await appwrite.databases.updateDocument(
-              databaseId: appwrite.databaseId,
-              collectionId: appwrite.monthlyBudgetsTableId,
-              documentId: existingBudget.$id,
-              data: {'spentAmount': newSpent},
-            );
-          } else {
-            await appwrite.databases.createDocument(
-              databaseId: appwrite.databaseId,
-              collectionId: appwrite.monthlyBudgetsTableId,
-              documentId: ID.unique(),
-              data: {
-                'categories': newCategory.id,
-                'monthYear': newMonthYearStr,
-                'budgetedAmount': newCategory.defaultBudget,
-                'rolloverAmount': 0.0,
-                'spentAmount': newTransaction.amount,
-              },
-            );
-          }
-        }
-
-        // 5. Cập nhật bản ghi Transaction
-        await appwrite.databases.updateDocument(
-          databaseId: appwrite.databaseId,
-          collectionId: appwrite.transactionsTableId,
-          documentId: oldTransaction.id,
-          data: newTransaction.toMap(),
-        );
-
-        // 6. Cập nhật bản ghi TransactionDetail
-        if (newTransactionDetail != null) {
-          final detailResponse = await appwrite.databases.listDocuments(
-            databaseId: appwrite.databaseId,
-            collectionId: appwrite.transactionDetailsTableId,
-            queries: [
-              Query.equal('transactions', oldTransaction.id),
-              Query.limit(1),
-            ],
-          );
-
-          final detailData = newTransactionDetail.toMap();
-          detailData['receiptFileId'] = uploadedFileIds.isNotEmpty
-              ? uploadedFileIds.join(',')
-              : newTransactionDetail.receiptFileIds.join(',');
-          detailData['transactions'] = oldTransaction.id;
-
-          if (detailResponse.documents.isNotEmpty) {
-            await appwrite.databases.updateDocument(
-              databaseId: appwrite.databaseId,
-              collectionId: appwrite.transactionDetailsTableId,
-              documentId: detailResponse.documents.first.$id,
-              data: detailData,
-            );
-          } else {
-            await appwrite.databases.createDocument(
-              databaseId: appwrite.databaseId,
-              collectionId: appwrite.transactionDetailsTableId,
-              documentId: ID.unique(),
-              data: detailData,
-            );
-          }
-        }
-
-        // 7. Cập nhật MonthlySummary
-        String oldMonthYearStr =
-            "${oldTransaction.transactionDate.month.toString().padLeft(2, '0')}-${oldTransaction.transactionDate.year}";
-        String newMonthYearStr =
-            "${newTransaction.transactionDate.month.toString().padLeft(2, '0')}-${newTransaction.transactionDate.year}";
-
-        if (oldMonthYearStr == newMonthYearStr) {
-          double incomeChange =
-              (newTransaction.type == 'INCOME' ? newTransaction.amount : 0) -
-              (oldTransaction.type == 'INCOME' ? oldTransaction.amount : 0);
-          double expenseChange =
-              (newTransaction.type == 'EXPENSE' ? newTransaction.amount : 0) -
-              (oldTransaction.type == 'EXPENSE' ? oldTransaction.amount : 0);
-          await _updateMonthlySummary(
-            oldMonthYearStr,
-            incomeChange,
-            expenseChange,
-          );
-        } else {
-          double oldIncomeChange = oldTransaction.type == 'INCOME'
-              ? -oldTransaction.amount
-              : 0;
-          double oldExpenseChange = oldTransaction.type == 'EXPENSE'
-              ? -oldTransaction.amount
-              : 0;
-          await _updateMonthlySummary(
-            oldMonthYearStr,
-            oldIncomeChange,
-            oldExpenseChange,
-          );
-
-          double newIncomeChange = newTransaction.type == 'INCOME'
-              ? newTransaction.amount
-              : 0;
-          double newExpenseChange = newTransaction.type == 'EXPENSE'
-              ? newTransaction.amount
-              : 0;
-          await _updateMonthlySummary(
-            newMonthYearStr,
-            newIncomeChange,
-            newExpenseChange,
-          );
-        }
-        transactionUpdatedController.add(null);
-      });
-    } catch (e) {
-      if (newTransactionDetail != null) {
-        for (String id in uploadedFileIds) {
-          if (!newTransactionDetail.receiptFileIds.contains(id)) {
-            try {
-              await storageRepo.deleteFile(id);
-            } catch (deleteError) {
-              final payload = jsonEncode({'fileId': id});
-              await offlineSyncService.queueTask(
-                'DELETE_ORPHANED_FILE',
-                payload,
-              );
-            }
-          }
-        }
-      }
-      rethrow;
-    }
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.updateTransactionAtomic(
+      newTransaction,
+      detail: detailToUpdate,
+    );
+    transactionUpdatedController.add(null);
   }
 
   Future<void> updateWalletAdjustmentTransaction({
@@ -501,146 +139,20 @@ mixin TransactionWriteMixin on TransactionRepositoryBase, AppwriteErrorHandler {
     required TransactionModel newTransaction,
     required TransactionDetailModel? newTransactionDetail,
   }) async {
-    return handleAppwriteError(() async {
-      await appwrite.databases.updateDocument(
-        databaseId: appwrite.databaseId,
-        collectionId: appwrite.transactionsTableId,
-        documentId: oldTransaction.id,
-        data: newTransaction.toMap(),
-      );
-
-      if (newTransactionDetail != null) {
-        final detailResponse = await appwrite.databases.listDocuments(
-          databaseId: appwrite.databaseId,
-          collectionId: appwrite.transactionDetailsTableId,
-          queries: [
-            Query.equal('transactions', oldTransaction.id),
-            Query.limit(1),
-          ],
-        );
-
-        final detailData = newTransactionDetail.toMap();
-        detailData['transactions'] = oldTransaction.id;
-
-        if (detailResponse.documents.isNotEmpty) {
-          await appwrite.databases.updateDocument(
-            databaseId: appwrite.databaseId,
-            collectionId: appwrite.transactionDetailsTableId,
-            documentId: detailResponse.documents.first.$id,
-            data: detailData,
-          );
-        } else {
-          await appwrite.databases.createDocument(
-            databaseId: appwrite.databaseId,
-            collectionId: appwrite.transactionDetailsTableId,
-            documentId: ID.unique(),
-            data: detailData,
-          );
-        }
-      }
-
-      String oldMonthYearStr =
-          "${oldTransaction.transactionDate.month.toString().padLeft(2, '0')}-${oldTransaction.transactionDate.year}";
-      String newMonthYearStr =
-          "${newTransaction.transactionDate.month.toString().padLeft(2, '0')}-${newTransaction.transactionDate.year}";
-
-      if (newTransaction.categoryId != 'SYSTEM_ROLLOVER' &&
-          oldTransaction.categoryId != 'SYSTEM_ROLLOVER') {
-        if (oldMonthYearStr == newMonthYearStr) {
-          double incomeChange =
-              (newTransaction.type == 'INCOME' ? newTransaction.amount : 0) -
-              (oldTransaction.type == 'INCOME' ? oldTransaction.amount : 0);
-          double expenseChange =
-              (newTransaction.type == 'EXPENSE' ? newTransaction.amount : 0) -
-              (oldTransaction.type == 'EXPENSE' ? oldTransaction.amount : 0);
-          await _updateMonthlySummary(
-            oldMonthYearStr,
-            incomeChange,
-            expenseChange,
-          );
-        } else {
-          double oldIncomeChange = oldTransaction.type == 'INCOME'
-              ? -oldTransaction.amount
-              : 0;
-          double oldExpenseChange = oldTransaction.type == 'EXPENSE'
-              ? -oldTransaction.amount
-              : 0;
-          await _updateMonthlySummary(
-            oldMonthYearStr,
-            oldIncomeChange,
-            oldExpenseChange,
-          );
-
-          double newIncomeChange = newTransaction.type == 'INCOME'
-              ? newTransaction.amount
-              : 0;
-          double newExpenseChange = newTransaction.type == 'EXPENSE'
-              ? newTransaction.amount
-              : 0;
-          await _updateMonthlySummary(
-            newMonthYearStr,
-            newIncomeChange,
-            newExpenseChange,
-          );
-        }
-      }
-
-      transactionUpdatedController.add(null);
-    });
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.updateTransactionAtomic(
+      newTransaction,
+      detail: newTransactionDetail,
+    );
+    transactionUpdatedController.add(null);
   }
 
   Future<void> deleteTransaction({
     required TransactionModel transaction,
     CategoryModel? currentCategory,
   }) async {
-    return handleAppwriteError(() async {
-      if (transaction.type == 'EXPENSE' && currentCategory != null) {
-        String monthYearStr =
-            "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
-
-        final budgetResponse = await appwrite.databases.listDocuments(
-          databaseId: appwrite.databaseId,
-          collectionId: appwrite.monthlyBudgetsTableId,
-          queries: [
-            Query.equal('categories', currentCategory.id),
-            Query.equal('monthYear', monthYearStr),
-          ],
-        );
-
-        if (budgetResponse.documents.isNotEmpty) {
-          final existingBudget = budgetResponse.documents.first;
-          double currentSpent = (existingBudget.data['spentAmount'] ?? 0)
-              .toDouble();
-          double newSpent = currentSpent - transaction.amount;
-          if (newSpent < 0) newSpent = 0;
-
-          await appwrite.databases.updateDocument(
-            databaseId: appwrite.databaseId,
-            collectionId: appwrite.monthlyBudgetsTableId,
-            documentId: existingBudget.$id,
-            data: {'spentAmount': newSpent},
-          );
-        }
-      }
-
-      await appwrite.databases.updateDocument(
-        databaseId: appwrite.databaseId,
-        collectionId: appwrite.transactionsTableId,
-        documentId: transaction.id,
-        data: {'status': 'DELETED'},
-      );
-
-      String monthYearStr =
-          "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
-      double incomeChange = 0;
-      double expenseChange = 0;
-      if (transaction.categoryId != 'SYSTEM_ROLLOVER') {
-        incomeChange = transaction.type == 'INCOME' ? -transaction.amount : 0;
-        expenseChange = transaction.type == 'EXPENSE' ? -transaction.amount : 0;
-      }
-      await _updateMonthlySummary(monthYearStr, incomeChange, expenseChange);
-
-      transactionUpdatedController.add(null);
-    });
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.deleteTransactionAtomic(transaction.id);
+    transactionUpdatedController.add(null);
   }
 }

@@ -3,6 +3,7 @@ import "package:get/get.dart";
 import "package:flutter_screenutil/flutter_screenutil.dart";
 import '../controllers/onboarding_controller.dart';
 import 'package:appintern/core/constants/app_assets.dart';
+import 'package:appintern/core/routes/app_routes.dart';
 
 class OnboardingScreen extends GetView<OnboardingController> {
   const OnboardingScreen({super.key});
@@ -63,48 +64,128 @@ class OnboardingScreen extends GetView<OnboardingController> {
               SizedBox(height: 24.h),
 
               Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 16.w,
-                ), // (360-328)/2=16
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 48.h,
-                  child: Obx(
-                    () => ElevatedButton(
-                      onPressed: controller.isLoading
-                          ? null
-                          : () => controller.loginWithGoogle(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4285F4),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Column(
+                  children: [
+                    // Nút Đăng ký tài khoản mới (Primary)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48.h,
+                      child: ElevatedButton(
+                        onPressed: () => Get.toNamed(Routes.REGISTER),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4285F4),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
                         ),
-                        disabledBackgroundColor: const Color(
-                          0xFF4285F4,
-                        ).withValues(alpha: 0.6),
+                        child: Text(
+                          'Đăng ký tài khoản mới',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      child: controller.isLoading
-                          ? SizedBox(
-                              width: 24.w,
-                              height: 24.h,
-                              child: const CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              'Đăng nhập bằng Google',
-                              style: TextStyle(
-                                fontFamily: 'Roboto',
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w500,
-                                height: 24 / 16,
-                              ),
-                            ),
                     ),
-                  ),
+                    SizedBox(height: 12.h),
+
+                    // Nút Đăng nhập (Outlined)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48.h,
+                      child: OutlinedButton(
+                        onPressed: () => Get.toNamed(Routes.LOGIN),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF4285F4),
+                          side: const BorderSide(color: Color(0xFF4285F4), width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                        ),
+                        child: Text(
+                          'Đăng nhập với tài khoản',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey[400], thickness: 0.8)),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12.w),
+                          child: Text(
+                            'Hoặc tiếp tục với',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF757575),
+                              fontFamily: 'Roboto',
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey[400], thickness: 0.8)),
+                      ],
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // Nút Google Sign In
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48.h,
+                      child: Obx(
+                        () => OutlinedButton(
+                          onPressed: controller.isLoading || controller.isGoogleLoading.value
+                              ? null
+                              : () => controller.loginWithGoogle(),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            side: BorderSide(color: Colors.grey[300]!, width: 1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                          ),
+                          child: controller.isGoogleLoading.value
+                              ? SizedBox(
+                                  width: 24.w,
+                                  height: 24.h,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.g_mobiledata,
+                                      color: Color(0xFF4285F4),
+                                      size: 30,
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      'Đăng nhập bằng Google',
+                                      style: TextStyle(
+                                        fontFamily: 'Roboto',
+                                        fontSize: 15.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: const Color(0xFF1E1E1E),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 

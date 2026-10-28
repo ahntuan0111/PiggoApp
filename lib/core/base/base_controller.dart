@@ -64,6 +64,20 @@ abstract class BaseController extends GetxController {
     });
   }
 
+  void showInfoMessage(String title, String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.closeAllSnackbars();
+      Get.snackbar(
+        title,
+        message,
+        backgroundColor: Colors.blueAccent,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    });
+  }
+
   /// Safety net cuối cùng: lọc message kỹ thuật trước khi hiển thị lên UI.
   /// Nếu message chứa bất kỳ pattern kỹ thuật nào → thay bằng fallback generic.
   static String _sanitizeForUser(String message) {

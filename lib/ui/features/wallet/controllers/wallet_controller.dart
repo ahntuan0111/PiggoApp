@@ -1,5 +1,4 @@
 import 'package:appintern/core/utils/currency_formatter.dart';
-import 'package:appintern/core/services/budget_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
@@ -11,16 +10,9 @@ import 'package:appintern/core/services/storage_service.dart';
 import 'package:appintern/core/mixins/budget_aware_mixin.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/errors/error_handler.dart';
-import 'package:intl/intl.dart';
-import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
-import 'package:appintern/core/utils/offline_helper.dart';
-import 'package:appintern/data/data_sources/local/local_database_service.dart';
-import 'dart:convert';
 import 'dart:async';
-import 'package:appintern/core/utils/offline_aware_mixin.dart';
 
-class WalletController extends BaseController with BudgetAware, OfflineAware {
+class WalletController extends BaseController with BudgetAware {
   final TransactionRepository transactionRepository =
       Get.find<TransactionRepository>();
   final storage = Get.find<StorageService>();
@@ -201,127 +193,6 @@ class WalletController extends BaseController with BudgetAware, OfflineAware {
         : note;
 
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
-
-    if (isOffline) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final tempId = OfflineHelper.generateTempId();
-
-      if (isEditTransactionMode.value && editingTransaction != null) {
-        final newTx = TransactionModel(
-          id: editingTransaction!.id,
-          categoryId: '',
-          amount: amount,
-          type: isAdding.value ? 'INCOME' : 'EXPENSE',
-          transactionDate: editingTransaction!.transactionDate,
-          status: editingTransaction!.status,
-          note: description,
-        );
-
-        final newDetail = TransactionDetailModel(
-          id: editingDetail?.id ?? '',
-          transactionId: editingTransaction!.id,
-          note: description,
-          receiptFileIds: editingDetail?.receiptFileIds ?? const [],
-          rawInputText: editingDetail?.rawInputText ?? '',
-          confidenceScore: editingDetail?.confidenceScore ?? 0.0,
-        );
-
-        final payload = jsonEncode({
-          'transaction': newTx.toMap(),
-          'detail': newDetail.toMap(),
-          'oldTransaction': editingTransaction!.toMap(),
-        });
-        await offlineSyncService.queueManualTask(
-          'UPDATE_WALLET_ADJUSTMENT',
-          payload,
-        );
-
-        // Update local DB
-        await localDb.saveTransactions([newTx]);
-
-        String monthYearStr =
-            "${newTx.transactionDate.month.toString().padLeft(2, '0')}-${newTx.transactionDate.year}";
-
-        // Revert old transaction in summary
-        double oldIncomeChange = editingTransaction!.type == 'INCOME'
-            ? -editingTransaction!.amount
-            : 0;
-        double oldExpenseChange = editingTransaction!.type == 'EXPENSE'
-            ? -editingTransaction!.amount
-            : 0;
-        await localDb.updateLocalSummary(
-          monthYearStr,
-          oldIncomeChange,
-          oldExpenseChange,
-        );
-
-        // Apply new transaction in summary
-        double newIncomeChange = newTx.type == 'INCOME' ? newTx.amount : 0;
-        double newExpenseChange = newTx.type == 'EXPENSE' ? newTx.amount : 0;
-        await localDb.updateLocalSummary(
-          monthYearStr,
-          newIncomeChange,
-          newExpenseChange,
-        );
-      } else {
-        final transaction = TransactionModel(
-          id: tempId,
-          categoryId: '', // Bỏ trống category vì đây là khoản unallocated
-          amount: amount,
-          type: isAdding.value ? 'INCOME' : 'EXPENSE',
-          transactionDate: DateTime.now(),
-          status: 'COMPLETED',
-          note: description,
-        );
-
-        final transactionDetail = TransactionDetailModel(
-          id: tempId,
-          transactionId: tempId,
-          note: description,
-          receiptFileIds: const [],
-          rawInputText: '',
-          confidenceScore: 1.0,
-        );
-
-        final payload = jsonEncode({
-          'transaction': transaction.toMap()..['\$id'] = transaction.id,
-          'detail': transactionDetail.toMap()..['\$id'] = transactionDetail.id,
-          'tempId': tempId,
-        });
-        await offlineSyncService.queueManualTask(
-          'CREATE_WALLET_ADJUSTMENT',
-          payload,
-        );
-
-        // Update local DB
-        await localDb.saveTransactions([transaction]);
-
-        String monthYearStr =
-            "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
-        double incomeChange = transaction.type == 'INCOME'
-            ? transaction.amount
-            : 0;
-        double expenseChange = transaction.type == 'EXPENSE'
-            ? transaction.amount
-            : 0;
-        await localDb.updateLocalSummary(
-          monthYearStr,
-          incomeChange,
-          expenseChange,
-        );
-      }
-
-      hideLoading();
-      await Get.find<BudgetService>().refreshData();
-      Get.back(result: true);
-      return;
-    }
 
     final result = await ErrorHandler.execute(() async {
       if (isEditTransactionMode.value && editingTransaction != null) {
@@ -384,16 +255,7 @@ class WalletController extends BaseController with BudgetAware, OfflineAware {
         );
       },
       (_) {
-        // Không cần fetchData ở đây vì _transactionUpdatedController
-        // sẽ báo cho HomeController refreshData tự động
-        if (networkService.isOffline.value) {
-          showSuccessMessage(
-            "Đã lưu (Ngoại tuyến)",
-            "Dữ liệu sẽ được đồng bộ khi có mạng",
-          );
-        }
         Get.back(result: true);
-        // Snackbar do màn hình Caller hiển thị (Caller Pattern)
       },
     );
   }

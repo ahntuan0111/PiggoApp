@@ -23,9 +23,7 @@ class ProfileScreen extends GetView<ProfileController> {
       body: Obx(() {
         final user = controller.currentUser.value;
         final avatarBytes = controller.avatarBytes.value;
-        final syncTasks =
-            controller.offlineSync.aiQueueCount.value +
-            controller.offlineSync.manualQueueCount.value;
+        const syncTasks = 0;
 
         return ListView(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -129,32 +127,24 @@ class ProfileScreen extends GetView<ProfileController> {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 decoration: BoxDecoration(
-                  color: syncTasks > 0
-                      ? Colors.orange.withValues(alpha: 0.15)
-                      : const Color(0xFF369B56).withValues(alpha: 0.15),
+                  color: const Color(0xFF369B56).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      syncTasks > 0 ? Icons.sync_problem : Icons.cloud_done,
+                      Icons.cloud_done,
                       size: 14.sp,
-                      color: syncTasks > 0
-                          ? Colors.orange
-                          : const Color(0xFF369B56),
+                      color: const Color(0xFF369B56),
                     ),
                     SizedBox(width: 6.w),
                     Text(
-                      syncTasks > 0
-                          ? "Đang chờ đồng bộ ($syncTasks)"
-                          : "Đã đồng bộ",
+                      "Lưu cục bộ an toàn",
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
-                        color: syncTasks > 0
-                            ? Colors.orange
-                            : const Color(0xFF369B56),
+                        color: const Color(0xFF369B56),
                       ),
                     ),
                   ],

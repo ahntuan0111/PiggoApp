@@ -21,7 +21,11 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   // Search State
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
-  Timer? _debounce;
+  Timer? _searchDebounce;
+  Timer? _filterDebounce;
+
+  // Race Condition Guard
+  int _activeRequestId = 0;
 
   // Data States
   List<Map<String, dynamic>> transactionsList = [];
@@ -48,26 +52,26 @@ class TransactionHistoryController extends BaseController with BudgetAware {
       }
     }
 
-    // Lắng nghe sự thay đổi của text search để thực hiện Debounce 500ms
+    // Lắng nghe sự thay đổi của text search để thực hiện Debounce 400ms
     searchController.addListener(() {
-      if (_debounce?.isActive ?? false) _debounce?.cancel();
-      _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (_searchDebounce?.isActive ?? false) _searchDebounce?.cancel();
+      _searchDebounce = Timer(const Duration(milliseconds: 400), () {
         if (searchQuery.value != searchController.text) {
           searchQuery.value = searchController.text;
-          _refreshData();
+          _scheduleRefresh();
         }
       });
     });
 
-    ever(selectedMonth, (_) => _refreshData());
-    ever(sortAscending, (_) => _refreshData());
-    ever(selectedCategory, (_) => _refreshData());
-    ever(selectedType, (_) => _refreshData());
+    ever(selectedMonth, (_) => _scheduleRefresh());
+    ever(sortAscending, (_) => _scheduleRefresh());
+    ever(selectedCategory, (_) => _scheduleRefresh());
+    ever(selectedType, (_) => _scheduleRefresh());
 
-    // Lắng nghe BudgetService để nạp lại dữ liệu khi ví đã được load xong
+    // Lắng nghe BudgetService để nạp lại dữ liệu khi ví đã được load xong (chỉ kích hoạt nếu chưa có data)
     ever(budgetService.isDataLoaded, (loaded) {
-      if (loaded) {
-        _refreshData();
+      if (loaded && transactionsList.isEmpty && !isLoading) {
+        _scheduleRefresh();
       }
     });
   }
@@ -75,23 +79,35 @@ class TransactionHistoryController extends BaseController with BudgetAware {
   @override
   void onReady() {
     super.onReady();
-    if (budgetService.isDataLoaded.value) {
+    if (budgetService.isDataLoaded.value && transactionsList.isEmpty && !isLoading) {
       _refreshData();
     }
   }
 
+  void _scheduleRefresh() {
+    _filterDebounce?.cancel();
+    _filterDebounce = Timer(const Duration(milliseconds: 150), () {
+      _refreshData();
+    });
+  }
+
   void _refreshData() {
-    // Reset phân trang và tải lại từ đầu
-    hasReachedMax.value = false;
-    transactionsList.clear();
+    _filterDebounce?.cancel();
     fetchTransactions(isRefresh: true);
   }
 
   Future<void> fetchTransactions({bool isRefresh = false}) async {
-    if (hasReachedMax.value) return;
+    // Chặn gọi phân trang nếu đang tải hoặc đã hết dữ liệu
+    if (!isRefresh && (isLoading || isFetchingMore.value || hasReachedMax.value)) {
+      return;
+    }
+
+    // Tăng Sequence Token chống Race Condition
+    final int currentRequestId = ++_activeRequestId;
 
     if (isRefresh) {
       showLoading();
+      hasReachedMax.value = false;
     } else {
       isFetchingMore.value = true;
     }
@@ -130,6 +146,12 @@ class TransactionHistoryController extends BaseController with BudgetAware {
       );
     }, tag: "FETCH_TRANSACTION_HISTORY");
 
+    // BẢO VỆ CHỐNG RACE CONDITION:
+    // Nếu request này đã bị request mới hơn thay thế, bỏ qua kết quả trả về
+    if (currentRequestId != _activeRequestId) {
+      return;
+    }
+
     if (isRefresh) hideLoading();
     isFetchingMore.value = false;
 
@@ -139,6 +161,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
           'Lỗi',
           'Không thể tải lịch sử giao dịch: ${failure.message}',
         );
+        update(['tx_list']);
       },
       (data) async {
         if (data.isEmpty || data.length < pageSize) {
@@ -228,7 +251,7 @@ class TransactionHistoryController extends BaseController with BudgetAware {
     if (scrollController.hasClients) {
       if (scrollController.position.pixels >=
           scrollController.position.maxScrollExtent - 200) {
-        if (!isFetchingMore.value && !hasReachedMax.value) {
+        if (!isLoading && !isFetchingMore.value && !hasReachedMax.value) {
           fetchTransactions(isRefresh: false);
         }
       }
@@ -237,9 +260,10 @@ class TransactionHistoryController extends BaseController with BudgetAware {
 
   @override
   void onClose() {
+    _searchDebounce?.cancel();
+    _filterDebounce?.cancel();
     scrollController.dispose();
     searchController.dispose();
-    _debounce?.cancel();
     super.onClose();
   }
 }

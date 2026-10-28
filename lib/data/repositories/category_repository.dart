@@ -1,145 +1,38 @@
-import 'dart:convert';
-import 'package:appintern/core/services/appwrite_service.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/models/category_type_model.dart';
 import 'package:appintern/data/models/monthly_budget_model.dart';
 import 'package:appintern/data/models/monthly_summary_model.dart';
-import 'package:appwrite/appwrite.dart';
-import 'package:appintern/core/mixins/appwrite_error_mixin.dart';
+import 'package:get/get.dart';
+import 'package:appintern/data/data_sources/local/local_database_service.dart';
+import 'package:appintern/core/utils/offline_helper.dart';
+import 'package:sqflite/sqflite.dart';
 
-class CategoryRepository with AppwriteErrorHandler {
-  final AppwriteService _appwrite;
+class CategoryRepository {
+  CategoryRepository();
 
-  CategoryRepository(this._appwrite);
-
-  Future<void> createDefaultCategoryTypes(String userId) async {
-    return handleAppwriteError(() async {
-      final defaultTypes = [
-        {'name': 'Cố định', 'priority': 1},
-        {'name': 'Thiết yếu', 'priority': 2},
-        {'name': 'Tiết kiệm', 'priority': 3},
-      ];
-
-      for (var type in defaultTypes) {
-        await _appwrite.databases.createDocument(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.categoriesTypeTableId,
-          documentId: ID.unique(),
-          data: {
-            'name': type['name'],
-            'priority': type['priority'],
-          },
-        );
-      }
-    });
+  Future<void> createDefaultCategoryTypes([String? userId]) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    final defaultTypes = [
+      {'id': 'ct_fixed', 'name': 'Cố định', 'priority': 1},
+      {'id': 'ct_essential', 'name': 'Thiết yếu', 'priority': 2},
+      {'id': 'ct_saving', 'name': 'Tiết kiệm', 'priority': 3},
+    ];
+    await localDb.saveCategoryTypes(defaultTypes);
   }
 
-  Future<List<CategoryTypeModel>> getCategoryTypes(String userId) async {
-    return handleAppwriteError(() async {
-      final response = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTypeTableId,
-        queries: [Query.orderAsc('priority')],
-      );
-      return response.documents
-          .map(
-            (doc) => CategoryTypeModel.fromMap(
-              Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
-            ),
-          )
-          .toList();
-    });
+  Future<List<CategoryTypeModel>> getCategoryTypes([String? userId]) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    final types = await localDb.getCategoryTypes();
+    return types.map((e) => CategoryTypeModel.fromMap(e)).toList();
   }
 
-  Future<CategoryTypeModel> getOrCreateSavingCategoryType(String userId) async {
-    return handleAppwriteError(() async {
-      final typeResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTypeTableId,
-        queries: [
-          Query.equal('name', 'Tiết kiệm lâu dài'),
-        ],
-      );
-      if (typeResponse.documents.isNotEmpty) {
-        return CategoryTypeModel.fromMap(
-          Map<String, dynamic>.from(typeResponse.documents.first.data)
-            ..['\$id'] = typeResponse.documents.first.$id,
-        );
-      } else {
-        final newTypeResponse = await _appwrite.databases.createDocument(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.categoriesTypeTableId,
-          documentId: ID.unique(),
-          data: {
-            'name': 'Tiết kiệm lâu dài',
-            'priority': 99,
-          },
-        );
-        return CategoryTypeModel.fromMap(
-          Map<String, dynamic>.from(newTypeResponse.data)
-            ..['\$id'] = newTypeResponse.$id,
-        );
-      }
-    });
-  }
-
-  Future<List<CategoryModel>> getCategories(List<String> typeIds) async {
-    if (typeIds.isEmpty) return [];
-    return handleAppwriteError(() async {
-      List<CategoryModel> allCategories = [];
-
-      for (String typeId in typeIds) {
-        final response = await _appwrite.databases.listDocuments(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.categoriesTableId,
-          queries: [Query.equal('categoryTypes', typeId)],
-        );
-
-        for (var doc in response.documents) {
-          CategoryModel cat = CategoryModel.fromMap(
-            Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
-          );
-          allCategories.add(cat);
-        }
-      }
-      return allCategories;
-    });
-  }
-
-  Future<List<MonthlyBudgetModel>> getMonthlyBudgets(
-    String monthYearStr,
-  ) async {
-    return handleAppwriteError(() async {
-      final response = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        queries: [Query.equal('monthYear', monthYearStr)],
-      );
-      return response.documents
-          .map(
-            (doc) => MonthlyBudgetModel.fromMap(
-              Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
-            ),
-          )
-          .where((mb) => mb.categoryId.isNotEmpty)
-          .toList();
-    });
-  }
-
-  Future<List<MonthlySummaryModel>> getAllMonthlySummaries() async {
-    return handleAppwriteError(() async {
-      final response = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlySummariesTableId,
-      );
-      return response.documents
-          .map(
-            (doc) => MonthlySummaryModel.fromMap(
-              Map<String, dynamic>.from(doc.data)..['\$id'] = doc.$id,
-            ),
-          )
-          .toList();
-    });
+  Future<CategoryTypeModel> getOrCreateSavingCategoryType([String? userId]) async {
+    final types = await getCategoryTypes(userId);
+    final existing = types.firstWhereOrNull((t) => t.name == 'Tiết kiệm lâu dài');
+    if (existing != null) {
+      return existing;
+    }
+    return await createCategoryType(userId ?? '', 'Tiết kiệm lâu dài', 99);
   }
 
   Future<CategoryTypeModel> createCategoryType(
@@ -147,17 +40,37 @@ class CategoryRepository with AppwriteErrorHandler {
     String name,
     int priority,
   ) async {
-    return handleAppwriteError(() async {
-      final response = await _appwrite.databases.createDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTypeTableId,
-        documentId: ID.unique(),
-        data: {'name': name, 'priority': priority},
-      );
-      return CategoryTypeModel.fromMap(
-        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
-      );
-    });
+    final localDb = Get.find<LocalDatabaseService>();
+    final id = 'ct_${DateTime.now().millisecondsSinceEpoch}';
+    await localDb.insertCategoryType(
+      {'id': id, 'name': name, 'priority': priority},
+    );
+    return CategoryTypeModel(id: id, name: name, priority: priority);
+  }
+
+  Future<CategoryTypeModel> updateCategoryType(
+    String typeId,
+    String name,
+  ) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.updateCategoryType(typeId, name);
+    return CategoryTypeModel(id: typeId, name: name, priority: 0);
+  }
+
+  Future<void> deleteCategoryType(String typeId) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.deleteCategoryType(typeId);
+  }
+
+  Future<List<CategoryModel>> getCategories([List<String>? typeIds]) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    final rows = await localDb.getCategories();
+    var list = rows.map((e) => CategoryModel.fromMap(e)).toList();
+    if (typeIds != null) {
+      if (typeIds.isEmpty) return [];
+      list = list.where((c) => typeIds.contains(c.categoryTypeId)).toList();
+    }
+    return list;
   }
 
   Future<CategoryModel> createCategory(
@@ -166,51 +79,19 @@ class CategoryRepository with AppwriteErrorHandler {
     String iconName,
     String color, {
     bool isActive = true,
+    String? userId,
   }) async {
-    return handleAppwriteError(() async {
-      final response = await _appwrite.databases.createDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTableId,
-        documentId: ID.unique(),
-        data: {
-          'categoryTypes': typeId,
-          'name': name,
-          'iconName': iconName,
-          'color': color,
-          'isActive': isActive,
-        },
-      );
-      return CategoryModel.fromMap(
-        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
-      );
-    });
-  }
-
-  Future<CategoryTypeModel> updateCategoryType(
-    String typeId,
-    String name,
-  ) async {
-    return handleAppwriteError(() async {
-      final response = await _appwrite.databases.updateDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTypeTableId,
-        documentId: typeId,
-        data: {'name': name},
-      );
-      return CategoryTypeModel.fromMap(
-        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
-      );
-    });
-  }
-
-  Future<void> deleteCategoryType(String typeId) async {
-    return handleAppwriteError(() async {
-      await _appwrite.databases.deleteDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTypeTableId,
-        documentId: typeId,
-      );
-    });
+    final localDb = Get.find<LocalDatabaseService>();
+    final cat = CategoryModel(
+      id: 'cat_${DateTime.now().millisecondsSinceEpoch}',
+      categoryTypeId: typeId,
+      name: name,
+      iconName: iconName,
+      color: color,
+      isActive: isActive,
+    );
+    await localDb.insertLocalCategory(cat.toMap());
+    return cat;
   }
 
   Future<CategoryModel> updateCategory(
@@ -220,39 +101,75 @@ class CategoryRepository with AppwriteErrorHandler {
     String color, {
     double? defaultBudget,
   }) async {
-    return handleAppwriteError(() async {
-      final data = <String, dynamic>{
-        'name': name,
-        'iconName': iconName,
-        'color': color,
-      };
-      if (defaultBudget != null) {
-        data['defaultBudget'] = defaultBudget;
-      }
-      final response = await _appwrite.databases.updateDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTableId,
-        documentId: categoryId,
-        data: data,
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.updateCategory(categoryId, name, iconName, color);
+    if (defaultBudget != null) {
+      final db = await localDb.database;
+      await db.update(
+        'categories',
+        {'defaultBudget': defaultBudget},
+        where: 'id = ?',
+        whereArgs: [categoryId],
       );
-      return CategoryModel.fromMap(
-        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
-      );
-    });
+    }
+    final all = await localDb.getCategories();
+    final row = all.firstWhereOrNull((c) => c['id'] == categoryId);
+    if (row != null) {
+      return CategoryModel.fromMap(row);
+    }
+    return CategoryModel(
+      id: categoryId,
+      categoryTypeId: '',
+      name: name,
+      iconName: iconName,
+      color: color,
+      defaultBudget: defaultBudget ?? 0.0,
+    );
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    await localDb.deleteCategory(categoryId);
+  }
+
+  Future<List<MonthlyBudgetModel>> getMonthlyBudgets(
+    String monthYearStr, {
+    List<String>? categoryIds,
+  }) async {
+    final localDb = Get.find<LocalDatabaseService>();
+    final rows = await localDb.getMonthlyBudgets(monthYearStr);
+    var list = rows
+        .map((doc) => MonthlyBudgetModel.fromMap(doc))
+        .where((mb) => mb.categoryId.isNotEmpty)
+        .toList();
+    if (categoryIds != null) {
+      if (categoryIds.isEmpty) return [];
+      list = list.where((mb) => categoryIds.contains(mb.categoryId)).toList();
+    }
+    return list;
+  }
+
+  Future<List<MonthlySummaryModel>> getAllMonthlySummaries() async {
+    final localDb = Get.find<LocalDatabaseService>();
+    final rows = await localDb.getMonthlySummaries();
+    return rows.map((doc) => MonthlySummaryModel.fromMap(doc)).toList();
   }
 
   Future<void> updateMonthlyBudget(
     String budgetId,
     double budgetedAmount,
   ) async {
-    return handleAppwriteError(() async {
-      await _appwrite.databases.updateDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        documentId: budgetId,
-        data: {'budgetedAmount': budgetedAmount},
-      );
-    });
+    final localDb = Get.find<LocalDatabaseService>();
+    final db = await localDb.database;
+    await db.update(
+      'monthly_budgets',
+      {
+        'budgetedAmount': budgetedAmount,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [budgetId],
+    );
   }
 
   Future<MonthlyBudgetModel> createMonthlyBudget({
@@ -261,66 +178,35 @@ class CategoryRepository with AppwriteErrorHandler {
     required double budgetedAmount,
     double rolloverAmount = 0.0,
     double spentAmount = 0.0,
+    String? userId,
   }) async {
-    return handleAppwriteError(() async {
-      final response = await _appwrite.databases.createDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        documentId: ID.unique(),
-        data: {
-          'categories': categoryId,
-          'monthYear': monthYear,
-          'budgetedAmount': budgetedAmount,
-          'rolloverAmount': rolloverAmount,
-          'spentAmount': spentAmount,
-        },
-      );
-      return MonthlyBudgetModel.fromMap(
-        Map<String, dynamic>.from(response.data)..['\$id'] = response.$id,
-      );
-    });
-  }
-
-  Future<void> deleteCategory(String categoryId) async {
-    return handleAppwriteError(() async {
-      // 1. Tìm tất cả các giao dịch liên kết với danh mục này và ngắt liên kết (categories = null)
-      final txResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.transactionsTableId,
-        queries: [Query.equal('categories', categoryId)],
-      );
-
-      for (var doc in txResponse.documents) {
-        await _appwrite.databases.updateDocument(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.transactionsTableId,
-          documentId: doc.$id,
-          data: {'categories': null},
-        );
-      }
-
-      // 2. Tìm tất cả MonthlyBudget liên kết với danh mục này và xóa chúng
-      final budgetResponse = await _appwrite.databases.listDocuments(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.monthlyBudgetsTableId,
-        queries: [Query.equal('categories', categoryId)],
-      );
-
-      for (var doc in budgetResponse.documents) {
-        await _appwrite.databases.deleteDocument(
-          databaseId: _appwrite.databaseId,
-          collectionId: _appwrite.monthlyBudgetsTableId,
-          documentId: doc.$id,
-        );
-      }
-
-      // 3. Xóa danh mục
-      await _appwrite.databases.deleteDocument(
-        databaseId: _appwrite.databaseId,
-        collectionId: _appwrite.categoriesTableId,
-        documentId: categoryId,
-      );
-    });
+    final localDb = Get.find<LocalDatabaseService>();
+    final db = await localDb.database;
+    final nowStr = DateTime.now().toIso8601String();
+    final id = 'mb_${categoryId}_$monthYear';
+    final model = MonthlyBudgetModel(
+      id: id,
+      categoryId: categoryId,
+      monthYear: monthYear,
+      budgetedAmount: budgetedAmount,
+      rolloverAmount: rolloverAmount,
+      spentAmount: spentAmount,
+    );
+    await db.insert(
+      'monthly_budgets',
+      {
+        'id': id,
+        'categoryId': categoryId,
+        'monthYear': monthYear,
+        'budgetedAmount': budgetedAmount,
+        'rolloverAmount': rolloverAmount,
+        'spentAmount': spentAmount,
+        'createdAt': nowStr,
+        'updatedAt': nowStr,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    return model;
   }
 
   Future<void> transferBudget(
@@ -328,18 +214,66 @@ class CategoryRepository with AppwriteErrorHandler {
     List<Map<String, dynamic>> allocations, {
     List<Map<String, dynamic>>? transferLogs,
   }) async {
-    return handleAppwriteError(() async {
-      final payload = {
-        'monthYear': monthYear,
-        'allocations': allocations,
-        if (transferLogs != null) 'transferLogs': transferLogs,
-      };
+    final localDb = Get.find<LocalDatabaseService>();
+    final db = await localDb.database;
+    await db.transaction((txn) async {
+      for (final alloc in allocations) {
+        final categoryId = alloc['categoryId'] as String;
+        final amount = (alloc['amount'] as num).toDouble();
 
-      await _appwrite.functions.createExecution(
-        functionId: _appwrite.functionTransferBudget,
-        body: jsonEncode(payload),
-        xasync: false,
-      );
+        // 1. Cập nhật Category defaultBudget
+        await txn.update(
+          'categories',
+          {'defaultBudget': amount},
+          where: 'id = ?',
+          whereArgs: [categoryId],
+        );
+
+        // 2. Cập nhật Monthly Budget
+        final existingMb = await txn.query(
+          'monthly_budgets',
+          where: 'categoryId = ? AND monthYear = ?',
+          whereArgs: [categoryId, monthYear],
+        );
+
+        if (existingMb.isNotEmpty) {
+          await txn.update(
+            'monthly_budgets',
+            {'budgetedAmount': amount},
+            where: 'id = ?',
+            whereArgs: [existingMb.first['id']],
+          );
+        } else {
+          await txn.insert('monthly_budgets', {
+            'id': OfflineHelper.generateTempId(categoryId),
+            'categoryId': categoryId,
+            'monthYear': monthYear,
+            'budgetedAmount': amount,
+            'rolloverAmount': 0.0,
+            'spentAmount': 0.0,
+            'createdAt': DateTime.now().toIso8601String(),
+          });
+        }
+      }
+
+      // 3. Ghi log chuyển quỹ
+      if (transferLogs != null && transferLogs.isNotEmpty) {
+        for (final logItem in transferLogs) {
+          final logMap = {
+            'id': OfflineHelper.generateTempId('translog'),
+            'amount': (logItem['amount'] as num).toDouble(),
+            'fromCategoryId': logItem['fromCategoryId'] ?? '',
+            'toCategoryId': logItem['toCategoryId'] ?? '',
+            'note': logItem['note'] ?? '',
+            'createdAt': DateTime.now().toIso8601String(),
+          };
+          await txn.insert(
+            'transfer_logs',
+            logMap,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
     });
   }
 }

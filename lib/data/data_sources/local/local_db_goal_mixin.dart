@@ -15,7 +15,7 @@ mixin LocalDbGoalMixin on LocalDatabaseBase {
     for (var g in goals) {
       batch.insert('goals', {
         'id': g['id'],
-        'categoryId': g['categories'] ?? g['categoryId'],
+        'categoryId': g['categoryId'] ?? g['categories'],
         'name': g['name'],
         'targetAmount': g['targetAmount'],
         'currentAmount': g['currentAmount'],
@@ -59,7 +59,7 @@ mixin LocalDbGoalMixin on LocalDatabaseBase {
     final db = await database;
     await db.insert('goals', {
       'id': goal['id'],
-      'categoryId': goal['categories'] ?? goal['categoryId'],
+      'categoryId': goal['categoryId'] ?? goal['categories'],
       'name': goal['name'],
       'targetAmount': goal['targetAmount'],
       'currentAmount': goal['currentAmount'] ?? 0,

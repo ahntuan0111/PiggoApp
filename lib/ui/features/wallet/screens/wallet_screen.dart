@@ -3,14 +3,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:appintern/ui/features/wallet/controllers/wallet_controller.dart';
 import 'package:appintern/core/routes/app_routes.dart';
-import 'package:intl/intl.dart';
 import 'package:appintern/core/utils/currency_formatter.dart';
-import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/ui/widgets/custom_icon_widget.dart';
-import 'package:appintern/core/services/network_service.dart';
 
 class WalletScreen extends GetView<WalletController> {
   const WalletScreen({super.key});
@@ -301,6 +300,10 @@ class WalletScreen extends GetView<WalletController> {
                                   icon: Icons.add,
                                   label: "Tạo Giao Dịch",
                                   onTap: () async {
+                                    if (controller.budgetService.activeCategories.isEmpty) {
+                                      showCategoryRequiredDialog(context);
+                                      return;
+                                    }
                                     await Get.toNamed(Routes.TRANSACTION_CREATE);
                                   },
                                 ),
@@ -322,19 +325,10 @@ class WalletScreen extends GetView<WalletController> {
                                 Routes.WALLETCREATE,
                               );
                               if (result == true) {
-                                final isOffline =
-                                    Get.find<NetworkService>().isOffline.value;
-                                if (isOffline) {
-                                  controller.showSuccessMessage(
-                                    'Đã lưu (Ngoại tuyến)',
-                                    'Dữ liệu sẽ được đồng bộ khi có mạng',
-                                  );
-                                } else {
-                                  controller.showSuccessMessage(
-                                    'Thành công',
-                                    'Đã cập nhật ngân sách',
-                                  );
-                                }
+                                controller.showSuccessMessage(
+                                  'Thành công',
+                                  'Đã cập nhật ngân sách',
+                                );
                               }
                             },
                           ),

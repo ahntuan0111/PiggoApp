@@ -124,7 +124,7 @@ class StatisticsController extends BaseController {
     if (isOffline) return;
 
     final result = await ErrorHandler.execute(() async {
-      return await _statisticRepository.getOnlineStatistics('this_month');
+      return await _statisticRepository.getOfflineStatistics('this_month');
     });
 
     result.fold((l) => null, (data) {

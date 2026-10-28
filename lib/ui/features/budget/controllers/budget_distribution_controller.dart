@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:appintern/core/base/base_controller.dart';
@@ -8,9 +7,6 @@ import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/services/budget_service.dart';
-import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
-import 'package:appintern/core/utils/offline_helper.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 
 class BudgetDistributionGroup {
@@ -160,13 +156,10 @@ class BudgetDistributionController extends BaseController {
   Future<void> saveBudgets() async {
     showLoading();
     final budgetService = Get.find<BudgetService>();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
     final now = budgetService.currentTrackingMonth.value;
     final monthYearStr = "${now.month.toString().padLeft(2, '0')}-${now.year}";
 
-    // Thu thập danh sách thay đổi để đưa vào payload Queue
+    // Thu thập danh sách thay đổi
     final allocations = <Map<String, dynamic>>[];
 
     // Duyệt qua tất cả các nhóm và danh mục hiện tại để lấy dữ liệu thay đổi
@@ -213,114 +206,59 @@ class BudgetDistributionController extends BaseController {
       return;
     }
 
-    if (networkService.isOffline.value) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      // Offline: Ghi hàng đợi và Cập nhật Local DB
-      final payload = jsonEncode({
-        'monthYear': monthYearStr,
-        'allocations': allocations,
-      });
-      await offlineSyncService.queueManualTask('UPDATE_BUDGET', payload);
-
-      // Lấy cache cũ ra sửa rồi save đè lên
-      final categoriesDb = List<Map<String, dynamic>>.from(
-        await localDb.getCategories(),
-      );
-      final budgetsDb = List<Map<String, dynamic>>.from(
-        await localDb.getMonthlyBudgets(monthYearStr),
-      );
-
+    final result = await ErrorHandler.execute(() async {
       for (var alloc in allocations) {
         final catId = alloc['categoryId'];
-        final amt = alloc['amount'];
-        // Update category template
-        int catIdx = categoriesDb.indexWhere((c) => c['id'] == catId);
-        if (catIdx != -1) {
-          categoriesDb[catIdx]['defaultBudget'] = amt;
+        final newBudgetedAmount = alloc['amount'];
+
+        final group = categoryGroups.firstWhere(
+          (g) => g.categories.any((c) => c.id == catId),
+        );
+        final cat = group.categories.firstWhere((c) => c.id == catId);
+
+        if (newBudgetedAmount != cat.defaultBudget) {
+          await categoryRepository.updateCategory(
+            cat.id,
+            cat.name,
+            cat.iconName,
+            cat.color,
+            defaultBudget: newBudgetedAmount,
+          );
         }
 
-        // Update or insert budget
-        int mbIdx = budgetsDb.indexWhere((b) => b['categoryId'] == catId);
-        if (mbIdx != -1) {
-          budgetsDb[mbIdx]['budgetedAmount'] = amt;
+        final mb = budgetService.getBudgetForCategory(cat.id);
+        if (mb != null) {
+          if (mb.budgetedAmount != newBudgetedAmount) {
+            await categoryRepository.updateMonthlyBudget(
+              mb.id,
+              newBudgetedAmount,
+            );
+          }
         } else {
-          budgetsDb.add({
-            'id': OfflineHelper.generateTempId(catId),
-            'categoryId': catId,
-            'monthYear': monthYearStr,
-            'budgetedAmount': amt,
-            'rolloverAmount': 0.0,
-            'spentAmount': 0.0,
-          });
+          await categoryRepository.createMonthlyBudget(
+            categoryId: cat.id,
+            monthYear: monthYearStr,
+            budgetedAmount: newBudgetedAmount,
+            spentAmount: cat.spent,
+          );
         }
       }
+    }, tag: "SAVE_BUDGET_DISTRIBUTION");
 
-      await localDb.saveCategories(categoriesDb);
-      await localDb.saveMonthlyBudgets(monthYearStr, budgetsDb);
+    hideLoading();
 
-      hideLoading();
-      Get.back();
-      await budgetService.refreshData(); // Bắt buộc Load từ Cache
-    } else {
-      // Online: Call API trực tiếp
-      final result = await ErrorHandler.execute(() async {
-        for (var alloc in allocations) {
-          final catId = alloc['categoryId'];
-          final newBudgetedAmount = alloc['amount'];
-
-          final group = categoryGroups.firstWhere(
-            (g) => g.categories.any((c) => c.id == catId),
-          );
-          final cat = group.categories.firstWhere((c) => c.id == catId);
-
-          if (newBudgetedAmount != cat.defaultBudget) {
-            await categoryRepository.updateCategory(
-              cat.id,
-              cat.name,
-              cat.iconName,
-              cat.color,
-              defaultBudget: newBudgetedAmount,
-            );
-          }
-
-          final mb = budgetService.getBudgetForCategory(cat.id);
-          if (mb != null) {
-            if (mb.budgetedAmount != newBudgetedAmount) {
-              await categoryRepository.updateMonthlyBudget(
-                mb.id,
-                newBudgetedAmount,
-              );
-            }
-          } else {
-            await categoryRepository.createMonthlyBudget(
-              categoryId: cat.id,
-              monthYear: monthYearStr,
-              budgetedAmount: newBudgetedAmount,
-              spentAmount: cat.spent,
-            );
-          }
-        }
-      }, tag: "SAVE_BUDGET_DISTRIBUTION");
-
-      hideLoading();
-
-      result.fold(
-        (failure) {
-          showErrorMessage(
-            "Lỗi",
-            "Không thể lưu phân bổ ngân sách: ${failure.message}",
-          );
-        },
-        (_) {
-          Get.find<BudgetService>().refreshData();
-          Get.back(result: true);
-          // Snackbar do màn hình Caller hiển thị (Caller Pattern)
-        },
-      );
-    }
+    result.fold(
+      (failure) {
+        showErrorMessage(
+          "Lỗi",
+          "Không thể lưu phân bổ ngân sách: ${failure.message}",
+        );
+      },
+      (_) {
+        Get.find<BudgetService>().refreshData();
+        Get.back(result: true);
+      },
+    );
   }
 
   String formatCurrency(double amount) {

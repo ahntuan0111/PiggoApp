@@ -1,10 +1,5 @@
-import 'dart:convert';
 import 'dart:typed_data';
-import 'package:appintern/core/services/budget_service.dart';
-import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
 import 'package:appintern/core/utils/logger.dart';
-import 'package:appintern/data/data_sources/local/local_database_service.dart';
 import 'package:appintern/data/repositories/storage_repository.dart';
 import 'package:get/get.dart';
 import 'package:appintern/data/models/transaction_model.dart';
@@ -155,70 +150,28 @@ class TransactionDetailController extends BaseController with BudgetAware {
 
   Future<void> _executeDelete() async {
     showLoading();
-    final networkService = Get.find<NetworkService>();
-    final offlineSyncService = Get.find<OfflineSyncService>();
-    final localDb = Get.find<LocalDatabaseService>();
 
-    if (networkService.isOffline.value) {
-      if (offlineSyncService.checkAndShowManualQueueFull()) {
-        hideLoading();
-        return;
-      }
-      final payload = jsonEncode({
-        'transactionId': transaction.id,
-        'category': category.value?.toMap(),
-        'amount': transaction.amount,
-        'type': transaction.type,
-        'transactionDate': transaction.transactionDate.toIso8601String(),
-      });
-      await offlineSyncService.queueManualTask('DELETE_MANUAL_TX', payload);
+    final result = await ErrorHandler.execute(() async {
+      await _transactionRepository.deleteTransaction(
+        transaction: transaction,
+        currentCategory: category.value,
+      );
+    }, tag: "DELETE_TRANSACTION");
 
-      String monthYearStr =
-          "${transaction.transactionDate.month.toString().padLeft(2, '0')}-${transaction.transactionDate.year}";
+    hideLoading();
 
-      if (category.value != null && transaction.type == 'EXPENSE') {
-        await localDb.updateLocalBudgetSpent(
-          category.value!.id,
-          monthYearStr,
-          -transaction.amount,
+    result.fold(
+      (failure) {
+        showErrorMessage(
+          "Lỗi",
+          "Không thể xóa giao dịch: ${failure.message}",
         );
-      }
-      await localDb.updateLocalSummary(
-        monthYearStr,
-        transaction.type == 'INCOME' ? -transaction.amount : 0,
-        transaction.type == 'EXPENSE' ? -transaction.amount : 0,
-      );
-
-      hideLoading();
-      Get.back(); // go back from screen
-      showSuccessMessage(
-        "Đã xóa (Ngoại tuyến)",
-        "Dữ liệu sẽ được đồng bộ khi có mạng",
-      );
-      await Get.find<BudgetService>().refreshData();
-    } else {
-      final result = await ErrorHandler.execute(() async {
-        await _transactionRepository.deleteTransaction(
-          transaction: transaction,
-          currentCategory: category.value,
-        );
-      }, tag: "DELETE_TRANSACTION");
-
-      hideLoading();
-
-      result.fold(
-        (failure) {
-          showErrorMessage(
-            "Lỗi",
-            "Không thể xóa giao dịch: ${failure.message}",
-          );
-        },
-        (_) {
-          Get.back();
-          showSuccessMessage("Thành công", "Đã xóa giao dịch thành công");
-        },
-      );
-    }
+      },
+      (_) {
+        Get.back();
+        showSuccessMessage("Thành công", "Đã xóa giao dịch thành công");
+      },
+    );
   }
 
   String getImageUrl(String fileId) {

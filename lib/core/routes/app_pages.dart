@@ -8,6 +8,10 @@ import 'package:appintern/ui/features/goal/bindings/goal_detail_binding.dart';
 import 'package:appintern/ui/features/wallet/bindings/wallet_create_binding.dart';
 import 'package:appintern/ui/features/home/bindings/main_binding.dart';
 import 'package:appintern/ui/features/auth/bindings/onboarding_binding.dart';
+import 'package:appintern/ui/features/auth/screens/register_screen.dart';
+import 'package:appintern/ui/features/auth/bindings/register_binding.dart';
+import 'package:appintern/ui/features/auth/screens/login_screen.dart';
+import 'package:appintern/ui/features/auth/bindings/login_binding.dart';
 import 'package:appintern/ui/features/rollover/bindings/overspent_compensation_binding.dart';
 import 'package:appintern/ui/features/rollover/bindings/overspent_list_binding.dart';
 import 'package:appintern/ui/features/smart/bindings/smart_input_binding.dart';
@@ -39,8 +43,7 @@ import 'package:appintern/ui/features/rollover/screens/month_end_report_screen.d
 import 'package:appintern/ui/features/rollover/screens/rollover_decision_screen.dart';
 import 'package:appintern/ui/features/rollover/screens/new_month_setup_screen.dart';
 import 'package:appintern/ui/features/rollover/screens/multi_month_gap_screen.dart';
-import 'package:appintern/ui/features/sync/screens/offline_queue_screen.dart';
-import 'package:appintern/ui/features/sync/bindings/offline_queue_binding.dart';
+
 import 'package:appintern/ui/features/auth/bindings/splash_binding.dart';
 import 'package:appintern/ui/features/statistics/screens/statistics_screen.dart';
 import 'package:appintern/ui/features/statistics/bindings/statistics_binding.dart';
@@ -64,6 +67,18 @@ class AppPages {
       page: () => const OnboardingScreen(),
       binding: OnboardingBinding(),
       transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: Routes.REGISTER,
+      page: () => const RegisterScreen(),
+      binding: RegisterBinding(),
+      transition: Transition.rightToLeft,
+    ),
+    GetPage(
+      name: Routes.LOGIN,
+      page: () => const LoginScreen(),
+      binding: LoginBinding(),
+      transition: Transition.rightToLeft,
     ),
     GetPage(
       name: Routes.MAIN,
@@ -179,12 +194,7 @@ class AppPages {
       binding: MultiMonthGapBinding(),
       transition: Transition.downToUp,
     ),
-    GetPage(
-      name: Routes.OFFLINE_QUEUE,
-      page: () => const OfflineQueueScreen(),
-      binding: OfflineQueueBinding(),
-      transition: Transition.rightToLeft,
-    ),
+
     GetPage(
       name: Routes.STATISTICS,
       page: () => const StatisticsScreen(),

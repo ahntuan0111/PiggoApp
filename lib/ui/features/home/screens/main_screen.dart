@@ -29,7 +29,12 @@ class MainScreen extends GetView<MainController> {
         Scaffold(
           backgroundColor: const Color(0xFFF9F7F1), // Figma: #0B011A
 
-          body: Obx(() => _screens[controller.selectedIndex.value]),
+          body: Obx(
+            () => IndexedStack(
+              index: controller.selectedIndex.value,
+              children: _screens,
+            ),
+          ),
 
           // --- FLOATING ACTION BUTTON --- Figma: 56×56, icon 32×32
           floatingActionButton: Obx(() {
@@ -168,13 +173,14 @@ class MainScreen extends GetView<MainController> {
                 // Đợi hiệu ứng đóng FAB hoàn tất rồi mới Push Route
                 await Future.delayed(const Duration(milliseconds: 260));
 
+                if (!context.mounted) return;
                 // Kiểm tra trước khi vào tạo giao dịch
                 if (!controller.canCreateTransaction()) {
                   showCategoryRequiredDialog(context);
                   return;
                 }
 
-                final result = await Get.toNamed(Routes.TRANSACTION_CREATE);
+                await Get.toNamed(Routes.TRANSACTION_CREATE);
               },
             ),
             _buildChildFab(
@@ -189,6 +195,13 @@ class MainScreen extends GetView<MainController> {
                 controller.toggleFab();
                 // Đợi hiệu ứng đóng FAB hoàn tất rồi mới Push Route
                 await Future.delayed(const Duration(milliseconds: 260));
+
+                if (!context.mounted) return;
+                // Kiểm tra trước khi vào nhập nhanh
+                if (!controller.canCreateTransaction()) {
+                  showCategoryRequiredDialog(context);
+                  return;
+                }
 
                 final result = await Get.toNamed(Routes.SMART_INPUT);
                 if (result != null && result is int && result > 0) {
@@ -211,6 +224,13 @@ class MainScreen extends GetView<MainController> {
                 controller.toggleFab();
                 await Future.delayed(const Duration(milliseconds: 260));
 
+                if (!context.mounted) return;
+                // Kiểm tra trước khi vào nhập giọng nói
+                if (!controller.canCreateTransaction()) {
+                  showCategoryRequiredDialog(context);
+                  return;
+                }
+
                 await Get.toNamed(Routes.VOICE_INPUT);
               },
             ),
@@ -223,7 +243,19 @@ class MainScreen extends GetView<MainController> {
               animValue: animValue,
               baseBottom: baseBottom,
               screenHalfWidth: screenHalfWidth,
-              onTap: controller.openCameraReceiptScan,
+              onTap: () async {
+                controller.toggleFab();
+                await Future.delayed(const Duration(milliseconds: 260));
+
+                if (!context.mounted) return;
+                // Kiểm tra trước khi quét ảnh hóa đơn
+                if (!controller.canCreateTransaction()) {
+                  showCategoryRequiredDialog(context);
+                  return;
+                }
+
+                controller.openCameraReceiptScan();
+              },
             ),
 
             // Nút FAB Chính (chuyển thành dấu X)

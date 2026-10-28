@@ -9,24 +9,32 @@ import 'package:appintern/domain/services/i_ai_service.dart';
 import 'package:appintern/ui/features/transaction/widgets/confirm_multiple_transactions_bottom_sheet.dart';
 import 'package:appintern/ui/widgets/dialogs/confirm_dialog_widget.dart';
 import 'package:appintern/ui/widgets/dialogs/loading_dialog_widget.dart';
+import 'package:appintern/ui/widgets/dialogs/category_required_dialog.dart';
 import 'package:appintern/data/models/transaction_model.dart';
 import 'package:appintern/data/models/transaction_detail_model.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/data/repositories/transaction_repository.dart';
 import 'package:appintern/data/repositories/storage_repository.dart';
-import 'package:appintern/core/services/network_service.dart';
-import 'package:appintern/core/services/offline_sync_service.dart';
-import 'package:path_provider/path_provider.dart';
 
 class SmartInputController extends BaseController with BudgetAware {
   final IAIService aiService = Get.find<IAIService>();
-  final OfflineSyncService offlineSyncService = Get.find<OfflineSyncService>();
   final StorageRepository storageRepository = Get.find<StorageRepository>();
   final TransactionRepository transactionRepository =
       Get.find<TransactionRepository>();
 
   final textController = TextEditingController();
   final isProcessing = false.obs;
+
+  @override
+  void onReady() {
+    super.onReady();
+    if (_validCategoryNames.isEmpty) {
+      Get.back();
+      if (Get.context != null) {
+        showCategoryRequiredDialog(Get.context!);
+      }
+    }
+  }
 
   @override
   void onClose() {
@@ -44,20 +52,14 @@ class SmartInputController extends BaseController with BudgetAware {
 
   /// Xử lý gửi văn bản tự nhiên
   Future<void> submitTextInput() async {
-    final text = textController.text.trim();
-    if (text.isEmpty) return;
-
-    final handled = await offlineSyncService.handleOfflineAction(
-      'TEXT',
-      text,
-      successMessage: 'Đoạn chat đã được đưa vào hàng chờ đồng bộ',
-      isFile: false,
-    );
-
-    if (handled) {
-      textController.clear();
+    if (_validCategoryNames.isEmpty) {
+      if (Get.context != null) {
+        showCategoryRequiredDialog(Get.context!);
+      }
       return;
     }
+    final text = textController.text.trim();
+    if (text.isEmpty) return;
 
     isProcessing.value = true;
 
@@ -106,6 +108,12 @@ class SmartInputController extends BaseController with BudgetAware {
 
   /// Trình chọn ảnh/chụp ảnh hóa đơn từ Camera hoặc Gallery
   Future<void> pickAndProcessReceipt(ImageSource source) async {
+    if (_validCategoryNames.isEmpty) {
+      if (Get.context != null) {
+        showCategoryRequiredDialog(Get.context!);
+      }
+      return;
+    }
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
@@ -129,15 +137,6 @@ class SmartInputController extends BaseController with BudgetAware {
 
   /// Xử lý phân tích ảnh hóa đơn qua AI (Lazy Input Vision)
   Future<void> submitImageInput(File imageFile) async {
-    final handled = await offlineSyncService.handleOfflineAction(
-      'IMAGE',
-      imageFile.path,
-      successMessage: 'Ảnh hóa đơn đã được đưa vào hàng chờ đồng bộ',
-      isFile: true,
-    );
-
-    if (handled) return;
-
     isProcessing.value = true;
 
     // Hiển thị Dialog Loading chặn người dùng thao tác khi đang bóc tách ảnh

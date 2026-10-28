@@ -2,6 +2,7 @@ class GoalModel {
   final String id;
   final String name;
   final double targetAmount;
+  final double? currentAmount;
   final DateTime? deadline;
   final String categoryId;
   final String status;
@@ -11,6 +12,7 @@ class GoalModel {
     required this.id,
     required this.name,
     required this.targetAmount,
+    this.currentAmount = 0.0,
     this.deadline,
     required this.categoryId,
     required this.status,
@@ -22,12 +24,14 @@ class GoalModel {
       id: map['\$id'] ?? map['id'] ?? '',
       name: map['name'] ?? '',
       targetAmount: (map['targetAmount'] ?? 0.0).toDouble(),
+      currentAmount: (map['currentAmount'] as num?)?.toDouble() ?? 0.0,
       deadline: map['deadline'] != null
           ? DateTime.tryParse(map['deadline'])?.toLocal()
           : null,
-      categoryId: map['categories'] is Map
-          ? (map['categories']['\$id'] ?? '')
-          : (map['categories'] ?? map['categoryId'] ?? ''),
+      categoryId: map['categoryId'] ??
+          (map['categories'] is Map
+              ? (map['categories']['\$id'] ?? '')
+              : (map['categories'] ?? '')),
       status: map['status'] ?? 'ACTIVE',
       createdAt: map['\$createdAt'] != null
           ? DateTime.tryParse(map['\$createdAt'])?.toLocal()
@@ -40,8 +44,9 @@ class GoalModel {
       'id': id,
       'name': name,
       'targetAmount': targetAmount,
+      'currentAmount': currentAmount ?? 0.0,
       'deadline': deadline?.toUtc().toIso8601String(),
-      'categories': categoryId,
+      'categoryId': categoryId,
       'status': status,
     };
   }
@@ -50,6 +55,7 @@ class GoalModel {
     String? id,
     String? name,
     double? targetAmount,
+    double? currentAmount,
     DateTime? deadline,
     String? categoryId,
     String? status,
@@ -59,6 +65,7 @@ class GoalModel {
       id: id ?? this.id,
       name: name ?? this.name,
       targetAmount: targetAmount ?? this.targetAmount,
+      currentAmount: currentAmount ?? this.currentAmount,
       deadline:
           deadline ??
           this.deadline, // Giữ null nếu không truyền, hoặc giữ cũ nếu không truyền (cần handle null tường minh, nhưng để tạm thế này)

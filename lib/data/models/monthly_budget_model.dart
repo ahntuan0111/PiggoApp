@@ -18,9 +18,11 @@ class MonthlyBudgetModel {
   factory MonthlyBudgetModel.fromMap(Map<String, dynamic> map) {
     return MonthlyBudgetModel(
       id: map['\$id'] ?? map['id'] ?? '',
-      categoryId: map['categories'] is Map
-          ? map['categories']['\$id']
-          : (map['categories'] ?? map['categoryId'] ?? ''),
+      categoryId: map['categoryId'] ??
+          (map['categories'] is Map
+              ? map['categories']['\$id']
+              : (map['categories'] ?? '')) ??
+          '',
       monthYear: map['monthYear'] ?? '',
       budgetedAmount: (map['budgetedAmount'] ?? 0).toDouble(),
       rolloverAmount: (map['rolloverAmount'] ?? 0).toDouble(),
@@ -31,7 +33,7 @@ class MonthlyBudgetModel {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'categories': categoryId,
+      'categoryId': categoryId,
       'monthYear': monthYear,
       'budgetedAmount': budgetedAmount,
       'rolloverAmount': rolloverAmount,

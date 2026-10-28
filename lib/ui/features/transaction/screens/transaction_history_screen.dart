@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:appintern/core/utils/currency_formatter.dart';
-import 'package:get/get.dart';
-
 import 'package:appintern/core/constants/app_assets.dart';
 import 'package:appintern/ui/features/transaction/controllers/transaction_history_controller.dart';
 import 'package:appintern/data/models/category_model.dart';
@@ -12,7 +9,7 @@ import 'package:appintern/core/routes/app_routes.dart';
 import 'package:appintern/core/services/network_service.dart';
 
 class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
-  TransactionHistoryScreen({super.key});
+  const TransactionHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +84,7 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
                             padding: EdgeInsets.symmetric(vertical: 16.h),
                             child: Center(
                               child: Text(
-                                "Vui lòng kết nối mạng để xem các giao dịch cũ hơn",
+                                "Đã hiển thị tất cả giao dịch",
                                 style: TextStyle(
                                   fontSize: 13.sp,
                                   color: Colors.grey[500],
@@ -424,13 +421,12 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
   }
 
   Widget _buildEmptyState() {
-    final isOffline = Get.find<NetworkService>().isOffline.value;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isOffline ? Icons.wifi_off : Icons.search_off,
+            Icons.search_off,
             size: 64.sp,
             color: Colors.grey[300],
           ),
@@ -438,9 +434,7 @@ class TransactionHistoryScreen extends GetView<TransactionHistoryController> {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 24.w),
             child: Text(
-              isOffline
-                  ? "Vui lòng kết nối mạng để xem lịch sử giao dịch tháng này."
-                  : "Không tìm thấy giao dịch nào.",
+              "Không tìm thấy giao dịch nào.",
               style: TextStyle(fontSize: 16.sp, color: Colors.grey[500]),
               textAlign: TextAlign.center,
             ),

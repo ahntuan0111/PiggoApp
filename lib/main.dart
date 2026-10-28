@@ -14,62 +14,49 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'core/routes/app_pages.dart';
-import 'core/services/appwrite_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/settings_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/network_service.dart';
 import 'domain/services/i_ai_service.dart';
-import 'package:appintern/data/data_sources/remote/appwrite_ai_service_impl.dart';
+import 'package:appintern/data/data_sources/local/local_ai_service_impl.dart';
 
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
-import 'core/services/offline_sync_service.dart';
-import 'core/services/sync_engine_service.dart';
-import 'core/services/background_worker.dart';
 import 'package:appintern/core/theme/app_theme.dart';
-import 'package:workmanager/workmanager.dart';
-
-import 'package:flutter/foundation.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  await dotenv.load(fileName: ".env");
-
-  // Khởi tạo WorkManager
-  Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: kDebugMode, // Tự động false khi build Production
-  );
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint(
+      "⚠️ Không tìm thấy file .env, sử dụng cấu hình mặc định ngoại tuyến.",
+    );
+  }
 
   await Get.putAsync(() => StorageService().init());
   await Get.putAsync(() => NotificationService().init());
   await Get.putAsync(() => SettingsService().init());
-  await Get.putAsync(() => AppwriteService().init());
 
   // Services (Nên khởi tạo Data Sources trước)
   Get.put(LocalDatabaseService());
   Get.put(NetworkService());
 
-  final appwriteService = Get.find<AppwriteService>();
-  Get.put(AuthRepository(appwriteService));
-  Get.put(CategoryRepository(appwriteService));
-  Get.put(TransactionRepository(appwriteService));
+  Get.put(AuthRepository());
+  Get.put(CategoryRepository());
+  Get.put(TransactionRepository());
 
-  Get.lazyPut(() => StorageRepository(appwriteService), fenix: true);
-  Get.lazyPut(() => GoalRepository(appwriteService), fenix: true);
-  Get.lazyPut(() => TransferLogRepository(appwriteService), fenix: true);
-  Get.lazyPut(() => RolloverRepository(appwriteService), fenix: true);
-  Get.lazyPut(() => StatisticsRepository(appwriteService), fenix: true);
-  Get.lazyPut(() => AppwriteAIServiceImpl(), fenix: true);
-  Get.lazyPut<IAIService>(() => Get.find<AppwriteAIServiceImpl>(), fenix: true);
+  Get.lazyPut(() => StorageRepository(), fenix: true);
+  Get.lazyPut(() => GoalRepository(), fenix: true);
+  Get.lazyPut(() => TransferLogRepository(), fenix: true);
+  Get.lazyPut(() => RolloverRepository(), fenix: true);
+  Get.lazyPut(() => StatisticsRepository(), fenix: true);
+  Get.lazyPut(() => LocalAIServiceImpl(), fenix: true);
+  Get.lazyPut<IAIService>(() => Get.find<LocalAIServiceImpl>(), fenix: true);
 
   // BudgetService phụ thuộc vào Repositories nên phải khởi tạo sau
   Get.put(BudgetService());
-
-  // Offline Sync
-  Get.put(OfflineSyncService());
-  Get.put(SyncEngineService());
 
   runApp(const MyApp());
 }
@@ -84,14 +71,16 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        return GetMaterialApp(
-          title: 'Personal Finance App',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: _getThemeMode(),
-          initialRoute: AppPages.INITIAL,
-          getPages: AppPages.pages,
+        return Obx(
+          () => GetMaterialApp(
+            title: 'Personal Finance App',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: _getThemeMode(),
+            initialRoute: AppPages.INITIAL,
+            getPages: AppPages.pages,
+          ),
         );
       },
     );

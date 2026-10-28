@@ -9,9 +9,6 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
     final db = await database;
     Batch batch = db.batch();
 
-    // Purge logic: Xóa các records đã sync (bảo toàn offline ghosts)
-    batch.delete('category_types', where: "id NOT LIKE 'offline_%'");
-
     for (var type in types) {
       batch.insert('category_types', {
         'id': type['id'],
@@ -20,6 +17,19 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> insertCategoryType(Map<String, dynamic> type) async {
+    final db = await database;
+    await db.insert(
+      'category_types',
+      {
+        'id': type['id'],
+        'name': type['name'],
+        'priority': type['priority'],
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getCategoryTypes() async {
@@ -31,17 +41,16 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
     final db = await database;
     Batch batch = db.batch();
 
-    // Purge logic: Xóa các records đã sync (bảo toàn offline ghosts)
-    batch.delete('categories', where: "id NOT LIKE 'offline_%'");
-
     for (var cat in cats) {
       batch.insert('categories', {
         'id': cat['id'],
-        'categoryTypeId': cat['categoryTypes'] ?? cat['categoryTypeId'],
+        'categoryTypeId': cat['categoryTypeId'] ?? cat['categoryTypes'],
         'name': cat['name'],
         'iconName': cat['iconName'],
         'color': cat['color'],
         'defaultBudget': cat['defaultBudget'],
+        'targetAmount': cat['targetAmount'],
+        'deadline': cat['deadline'],
         'isActive': cat['isActive'] == true ? 1 : 0,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
@@ -64,11 +73,13 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
       'categories',
       {
         'id': cat['id'],
-        'categoryTypeId': cat['categoryTypes'] ?? cat['categoryTypeId'],
+        'categoryTypeId': cat['categoryTypeId'] ?? cat['categoryTypes'],
         'name': cat['name'],
         'iconName': cat['iconName'],
         'color': cat['color'],
         'defaultBudget': cat['defaultBudget'],
+        'targetAmount': cat['targetAmount'],
+        'deadline': cat['deadline'],
         'isActive': cat['isActive'] == true ? 1 : 0,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -102,7 +113,15 @@ mixin LocalDbCategoryMixin on LocalDatabaseBase {
 
   Future<void> deleteCategory(String categoryId) async {
     final db = await database;
-    await db.delete('categories', where: 'id = ?', whereArgs: [categoryId]);
+    await db.update(
+      'categories',
+      {
+        'isActive': 0,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [categoryId],
+    );
   }
 
   Future<void> deleteCategoryType(String typeId) async {
