@@ -9,12 +9,18 @@ import 'package:appintern/domain/services/i_ai_service.dart';
 import 'package:appintern/core/utils/local_rule_based_transaction_parser.dart';
 import 'package:appintern/core/mixins/dio_error_mixin.dart';
 import 'package:appintern/core/errors/exceptions.dart';
+import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/device_memory_service.dart';
+import 'package:appintern/core/services/model_download_manager.dart';
+import 'package:appintern/core/utils/transaction_router.dart';
+import 'package:appintern/core/utils/dart_validation_layer.dart';
+import 'package:appintern/data/data_sources/local/ai_engines/on_device_ai_engine.dart';
 
-/// Triển khai AI & OCR Độc lập (Phase 5)
-/// Hỗ trợ cơ chế Fallback Đa Tầng (3-Tier Graceful Degradation):
-///   - Tier 1: Groq Cloud AI (Text: openai/gpt-oss-20b, Vision: qwen/qwen3.8-27b, STT: whisper-large-v3-turbo) - 0 VND, Tốc độ cao
-///   - Tier 2: Google Gemini 2.5 Flash (Dự phòng khi Groq bị Rate Limit 429 / Timeout) - 0 VND
-///   - Tier 3: 100% Cục bộ On-Device (LocalRuleBasedTransactionParser + ML Kit Text Recognition) - 0 VND, 0 Token, Offline
+/// Triển khai AI & OCR Độc lập (Phase 5) — KIẾN TRÚC ON-DEVICE FIRST
+/// Hỗ trợ cơ chế Fallback Đa Tầng ON-DEVICE FIRST (3-Tier Graceful Degradation):
+///   - Tier 1: 100% Cục bộ On-Device (LocalRuleBasedTransactionParser + ML Kit OCR) - 0 VND, 0 Token, Offline, < 1ms
+///   - Tier 2: Groq Cloud AI (Text: openai/gpt-oss-20b, Vision: qwen/qwen3.8-27b, STT: whisper-large-v3-turbo) - 0 VND
+///   - Tier 3: Google Gemini 2.5 Flash (Dự phòng cuối khi Groq bị Rate Limit 429 / Timeout) - 0 VND
 class LocalAIServiceImpl extends GetxService
     with DioErrorHandler
     implements IAIService {
@@ -28,6 +34,29 @@ class LocalAIServiceImpl extends GetxService
 
   String? get _groqApiKey => dotenv.env['GROQ_API_KEY'];
   String? get _geminiApiKey => dotenv.env['GEMINI_API_KEY'];
+
+  IOnDeviceAiEngine? _aiEngine;
+
+  /// Thiết lập Engine AI On-Device (phục vụ DI hoặc testing)
+  void setAiEngine(IOnDeviceAiEngine? engine) {
+    _aiEngine = engine;
+  }
+
+  /// Kiểm tra thiết bị đang offline
+  bool get _isOffline {
+    try {
+      return Get.find<NetworkService>().isOffline.value;
+    } catch (_) {
+      return false; // Nếu NetworkService chưa khởi tạo, coi như online
+    }
+  }
+
+  /// Kiểm tra kết quả On-Device có đủ tốt không (có ít nhất 1 item với amount > 0)
+  bool _isOnDeviceResultValid(List<Map<String, dynamic>> result) {
+    return result.isNotEmpty &&
+        result.any((item) =>
+            (item['amount'] as num?) != null && (item['amount'] as num) > 0);
+  }
 
   // ===========================================================================
   // TASK 5-2: Groq Whisper Cloud API cho Speech-to-Text
@@ -86,7 +115,7 @@ class LocalAIServiceImpl extends GetxService
   }
 
   // ===========================================================================
-  // TASK 5-3 & 5-7: Phân tích Văn bản Giao dịch (Text Parsing) với Fallback 3 Tầng
+  // TASK 5-3 & 5-7: Phân tích Văn bản Giao dịch (Text Parsing) — ON-DEVICE FIRST
   // ===========================================================================
   @override
   Future<List<Map<String, dynamic>>> parseTransactionText({
@@ -97,7 +126,79 @@ class LocalAIServiceImpl extends GetxService
     final cleanInput = text.trim();
     if (cleanInput.isEmpty) return [];
 
-    // TẦNG 1: Thử gọi Groq Cloud AI (openai/gpt-oss-20b - Tốc độ cao, Free)
+    // ═══════════════════════════════════════════════════════════════════
+    // TẦNG 1: HYBRID ROUTER ON-DEVICE (Fast Path: Dart Engine | Smart Path: On-Device AI)
+    // ═══════════════════════════════════════════════════════════════════
+    final routeDecision = TransactionRouter.route(cleanInput);
+    dev.log('[LocalAIService] Router phân loại: ${routeDecision.routeType} (${routeDecision.reason})');
+
+    // 1a. Smart Path: Khi là câu phức tạp, kiểm tra điều kiện chạy AI On-Device
+    if (routeDecision.isSmartPath) {
+      bool isModelReady = false;
+      bool isMemorySafe = false;
+
+      try {
+        if (Get.isRegistered<ModelDownloadManager>()) {
+          isModelReady = Get.find<ModelDownloadManager>().isModelReady;
+        }
+        if (Get.isRegistered<DeviceMemoryService>()) {
+          isMemorySafe = await Get.find<DeviceMemoryService>().isSafeToLoadAiModel();
+        } else {
+          isMemorySafe = true;
+        }
+      } catch (_) {}
+
+      final engine = _aiEngine ?? (Get.isRegistered<IOnDeviceAiEngine>() ? Get.find<IOnDeviceAiEngine>() : null);
+
+      if (isModelReady && isMemorySafe && engine != null) {
+        try {
+          dev.log('[LocalAIService] 🧠 Chạy Smart Path: On-Device AI (${engine.modelName})...');
+          final rawAiItems = await engine
+              .parse(cleanInput)
+              .timeout(const Duration(milliseconds: 1200));
+
+          final validated = DartValidationLayer.validateAndEnrich(
+            rawInput: cleanInput,
+            aiItems: rawAiItems,
+            availableCategories: availableCategories,
+            currentTime: currentTime,
+          );
+
+          if (_isOnDeviceResultValid(validated)) {
+            dev.log('[LocalAIService] ✅ Smart Path AI thành công và đã qua Dart Validation');
+            return validated;
+          }
+        } catch (e) {
+          dev.log('[LocalAIService] ⚠️ Smart Path AI thất bại hoặc timeout, fallback về Dart Engine: $e');
+        }
+      }
+    }
+
+    // 1b. Fast Path (hoặc Fallback an toàn về Dart Engine)
+    dev.log('[LocalAIService] ⚡ Chạy Dart Engine: LocalRuleBasedTransactionParser (< 1ms)');
+    final onDeviceResult = LocalRuleBasedTransactionParser.parse(
+      text: cleanInput,
+      availableCategories: availableCategories,
+      currentTime: currentTime,
+    );
+
+    if (_isOnDeviceResultValid(onDeviceResult)) {
+      dev.log('[LocalAIService] ✅ On-Device thành công — amount > 0, hoàn tất');
+      return onDeviceResult;
+    }
+
+    dev.log('[LocalAIService] ⚠️ On-Device không bóc tách được amount > 0, thử Cloud...');
+
+    // Nếu đang offline, trả kết quả On-Device ngay (dù amount = 0)
+    if (_isOffline) {
+      dev.log('[LocalAIService] 📡 Đang offline — trả kết quả On-Device mặc định');
+      return onDeviceResult;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // TẦNG 2: Groq Cloud AI (openai/gpt-oss-20b → llama-3.1-8b-instant)
+    // Chỉ gọi khi On-Device không xử lý được & có mạng
+    // ═══════════════════════════════════════════════════════════════════
     if (_groqApiKey != null && _groqApiKey!.trim().isNotEmpty) {
       try {
         final result = await _callGroqText(
@@ -106,17 +207,21 @@ class LocalAIServiceImpl extends GetxService
           currentTime,
         );
         if (result.isNotEmpty) {
+          dev.log('[LocalAIService] ✅ Groq Text thành công');
           return result;
         }
       } catch (e) {
         dev.log(
-          '[LocalAIService] Groq Text Parsing thất bại, chuyển sang Tầng 2 (Gemini 2.5 Flash)...',
+          '[LocalAIService] Groq Text thất bại, chuyển Tầng 3 (Gemini)...',
           error: e,
         );
       }
     }
 
-    // TẦNG 2: Thử gọi Google Gemini 2.5 Flash (Dự phòng Cloud AI)
+    // ═══════════════════════════════════════════════════════════════════
+    // TẦNG 3: Google Gemini 2.5 Flash (Dự phòng cuối cùng)
+    // Chỉ gọi khi cả On-Device & Groq đều thất bại
+    // ═══════════════════════════════════════════════════════════════════
     if (_geminiApiKey != null && _geminiApiKey!.trim().isNotEmpty) {
       try {
         final result = await _callGeminiFlash(
@@ -125,24 +230,19 @@ class LocalAIServiceImpl extends GetxService
           currentTime,
         );
         if (result.isNotEmpty) {
+          dev.log('[LocalAIService] ✅ Gemini 2.5 Flash thành công');
           return result;
         }
       } catch (e) {
         dev.log(
-          '[LocalAIService] Gemini 2.5 Flash thất bại, chuyển sang Tầng 3 (Local On-Device)...',
+          '[LocalAIService] Gemini 2.5 Flash thất bại — trả kết quả On-Device',
           error: e,
         );
       }
     }
 
-    // TẦNG 3: Fallback 100% Cục bộ On-Device (LocalRuleBasedTransactionParser)
-    // Chạy trên RAM thiết bị, không cần mạng, 0 Token, < 1ms
-    dev.log('[LocalAIService] Kích hoạt Tầng 3: LocalRuleBasedTransactionParser');
-    return LocalRuleBasedTransactionParser.parse(
-      text: cleanInput,
-      availableCategories: availableCategories,
-      currentTime: currentTime,
-    );
+    // Nếu tất cả Cloud đều thất bại, trả kết quả On-Device (dù amount = 0)
+    return onDeviceResult;
   }
 
   /// Gọi Groq Cloud Chat Completion với model mới nhất: openai/gpt-oss-20b (fallback llama-3.1-8b-instant)
@@ -282,7 +382,7 @@ Không giải thích, không bọc markdown.
   }
 
   // ===========================================================================
-  // TASK 5-4, 5-6 & 5-7: Phân tích Ảnh Hóa đơn (Lazy Input Vision) với Fallback
+  // TASK 5-4, 5-6 & 5-7: Phân tích Ảnh Hóa đơn (Lazy Input Vision) — ON-DEVICE FIRST
   // ===========================================================================
   @override
   Future<List<Map<String, dynamic>>> parseReceiptImage({
@@ -294,7 +394,49 @@ Không giải thích, không bọc markdown.
       throw BaseException('Không tìm thấy tệp ảnh hóa đơn.');
     }
 
-    // TẦNG 1: Thử gọi Groq Vision AI (qwen/qwen3.8-27b - Model Vision chính thức hiện tại của Groq)
+    // ═══════════════════════════════════════════════════════════════════
+    // TẦNG 1: On-Device — Google ML Kit Text Recognition (OCR Offline)
+    // Ưu tiên đọc hóa đơn cục bộ trước, tiết kiệm Token & băng thông
+    // ═══════════════════════════════════════════════════════════════════
+    dev.log('[LocalAIService] Tầng 1: Google ML Kit OCR (On-Device)');
+    List<Map<String, dynamic>> onDeviceResult = [];
+    try {
+      onDeviceResult = await _parseReceiptWithMLKit(
+        imageFile,
+        availableCategories,
+        currentTime,
+      );
+
+      if (_isOnDeviceResultValid(onDeviceResult)) {
+        dev.log('[LocalAIService] ✅ ML Kit OCR thành công — totalAmount > 0');
+        return onDeviceResult;
+      }
+
+      dev.log('[LocalAIService] ⚠️ ML Kit OCR không trích xuất được amount > 0, thử Cloud...');
+    } catch (e) {
+      dev.log('[LocalAIService] ML Kit OCR lỗi: $e, thử Cloud...');
+    }
+
+    // Nếu đang offline, trả kết quả ML Kit ngay (dù totalAmount = 0)
+    if (_isOffline) {
+      dev.log('[LocalAIService] 📡 Đang offline — trả kết quả ML Kit mặc định');
+      return onDeviceResult.isNotEmpty
+          ? onDeviceResult
+          : [
+              {
+                'amount': 0.0,
+                'type': 'outflow',
+                'categoryName': null,
+                'note': 'Hóa đơn',
+                'date': currentTime,
+              }
+            ];
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // TẦNG 2: Groq Vision AI (qwen/qwen3.8-27b)
+    // Chỉ gọi khi ML Kit OCR không đọc được & có mạng
+    // ═══════════════════════════════════════════════════════════════════
     if (_groqApiKey != null && _groqApiKey!.trim().isNotEmpty) {
       try {
         final result = await _callGroqVision(
@@ -303,17 +445,21 @@ Không giải thích, không bọc markdown.
           currentTime,
         );
         if (result.isNotEmpty) {
+          dev.log('[LocalAIService] ✅ Groq Vision thành công');
           return result;
         }
       } catch (e) {
         dev.log(
-          '[LocalAIService] Groq Vision (Qwen 3.8 27B) thất bại, thử Gemini 2.5 Flash Vision...',
+          '[LocalAIService] Groq Vision thất bại, chuyển Tầng 3 (Gemini Vision)...',
           error: e,
         );
       }
     }
 
-    // TẦNG 2: Thử gọi Gemini 2.5 Flash Vision (nếu có key)
+    // ═══════════════════════════════════════════════════════════════════
+    // TẦNG 3: Google Gemini 2.5 Flash Vision (Dự phòng cuối cùng)
+    // Chỉ gọi khi cả ML Kit & Groq Vision đều thất bại
+    // ═══════════════════════════════════════════════════════════════════
     if (_geminiApiKey != null && _geminiApiKey!.trim().isNotEmpty) {
       try {
         final result = await _callGeminiVision(
@@ -322,24 +468,29 @@ Không giải thích, không bọc markdown.
           currentTime,
         );
         if (result.isNotEmpty) {
+          dev.log('[LocalAIService] ✅ Gemini Vision thành công');
           return result;
         }
       } catch (e) {
         dev.log(
-          '[LocalAIService] Gemini 2.5 Flash Vision thất bại, chuyển sang Tầng 3 (ML Kit Offline)...',
+          '[LocalAIService] Gemini Vision thất bại — trả kết quả ML Kit',
           error: e,
         );
       }
     }
 
-    // TẦNG 3: Fallback 100% Cục bộ On-Device (Google ML Kit Text Recognition)
-    // Hoạt động offline hoàn toàn khi không có mạng hoặc khi cả 2 cloud API đều lỗi
-    dev.log('[LocalAIService] Kích hoạt Tầng 3: Google ML Kit Offline OCR');
-    return await _parseReceiptWithMLKit(
-      imageFile,
-      availableCategories,
-      currentTime,
-    );
+    // Nếu tất cả Cloud đều thất bại, trả kết quả ML Kit (dù amount = 0)
+    return onDeviceResult.isNotEmpty
+        ? onDeviceResult
+        : [
+            {
+              'amount': 0.0,
+              'type': 'outflow',
+              'categoryName': null,
+              'note': 'Hóa đơn: ${imageFile.path.split(Platform.pathSeparator).last}',
+              'date': currentTime,
+            }
+          ];
   }
 
   /// Gọi Groq Cloud Vision với model mới nhất: qwen/qwen3.8-27b

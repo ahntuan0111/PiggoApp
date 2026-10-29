@@ -1,0 +1,382 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Bộ dữ liệu Benchmark chuẩn hóa đánh giá hiệu năng và độ chính xác cho Pigo Lazy Input Parser",
+    "groups": {
+      "A": "Đơn giao dịch rõ ràng (Fast Path)",
+      "B": "Đa giao dịch nối tiếp (Multi-transaction)",
+      "C": "Số lượng & Nhầm lẫn cấu trúc (Quantity vs Amount)",
+      "D": "Thu chi kết hợp hai chiều (Inflow & Outflow)"
+    }
+  },
+  "cases": [
+    {
+      "id": "A01",
+      "group": "A",
+      "input": "an pho 45k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 45000.0, "type": "outflow", "note": "An pho", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "A02",
+      "group": "A",
+      "input": "mua ao 200 canh",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 200000.0, "type": "outflow", "note": "Mua ao", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A03",
+      "group": "A",
+      "input": "mua dien thoai 2 cu",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 2000000.0, "type": "outflow", "note": "Mua dien thoai", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A04",
+      "group": "A",
+      "input": "mua do 500 nghin",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 500000.0, "type": "outflow", "note": "Mua do", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A05",
+      "group": "A",
+      "input": "do xang 1,5 trieu",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 1500000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" }
+      ]
+    },
+    {
+      "id": "A06",
+      "group": "A",
+      "input": "mua do 20.000đ",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 200000.0, "type": "outflow", "note": "Mua do", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A07",
+      "group": "A",
+      "input": "mua do 1.500.000đ",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 1500000.0, "type": "outflow", "note": "Mua do", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A08",
+      "group": "A",
+      "input": "mua do 12,5k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 12500.0, "type": "outflow", "note": "Mua do", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A09",
+      "group": "A",
+      "input": "do xang 50",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 50000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" }
+      ]
+    },
+    {
+      "id": "A10",
+      "group": "A",
+      "input": "an sang 35k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 35000.0, "type": "outflow", "note": "An sang", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "A11",
+      "group": "A",
+      "input": "tra sua 35k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 35000.0, "type": "outflow", "note": "Tra sua", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "A12",
+      "group": "A",
+      "input": "chi phi dien 100k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 100000.0, "type": "outflow", "note": "Chi phi dien", "category": "Hóa đơn & Tiện ích" }
+      ]
+    },
+    {
+      "id": "A13",
+      "group": "A",
+      "input": "mat kinh 250k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 250000.0, "type": "outflow", "note": "Mat kinh", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A14",
+      "group": "A",
+      "input": "mua quan ao 200k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 200000.0, "type": "outflow", "note": "Mua quan ao", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A15",
+      "group": "A",
+      "input": "nhan luong 15 trieu",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 15000000.0, "type": "inflow", "note": "Nhan luong", "category": "Lương" }
+      ]
+    },
+    {
+      "id": "A16",
+      "group": "A",
+      "input": "nhan thuong 2 cu",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 2000000.0, "type": "inflow", "note": "Nhan thuong", "category": "Thưởng" }
+      ]
+    },
+    {
+      "id": "A17",
+      "group": "A",
+      "input": "tien tro 2.500.000",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 2500000.0, "type": "outflow", "note": "Tien tro", "category": "Nhà cửa" }
+      ]
+    },
+    {
+      "id": "A18",
+      "group": "A",
+      "input": "mua sach 85k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 85000.0, "type": "outflow", "note": "Mua sach", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "A19",
+      "group": "A",
+      "input": "uong cafe 28k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 28000.0, "type": "outflow", "note": "Uong cafe", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "A20",
+      "group": "A",
+      "input": "toi uu 50k",
+      "expected_route": "fastPathDart",
+      "expected": [
+        { "amount": 50000.0, "type": "outflow", "note": "Toi uu", "category": null }
+      ]
+    },
+    {
+      "id": "B01",
+      "group": "B",
+      "input": "do xang 50 an bun bo 55",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 50000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" },
+        { "amount": 55000.0, "type": "outflow", "note": "An bun bo", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "B02",
+      "group": "B",
+      "input": "do xang 50k an bun bo 55k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 50000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" },
+        { "amount": 55000.0, "type": "outflow", "note": "An bun bo", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "B03",
+      "group": "B",
+      "input": "50 do xang 55 an bun bo",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 50000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" },
+        { "amount": 55000.0, "type": "outflow", "note": "An bun bo", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "B04",
+      "group": "B",
+      "input": "an bun bo 55 do xang 50",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 55000.0, "type": "outflow", "note": "An bun bo", "category": "Ăn uống" },
+        { "amount": 50000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" }
+      ]
+    },
+    {
+      "id": "B05",
+      "group": "B",
+      "input": "do xang 50 va an bun bo 55",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 50000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" },
+        { "amount": 55000.0, "type": "outflow", "note": "An bun bo", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "B06",
+      "group": "B",
+      "input": "do xang 50, an bun bo 55",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 50000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" },
+        { "amount": 55000.0, "type": "outflow", "note": "An bun bo", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "B07",
+      "group": "B",
+      "input": "thue nha 3 trieu tien dien 500k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 3000000.0, "type": "outflow", "note": "Thue nha", "category": "Nhà cửa" },
+        { "amount": 500000.0, "type": "outflow", "note": "Tien dien", "category": "Hóa đơn & Tiện ích" }
+      ]
+    },
+    {
+      "id": "B08",
+      "group": "B",
+      "input": "ca phe 25k va banh mi 15k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 25000.0, "type": "outflow", "note": "Ca phe", "category": "Ăn uống" },
+        { "amount": 15000.0, "type": "outflow", "note": "Banh mi", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "B09",
+      "group": "B",
+      "input": "do xang 50 an bun bo 55 va mua ao 100",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 50000.0, "type": "outflow", "note": "Do xang", "category": "Di chuyển" },
+        { "amount": 55000.0, "type": "outflow", "note": "An bun bo", "category": "Ăn uống" },
+        { "amount": 100000.0, "type": "outflow", "note": "Mua ao", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "B10",
+      "group": "B",
+      "input": "tien nuoc 120k tien mang 250k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 120000.0, "type": "outflow", "note": "Tien nuoc", "category": "Hóa đơn & Tiện ích" },
+        { "amount": 250000.0, "type": "outflow", "note": "Tien mang", "category": "Hóa đơn & Tiện ích" }
+      ]
+    },
+    {
+      "id": "C01",
+      "group": "C",
+      "input": "mua 2 ao 200k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 200000.0, "type": "outflow", "note": "Mua 2 ao", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "C02",
+      "group": "C",
+      "input": "mua 3 ly cafe 90k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 90000.0, "type": "outflow", "note": "Mua 3 ly cafe", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "C03",
+      "group": "C",
+      "input": "mua 2 ao 200k an bun bo 55k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 200000.0, "type": "outflow", "note": "Mua 2 ao", "category": "Mua sắm" },
+        { "amount": 55000.0, "type": "outflow", "note": "An bun bo", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "C04",
+      "group": "C",
+      "input": "an 4 bat pho 200k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 200000.0, "type": "outflow", "note": "An 4 bat pho", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "C05",
+      "group": "C",
+      "input": "mua 5 can cam 100k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 100000.0, "type": "outflow", "note": "Mua 5 can cam", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "D01",
+      "group": "D",
+      "input": "nhan luong 15 trieu mua ao 200k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 15000000.0, "type": "inflow", "note": "Nhan luong", "category": "Lương" },
+        { "amount": 200000.0, "type": "outflow", "note": "Mua ao", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "D02",
+      "group": "D",
+      "input": "ban xe 8 trieu mua dien thoai 5 trieu",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 8000000.0, "type": "inflow", "note": "Ban xe", "category": "Thu nhập khác" },
+        { "amount": 5000000.0, "type": "outflow", "note": "Mua dien thoai", "category": "Mua sắm" }
+      ]
+    },
+    {
+      "id": "D03",
+      "group": "D",
+      "input": "doi duoc no 1 trieu di an nha hang 400k",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 1000000.0, "type": "inflow", "note": "Doi duoc no", "category": "Thu nhập khác" },
+        { "amount": 400000.0, "type": "outflow", "note": "Di an nha hang", "category": "Ăn uống" }
+      ]
+    },
+    {
+      "id": "D04",
+      "group": "D",
+      "input": "nhan thuong 3 trieu tra tien nha 2 trieu",
+      "expected_route": "smartPathAi",
+      "expected": [
+        { "amount": 3000000.0, "type": "inflow", "note": "Nhan thuong", "category": "Thưởng" },
+        { "amount": 2000000.0, "type": "outflow", "note": "Tra tien nha", "category": "Nhà cửa" }
+      ]
+    }
+  ]
+}
+

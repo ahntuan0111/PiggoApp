@@ -42,12 +42,30 @@ class SmartInputController extends BaseController with BudgetAware {
     super.onClose();
   }
 
-  /// Lấy danh sách tên danh mục hợp lệ (loại trừ các danh mục bị ẩn/Goal)
+  /// Lấy toàn bộ danh sách tên danh mục hợp lệ (loại trừ các danh mục bị ẩn/Goal)
   List<String> get _validCategoryNames {
-    return budgetService.activeCategoryGroups
-        .expand((group) => group.categories)
-        .map((budgetCat) => budgetCat.name)
-        .toList();
+    final names = <String>{};
+    // 1. Lấy từ activeCategoryGroups
+    for (final group in budgetService.activeCategoryGroups) {
+      for (final cat in group.categories) {
+        if (cat.name.trim().isNotEmpty) {
+          names.add(cat.name.trim());
+        }
+      }
+    }
+    // 2. Lấy từ activeCategories
+    for (final cat in budgetService.activeCategories) {
+      if (cat.name.trim().isNotEmpty) {
+        names.add(cat.name.trim());
+      }
+    }
+    // 3. Dự phòng: Quét qua toàn bộ categories đang active
+    for (final cat in budgetService.categories) {
+      if (cat.categoryModel.isActive && cat.name.trim().isNotEmpty) {
+        names.add(cat.name.trim());
+      }
+    }
+    return names.toList();
   }
 
   /// Xử lý gửi văn bản tự nhiên

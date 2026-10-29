@@ -97,10 +97,33 @@ class VoiceInputController extends BaseController
     );
   }
 
+  /// Lấy toàn bộ danh sách tên danh mục hợp lệ (loại trừ các danh mục bị ẩn/Goal)
+  List<String> get _validCategoryNames {
+    final names = <String>{};
+    for (final group in budgetService.activeCategoryGroups) {
+      for (final cat in group.categories) {
+        if (cat.name.trim().isNotEmpty) {
+          names.add(cat.name.trim());
+        }
+      }
+    }
+    for (final cat in budgetService.activeCategories) {
+      if (cat.name.trim().isNotEmpty) {
+        names.add(cat.name.trim());
+      }
+    }
+    for (final cat in budgetService.categories) {
+      if (cat.categoryModel.isActive && cat.name.trim().isNotEmpty) {
+        names.add(cat.name.trim());
+      }
+    }
+    return names.toList();
+  }
+
   @override
   void onReady() {
     super.onReady();
-    if (budgetService.activeCategories.isEmpty) {
+    if (_validCategoryNames.isEmpty) {
       Get.back();
       if (Get.context != null) {
         showCategoryRequiredDialog(Get.context!);
@@ -282,10 +305,7 @@ class VoiceInputController extends BaseController
   Future<void> _processTextWithLLM(String text) async {
     currentState.value = VoiceInputState.aiProcessing;
 
-    final validCategoryNames = budgetService.activeCategoryGroups
-        .expand((group) => group.categories)
-        .map((budgetCat) => budgetCat.name)
-        .toList();
+    final validCategoryNames = _validCategoryNames;
     final currentTime = DateTime.now().toUtc().toIso8601String();
 
     final result = await ErrorHandler.execute(() async {
