@@ -151,8 +151,8 @@ lib/
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/ahntuan0111/RepoApp.git
-   cd RepoApp
+   git clone https://github.com/ahntuan0111/PigoApp.git
+   cd PigoApp
    ```
 
 2. **Install dependencies:**
