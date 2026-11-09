@@ -21,26 +21,26 @@
 <div align="center">
 
 ### 1. 🏠 Home & Budget Management
-| Home Page | Total Budget Overview | Budget Distribution |
-| :---: | :---: | :---: |
-| <img src="imageApp/home_page.jpg" width="260" alt="Home Page" /> | <img src="imageApp/total_budget.jpg" width="260" alt="Total Budget" /> | <img src="imageApp/budget_distribution.jpg" width="260" alt="Budget Distribution" /> |
-| **Trang chủ & Số dư ví** | **Tổng quan ngân sách** | **Phân chia ngân sách** |
+| Home Page | Total Budget Overview | Budget Distribution | Deficit Compensation |
+| :---: | :---: | :---: | :---: |
+| <img src="imageApp/home_page.jpg" width="220" alt="Home Page" /> | <img src="imageApp/total_budget.jpg" width="220" alt="Total Budget" /> | <img src="imageApp/budget_distribution.jpg" width="220" alt="Budget Distribution" /> | <img src="imageApp/budget_compensation.png" width="220" alt="Budget Compensation" /> |
+| **Trang chủ & Số dư ví** | **Tổng quan ngân sách** | **Phân chia ngân sách** | **Cân bằng thiếu hụt** |
 
 <br />
 
 ### 2. ⚡ Multi-Modal Transaction Input
-| Create Transaction (Smart NLP) | Receipt OCR Scanning |
-| :---: | :---: |
-| <img src="imageApp/create_transaction.jpg" width="260" alt="Create Transaction" /> | <img src="imageApp/receipt_ocr.jpg" width="260" alt="Receipt OCR Scanning" /> |
-| **Tạo giao dịch thông minh (NLP/Voice)** | **Quét hóa đơn bằng ML Kit OCR** |
+| Create Transaction (Smart NLP) | Voice Input (Speech-to-Text) | Receipt OCR Scanning |
+| :---: | :---: | :---: |
+| <img src="imageApp/create_transaction.jpg" width="260" alt="Create Transaction" /> | <img src="imageApp/voice_input.png" width="260" alt="Voice Input" /> | <img src="imageApp/receipt_ocr.jpg" width="260" alt="Receipt OCR Scanning" /> |
+| **Tạo giao dịch thông minh (NLP)** | **Nhận diện giọng nói (Voice)** | **Quét hóa đơn (ML Kit OCR)** |
 
 <br />
 
-### 3. 🎯 Goals & Analytics
-| Savings Goal | Financial Statistics |
-| :---: | :---: |
-| <img src="imageApp/goal_saving.jpg" width="260" alt="Savings Goal" /> | <img src="imageApp/statistics.jpg" width="260" alt="Financial Statistics" /> |
-| **Theo dõi mục tiêu tiết kiệm** | **Báo cáo phân tích thống kê** |
+### 3. 🎯 Goals, Analytics & Settings
+| Savings Goal | Financial Statistics | Settings & Preferences |
+| :---: | :---: | :---: |
+| <img src="imageApp/goal_saving.jpg" width="260" alt="Savings Goal" /> | <img src="imageApp/statistics.jpg" width="260" alt="Financial Statistics" /> | <img src="imageApp/setting_page.png" width="260" alt="Settings Page" /> |
+| **Theo dõi mục tiêu tiết kiệm** | **Báo cáo phân tích thống kê** | **Cài đặt & Tùy chỉnh hệ thống** |
 
 </div>
 
