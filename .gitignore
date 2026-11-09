@@ -31,6 +31,14 @@ web/main.dart.wasm
 # Environment & Sensitive files (QUAN TRỌNG)
 .env
 *.env
+.env.example
+
+# Appwrite & Graph artifacts
+image_appwrite/
+graph.html
+graph.json
+graph*
+
 
 # Bỏ qua tất cả các file Markdown
 *.md
