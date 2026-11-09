@@ -75,7 +75,7 @@ class SmartInputScreen extends GetView<SmartInputController> {
                       color: const Color(0xFF1E1E1E),
                     ),
                     decoration: InputDecoration(
-                      hintText: "VD: Đổ xăng hết 50 cành...",
+                      hintText: "Thêm dấu (phẩy) nếu có nhiều giao dịch",
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 16.sp,

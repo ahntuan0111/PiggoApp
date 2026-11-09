@@ -9,8 +9,10 @@ class TransferLogRepository {
   TransferLogRepository() : _localDb = Get.find<LocalDatabaseService>();
 
   Future<void> createTransferLog(TransferLogModel log, [String? userId]) async {
+    final uid = userId ?? log.userId ?? _localDb.currentUserId;
     final db = await _localDb.database;
     final map = Map<String, dynamic>.from(log.toMap());
+    map['userId'] = uid;
     if (map['id'] == null || (map['id'] as String).isEmpty) {
       map['id'] = DateTime.now().millisecondsSinceEpoch.toString();
     }
@@ -27,10 +29,12 @@ class TransferLogRepository {
   Future<List<TransferLogModel>> getTransferLogsByCategoryId(
     String categoryId, {
     int limit = 5,
+    String? userId,
   }) async {
     final rawData = await _localDb.getTransferLogsByCategoryId(
       categoryId,
       limit: limit,
+      userId: userId,
     );
     return rawData
         .map((data) => TransferLogModel.fromMap(data, docId: data['id']))

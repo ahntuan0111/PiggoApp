@@ -68,17 +68,20 @@ class GoalCreateController extends BaseController with BudgetAware {
       }
 
       // 2. Create Category
+      final currentUid = budgetService.currentUserId.value;
       final createdCategory = await _categoryRepository.createCategory(
         savingType.id,
         nameController.text.trim(),
         selectedIcon.value,
         '0xFFD32F2F', // default color
         isActive: false, // Ẩn khỏi màn hình Budget/Transaction
+        userId: currentUid,
       );
 
       // 3. Create Goal
       GoalModel newGoal = GoalModel(
         id: '',
+        userId: currentUid,
         name: nameController.text.trim(),
         targetAmount: targetAmount,
         deadline: selectedDeadline.value,
@@ -86,7 +89,7 @@ class GoalCreateController extends BaseController with BudgetAware {
         status: 'ACTIVE',
       );
 
-      await goalRepository.createGoal(newGoal);
+      await goalRepository.createGoal(newGoal, currentUid);
     }, tag: "CREATE_GOAL");
 
     hideLoading();

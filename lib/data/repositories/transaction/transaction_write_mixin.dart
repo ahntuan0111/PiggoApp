@@ -32,9 +32,11 @@ mixin TransactionWriteMixin on TransactionRepositoryBase {
     }
 
     final localDb = Get.find<LocalDatabaseService>();
+    final uid = userId ?? transaction.userId ?? localDb.currentUserId;
     final txToInsert = transaction.id.isEmpty
         ? TransactionModel(
             id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+            userId: uid,
             categoryId: transaction.categoryId,
             amount: transaction.amount,
             type: transaction.type,
@@ -43,7 +45,7 @@ mixin TransactionWriteMixin on TransactionRepositoryBase {
             note: transaction.note,
             updatedAt: transaction.updatedAt,
           )
-        : transaction;
+        : (transaction.userId == null ? transaction.copyWith(userId: uid) : transaction);
 
     final detailToInsert = TransactionDetailModel(
       id: transactionDetail.id.isNotEmpty
@@ -56,7 +58,11 @@ mixin TransactionWriteMixin on TransactionRepositoryBase {
       confidenceScore: transactionDetail.confidenceScore,
     );
 
-    await localDb.insertTransactionAtomic(txToInsert, detail: detailToInsert);
+    await localDb.insertTransactionAtomic(
+      txToInsert,
+      detail: detailToInsert,
+      userId: uid,
+    );
     transactionUpdatedController.add(null);
     return txToInsert;
   }
@@ -67,9 +73,11 @@ mixin TransactionWriteMixin on TransactionRepositoryBase {
     String? userId,
   }) async {
     final localDb = Get.find<LocalDatabaseService>();
+    final uid = userId ?? transaction.userId ?? localDb.currentUserId;
     final txToInsert = transaction.id.isEmpty
         ? TransactionModel(
             id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+            userId: uid,
             categoryId: transaction.categoryId,
             amount: transaction.amount,
             type: transaction.type,
@@ -78,11 +86,12 @@ mixin TransactionWriteMixin on TransactionRepositoryBase {
             note: transaction.note,
             updatedAt: transaction.updatedAt,
           )
-        : transaction;
+        : (transaction.userId == null ? transaction.copyWith(userId: uid) : transaction);
 
     await localDb.insertTransactionAtomic(
       txToInsert,
       detail: transactionDetail,
+      userId: uid,
     );
     transactionUpdatedController.add(null);
     return txToInsert;
@@ -94,6 +103,7 @@ mixin TransactionWriteMixin on TransactionRepositoryBase {
     required TransactionDetailModel? newTransactionDetail,
     CategoryModel? oldCategory,
     CategoryModel? newCategory,
+    String? userId,
   }) async {
     final storageRepo = Get.find<StorageRepository>();
     List<String> uploadedFileIds = [];
@@ -127,9 +137,11 @@ mixin TransactionWriteMixin on TransactionRepositoryBase {
         : null;
 
     final localDb = Get.find<LocalDatabaseService>();
+    final uid = userId ?? newTransaction.userId ?? localDb.currentUserId;
     await localDb.updateTransactionAtomic(
-      newTransaction,
+      newTransaction.userId == null ? newTransaction.copyWith(userId: uid) : newTransaction,
       detail: detailToUpdate,
+      userId: uid,
     );
     transactionUpdatedController.add(null);
   }
@@ -138,11 +150,14 @@ mixin TransactionWriteMixin on TransactionRepositoryBase {
     required TransactionModel oldTransaction,
     required TransactionModel newTransaction,
     required TransactionDetailModel? newTransactionDetail,
+    String? userId,
   }) async {
     final localDb = Get.find<LocalDatabaseService>();
+    final uid = userId ?? newTransaction.userId ?? localDb.currentUserId;
     await localDb.updateTransactionAtomic(
-      newTransaction,
+      newTransaction.userId == null ? newTransaction.copyWith(userId: uid) : newTransaction,
       detail: newTransactionDetail,
+      userId: uid,
     );
     transactionUpdatedController.add(null);
   }

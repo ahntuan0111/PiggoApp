@@ -4,18 +4,22 @@ import 'transaction_repository_base.dart';
 
 mixin TransactionCacheMixin on TransactionRepositoryBase {
   Future<List<TransactionModel>> getCachedTransactionsByMonth(
-    String monthYearStr,
-  ) async {
+    String monthYearStr, {
+    String? userId,
+  }) async {
     try {
-      return await localDb.getTransactionsByMonth(monthYearStr);
+      return await localDb.getTransactionsByMonth(monthYearStr, userId: userId);
     } catch (e) {
       throw CacheException("Lỗi đọc cache LocalDatabase: $e");
     }
   }
 
-  Future<void> saveTransactionsToCache(List<TransactionModel> txs) async {
+  Future<void> saveTransactionsToCache(
+    List<TransactionModel> txs, {
+    String? userId,
+  }) async {
     try {
-      await localDb.saveTransactions(txs);
+      await localDb.saveTransactions(txs, userId: userId);
     } catch (e) {
       throw CacheException("Lỗi lưu cache LocalDatabase: $e");
     }

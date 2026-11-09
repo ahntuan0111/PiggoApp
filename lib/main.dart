@@ -7,6 +7,7 @@ import 'package:appintern/data/repositories/goal_repository.dart';
 import 'package:appintern/data/repositories/transfer_log_repository.dart';
 import 'package:appintern/data/repositories/rollover_repository.dart';
 import 'package:appintern/core/services/budget_service.dart';
+import 'package:appintern/core/services/data_retention_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -52,6 +53,7 @@ void main() async {
   Get.lazyPut(() => TransferLogRepository(), fenix: true);
   Get.lazyPut(() => RolloverRepository(), fenix: true);
   Get.lazyPut(() => StatisticsRepository(), fenix: true);
+  Get.lazyPut(() => DataRetentionService(), fenix: true);
   Get.lazyPut(() => LocalAIServiceImpl(), fenix: true);
   Get.lazyPut<IAIService>(() => Get.find<LocalAIServiceImpl>(), fenix: true);
 

@@ -16,6 +16,7 @@ import 'package:appintern/core/services/settings_service.dart';
 import 'package:appintern/core/constants/app_keys.dart';
 import 'package:appintern/core/services/notification_service.dart';
 import 'package:appintern/core/services/network_service.dart';
+import 'package:appintern/core/services/data_retention_service.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/data/data_sources/local/local_database_service.dart';
 
@@ -217,9 +218,12 @@ class ProfileController extends BaseController {
     final String? userId = storageService.read<String>(AppKeys.userId);
 
     final result = await ErrorHandler.execute(() async {
-      // 1. Xóa sạch mọi bảng dữ liệu của user (CategoryTypes, Categories, Budgets, Summaries, Wallets, Transactions, v.v...)
-      await authRepository.clearAllUserData();
-      await Get.find<LocalDatabaseService>().clearAllData();
+      // 1. Xóa sạch mọi bảng dữ liệu của user đang đăng nhập (Multi-tenancy isolation)
+      if (userId != null && userId.isNotEmpty) {
+        await Get.find<LocalDatabaseService>().clearUserData(userId);
+      } else {
+        await Get.find<LocalDatabaseService>().clearAllData();
+      }
 
       // 2. Tạo lại Category Types mặc định cho user
       if (userId != null && userId.isNotEmpty) {
@@ -243,6 +247,46 @@ class ProfileController extends BaseController {
 
         // Điều hướng về Home (Main) để kích hoạt giao diện trống
         Get.offAllNamed(Routes.MAIN);
+      },
+    );
+  }
+
+  /// Xem trước số lượng bản ghi và dung lượng có thể dọn dẹp (Giữ 2 tháng gần nhất)
+  Future<RetentionStats> getRetentionPreview() async {
+    final retentionService = Get.find<DataRetentionService>();
+    final String? userId = storageService.read<String>(AppKeys.userId);
+    return await retentionService.getRetentionPreview(userId: userId);
+  }
+
+  /// Thực thi dọn dẹp các giao dịch và ảnh cũ hơn 2 tháng
+  Future<void> runDataRetention() async {
+    showLoading();
+    final String? userId = storageService.read<String>(AppKeys.userId);
+    final result = await ErrorHandler.execute(() async {
+      final retentionService = Get.find<DataRetentionService>();
+      return await retentionService.pruneOldData(userId: userId);
+    }, tag: 'RUN_DATA_RETENTION');
+    hideLoading();
+
+    result.fold(
+      (failure) {
+        showErrorMessage('Lỗi dọn dẹp', failure.message);
+      },
+      (stats) async {
+        final budgetService = Get.find<BudgetService>();
+        await budgetService.refreshData();
+
+        if (stats.prunedTransactions == 0 && stats.prunedReceipts == 0) {
+          showSuccessMessage(
+            'Tối ưu hoàn tất',
+            'Dữ liệu hiện tại đã gọn gàng, không có giao dịch cũ hơn 2 tháng.',
+          );
+        } else {
+          showSuccessMessage(
+            'Dọn dẹp thành công',
+            'Đã nén ${stats.archivedMonths.length} tháng vào kho Thống kê, dọn dẹp ${stats.prunedTransactions} giao dịch và ${stats.prunedReceipts} ảnh hóa đơn (${stats.freedSizeFormatted}).',
+          );
+        }
       },
     );
   }

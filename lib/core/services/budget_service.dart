@@ -102,6 +102,20 @@ class BudgetService extends GetxService {
 
   StreamSubscription? _txSubscription;
 
+  void resetData() {
+    categories.clear();
+    categoryGroups.clear();
+    _rawGoals.clear();
+    goals.clear();
+    monthlyBudgets.clear();
+    totalWalletBalance.value = 0.0;
+    allocatedAmount.value = 0.0;
+    unallocatedAmount.value = 0.0;
+    currentMonthIncome.value = 0.0;
+    currentMonthExpense.value = 0.0;
+    isDataLoaded.value = false;
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -114,48 +128,65 @@ class BudgetService extends GetxService {
   }
 
   bool _isRefreshing = false;
+  bool _needsAnotherRefresh = false;
+  Completer<void>? _currentRefreshCompleter;
 
   Future<void> refreshData() async {
-    if (_isRefreshing) return;
+    if (_isRefreshing) {
+      _needsAnotherRefresh = true;
+      return _currentRefreshCompleter?.future ?? Future.value();
+    }
     _isRefreshing = true;
+    _currentRefreshCompleter = Completer<void>();
     try {
-      // Đọc userId từ session đã lưu trong storage
-      currentUserId.value = storage.read(AppKeys.userId) ?? "";
+      do {
+        _needsAnotherRefresh = false;
+        // Đọc userId từ session đã lưu trong storage
+        final newUserId = storage.read<String>(AppKeys.userId) ?? "";
+        if (currentUserId.value != newUserId) {
+          currentUserId.value = newUserId;
+          resetData();
+        }
 
-      // LOAD TRỰC TIẾP TỪ LOCAL DATABASE (SINGLE SOURCE OF TRUTH)
-      final hasLoaded = await loadDataFromLocal();
-      if (hasLoaded) {
-        isError.value = false;
-        errorMessage.value = "";
-      }
-      isDataLoaded.value = true;
+        // LOAD TRỰC TIẾP TỪ LOCAL DATABASE (SINGLE SOURCE OF TRUTH)
+        final hasLoaded = await loadDataFromLocal();
+        if (hasLoaded) {
+          isError.value = false;
+          errorMessage.value = "";
+        }
+        isDataLoaded.value = true;
+      } while (_needsAnotherRefresh);
+      _currentRefreshCompleter?.complete();
     } catch (e) {
       AppLogger.error("REFRESH_BUDGET_DATA", e.toString());
       isError.value = true;
       errorMessage.value = e.toString();
       isDataLoaded.value = true;
+      _currentRefreshCompleter?.completeError(e);
     } finally {
       _isRefreshing = false;
+      _currentRefreshCompleter = null;
     }
   }
 
   Future<bool> loadDataFromLocal() async {
     try {
       final localDb = Get.find<LocalDatabaseService>();
-      final typesData = await localDb.getCategoryTypes();
-      final catsData = await localDb.getCategories();
+      final uid = currentUserId.value.isNotEmpty ? currentUserId.value : localDb.currentUserId;
+      final typesData = await localDb.getCategoryTypes(userId: uid);
+      final catsData = await localDb.getCategories(userId: uid);
 
       String monthYearStr =
           "${currentTrackingMonth.value.month.toString().padLeft(2, '0')}-${currentTrackingMonth.value.year}";
-      var budgetsData = await localDb.getMonthlyBudgets(monthYearStr);
+      var budgetsData = await localDb.getMonthlyBudgets(monthYearStr, userId: uid);
 
       // Removed the harmful logic that forces currentTrackingMonth to fallback to previous month.
       // If budgetsData is empty, it means the month hasn't been rolled over yet, and SyncEngineService will handle it shortly.
-      final goalsData = await localDb.getGoals();
-      var summariesData = await localDb.getMonthlySummaries();
+      final goalsData = await localDb.getGoals(userId: uid);
+      var summariesData = await localDb.getMonthlySummaries(userId: uid);
 
       if (summariesData.isEmpty) {
-        final localTxs = await localDb.getAllTransactions();
+        final localTxs = await localDb.getAllTransactions(userId: uid);
         if (localTxs.isNotEmpty) {
           final Map<String, List<double>> monthMap = {};
           for (var tx in localTxs) {
@@ -180,19 +211,19 @@ class BudgetService extends GetxService {
         }
       }
 
-      if (typesData.isNotEmpty && catsData.isNotEmpty) {
-        _parseAndSetBudgetData(
-          typesData: typesData,
-          catsData: catsData,
-          budgetsData: budgetsData,
-          goalsData: goalsData,
-          summariesData: summariesData,
-        );
-        isDataLoaded.value = true;
-        return true;
-      }
+      // Luôn cập nhật state in-memory theo đúng dữ liệu của user hiện tại trong SQLite
+      _parseAndSetBudgetData(
+        typesData: typesData,
+        catsData: catsData,
+        budgetsData: budgetsData,
+        goalsData: goalsData,
+        summariesData: summariesData,
+      );
+      isDataLoaded.value = true;
+      return true;
     } catch (e) {
       AppLogger.error("CACHE_READ_ERROR", e.toString());
+      resetData();
     }
     return false;
   }
@@ -350,9 +381,10 @@ class BudgetService extends GetxService {
   Future<void> _executeGoalCleanup(GoalModel goal) async {
     try {
       final localDb = Get.find<LocalDatabaseService>();
-      await localDb.deleteLocalGoal(goal.id);
+      final uid = currentUserId.value.isNotEmpty ? currentUserId.value : localDb.currentUserId;
+      await localDb.deleteLocalGoal(goal.id, userId: uid);
       // Soft delete category (isActive = 0) để bảo toàn khóa ngoại với transactions
-      await localDb.deleteCategory(goal.categoryId);
+      await localDb.deleteCategory(goal.categoryId, userId: uid);
     } catch (e) {
       AppLogger.error("CLEANUP_GOAL", "Failed to cleanup goal ${goal.id}: $e");
     }

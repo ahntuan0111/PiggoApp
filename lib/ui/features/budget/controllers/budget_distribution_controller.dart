@@ -7,7 +7,6 @@ import 'package:appintern/data/repositories/category_repository.dart';
 import 'package:appintern/core/errors/error_handler.dart';
 import 'package:appintern/data/models/category_model.dart';
 import 'package:appintern/core/services/budget_service.dart';
-import 'package:appintern/data/data_sources/local/local_database_service.dart';
 
 class BudgetDistributionGroup {
   final String typeId;
@@ -223,6 +222,7 @@ class BudgetDistributionController extends BaseController {
             cat.iconName,
             cat.color,
             defaultBudget: newBudgetedAmount,
+            userId: currentUserId.value,
           );
         }
 
@@ -232,6 +232,7 @@ class BudgetDistributionController extends BaseController {
             await categoryRepository.updateMonthlyBudget(
               mb.id,
               newBudgetedAmount,
+              userId: currentUserId.value,
             );
           }
         } else {
@@ -240,6 +241,7 @@ class BudgetDistributionController extends BaseController {
             monthYear: monthYearStr,
             budgetedAmount: newBudgetedAmount,
             spentAmount: cat.spent,
+            userId: currentUserId.value,
           );
         }
       }
@@ -247,15 +249,15 @@ class BudgetDistributionController extends BaseController {
 
     hideLoading();
 
-    result.fold(
-      (failure) {
+    await result.fold(
+      (failure) async {
         showErrorMessage(
           "Lỗi",
           "Không thể lưu phân bổ ngân sách: ${failure.message}",
         );
       },
-      (_) {
-        Get.find<BudgetService>().refreshData();
+      (_) async {
+        await Get.find<BudgetService>().refreshData();
         Get.back(result: true);
       },
     );

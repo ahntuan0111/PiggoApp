@@ -1,6 +1,9 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:async';
+import 'package:get/get.dart';
+import 'package:appintern/core/services/storage_service.dart';
+import 'package:appintern/core/constants/app_keys.dart';
 import 'local_database_base.dart';
 import 'local_db_transaction_mixin.dart';
 import 'local_db_category_mixin.dart';
@@ -16,6 +19,17 @@ class LocalDatabaseService extends LocalDatabaseBase
         LocalDbGoalMixin {
   static Database? _db;
   static Completer<Database>? _initCompleter;
+
+  @override
+  String get currentUserId {
+    try {
+      if (Get.isRegistered<StorageService>()) {
+        final uid = Get.find<StorageService>().read<String>(AppKeys.userId);
+        if (uid != null && uid.isNotEmpty) return uid;
+      }
+    } catch (_) {}
+    return 'default_user';
+  }
 
   @override
   Future<Database> get database async {
@@ -38,7 +52,7 @@ class LocalDatabaseService extends LocalDatabaseBase
     String path = join(await getDatabasesPath(), 'appintern_scale.db');
     return await openDatabase(
       path,
-      version: 8,
+      version: 10,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON;');
       },
@@ -55,17 +69,22 @@ class LocalDatabaseService extends LocalDatabaseBase
     await db.execute('''
       CREATE TABLE IF NOT EXISTS category_types (
         id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL DEFAULT 'default_user',
         name TEXT NOT NULL,
         priority INTEGER DEFAULT 99,
         createdAt TEXT,
         updatedAt TEXT
       )
     ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_category_types_user ON category_types(userId)',
+    );
 
     // 2. Table Categories
     await db.execute('''
       CREATE TABLE IF NOT EXISTS categories (
         id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL DEFAULT 'default_user',
         categoryTypeId TEXT NOT NULL,
         name TEXT NOT NULL,
         color TEXT NOT NULL,
@@ -80,6 +99,9 @@ class LocalDatabaseService extends LocalDatabaseBase
       )
     ''');
     await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(userId)',
+    );
+    await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(categoryTypeId)',
     );
 
@@ -87,6 +109,7 @@ class LocalDatabaseService extends LocalDatabaseBase
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transactions (
         id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL DEFAULT 'default_user',
         categoryId TEXT,
         amount REAL NOT NULL,
         type TEXT NOT NULL,
@@ -98,6 +121,9 @@ class LocalDatabaseService extends LocalDatabaseBase
         FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL
       )
     ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_tx_user_date ON transactions(userId, transactionDate)',
+    );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(transactionDate)',
     );
@@ -127,6 +153,7 @@ class LocalDatabaseService extends LocalDatabaseBase
     await db.execute('''
       CREATE TABLE IF NOT EXISTS monthly_budgets (
         id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL DEFAULT 'default_user',
         categoryId TEXT NOT NULL,
         monthYear TEXT NOT NULL,
         budgetedAmount REAL NOT NULL DEFAULT 0.0,
@@ -138,6 +165,9 @@ class LocalDatabaseService extends LocalDatabaseBase
       )
     ''');
     await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_mb_user_month ON monthly_budgets(userId, monthYear)',
+    );
+    await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_monthly_budgets_monthYear ON monthly_budgets(monthYear)',
     );
     await db.execute(
@@ -148,7 +178,8 @@ class LocalDatabaseService extends LocalDatabaseBase
     await db.execute('''
       CREATE TABLE IF NOT EXISTS monthly_summaries (
         id TEXT PRIMARY KEY,
-        monthYear TEXT NOT NULL UNIQUE,
+        userId TEXT NOT NULL DEFAULT 'default_user',
+        monthYear TEXT NOT NULL,
         totalIncome REAL NOT NULL DEFAULT 0.0,
         totalExpense REAL NOT NULL DEFAULT 0.0,
         unallocatedBalance REAL NOT NULL DEFAULT 0.0,
@@ -157,6 +188,9 @@ class LocalDatabaseService extends LocalDatabaseBase
       )
     ''');
     await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_ms_user_month ON monthly_summaries(userId, monthYear)',
+    );
+    await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_monthly_summaries_monthYear ON monthly_summaries(monthYear)',
     );
 
@@ -164,6 +198,7 @@ class LocalDatabaseService extends LocalDatabaseBase
     await db.execute('''
       CREATE TABLE IF NOT EXISTS goals (
         id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL DEFAULT 'default_user',
         categoryId TEXT NOT NULL,
         name TEXT NOT NULL,
         targetAmount REAL NOT NULL,
@@ -175,11 +210,15 @@ class LocalDatabaseService extends LocalDatabaseBase
         FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE CASCADE
       )
     ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(userId)',
+    );
 
     // 8. Table Transfer Logs (chuẩn hóa transfer_logs)
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transfer_logs (
         id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL DEFAULT 'default_user',
         amount REAL NOT NULL,
         fromCategoryId TEXT NOT NULL,
         toCategoryId TEXT NOT NULL,
@@ -189,6 +228,9 @@ class LocalDatabaseService extends LocalDatabaseBase
       )
     ''');
     await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_tl_user ON transfer_logs(userId)',
+    );
+    await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_transfer_logs_createdAt ON transfer_logs(createdAt)',
     );
 
@@ -196,6 +238,7 @@ class LocalDatabaseService extends LocalDatabaseBase
     await db.execute('''
       CREATE TABLE IF NOT EXISTS budgets_history (
         id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL DEFAULT 'default_user',
         monthYear TEXT NOT NULL,
         totalInflow REAL NOT NULL DEFAULT 0.0,
         totalOutflow REAL NOT NULL DEFAULT 0.0,
@@ -204,6 +247,9 @@ class LocalDatabaseService extends LocalDatabaseBase
         updatedAt TEXT
       )
     ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_bh_user ON budgets_history(userId)',
+    );
 
     // 10. Table User Profile Local
     await db.execute('''
@@ -219,12 +265,36 @@ class LocalDatabaseService extends LocalDatabaseBase
       )
     ''');
 
+    // 11. Table Monthly Category Summaries (Dữ liệu tổng hợp phục vụ Biểu đồ & Thống kê lịch sử khi Prune Transaction)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS monthly_category_summaries (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL DEFAULT 'default_user',
+        monthYear TEXT NOT NULL,
+        categoryId TEXT NOT NULL,
+        categoryName TEXT NOT NULL,
+        categoryColor TEXT NOT NULL,
+        categoryIcon TEXT NOT NULL,
+        totalExpense REAL NOT NULL DEFAULT 0.0,
+        totalIncome REAL NOT NULL DEFAULT 0.0,
+        transactionCount INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT,
+        updatedAt TEXT
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_mcs_user_month ON monthly_category_summaries(userId, monthYear)',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_mcs_user_cat_month ON monthly_category_summaries(userId, categoryId, monthYear)',
+    );
+
     // Seed Data mặc định ban đầu theo SQLITE_SCHEMA_SPECIFICATION.md
     await db.execute('''
-      INSERT OR IGNORE INTO category_types (id, name, priority, createdAt) VALUES 
-      ('type_fixed', 'Cố định', 1, datetime('now')),
-      ('type_essential', 'Thiết yếu', 2, datetime('now')),
-      ('type_savings', 'Tiết kiệm', 3, datetime('now'))
+      INSERT OR IGNORE INTO category_types (id, userId, name, priority, createdAt) VALUES 
+      ('type_fixed', 'default_user', 'Cố định', 1, datetime('now')),
+      ('type_essential', 'default_user', 'Thiết yếu', 2, datetime('now')),
+      ('type_savings', 'default_user', 'Tiết kiệm', 3, datetime('now'))
     ''');
   }
 
@@ -456,6 +526,114 @@ class LocalDatabaseService extends LocalDatabaseBase
       );
       await db.execute('PRAGMA foreign_keys = ON;');
     }
+
+    if (oldVersion < 9) {
+      final tablesToAddUserId = [
+        'category_types',
+        'categories',
+        'transactions',
+        'monthly_budgets',
+        'monthly_summaries',
+        'goals',
+        'transfer_logs',
+        'budgets_history',
+      ];
+
+      for (final table in tablesToAddUserId) {
+        try {
+          await db.execute(
+            "ALTER TABLE $table ADD COLUMN userId TEXT NOT NULL DEFAULT 'default_user'",
+          );
+        } catch (_) {}
+      }
+
+      // Tạo các composite indexes tối ưu cho truy vấn multi-tenancy
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_tx_user_date ON transactions(userId, transactionDate)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(userId)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_category_types_user ON category_types(userId)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_mb_user_month ON monthly_budgets(userId, monthYear)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_ms_user_month ON monthly_summaries(userId, monthYear)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(userId)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_tl_user ON transfer_logs(userId)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_bh_user ON budgets_history(userId)',
+        );
+      } catch (_) {}
+    }
+
+    if (oldVersion < 10) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS monthly_category_summaries (
+          id TEXT PRIMARY KEY,
+          userId TEXT NOT NULL DEFAULT 'default_user',
+          monthYear TEXT NOT NULL,
+          categoryId TEXT NOT NULL,
+          categoryName TEXT NOT NULL,
+          categoryColor TEXT NOT NULL,
+          categoryIcon TEXT NOT NULL,
+          totalExpense REAL NOT NULL DEFAULT 0.0,
+          totalIncome REAL NOT NULL DEFAULT 0.0,
+          transactionCount INTEGER NOT NULL DEFAULT 0,
+          createdAt TEXT,
+          updatedAt TEXT
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_mcs_user_month ON monthly_category_summaries(userId, monthYear)',
+      );
+      await db.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_mcs_user_cat_month ON monthly_category_summaries(userId, categoryId, monthYear)',
+      );
+    }
+  }
+
+  /// Xóa sạch dữ liệu của một tài khoản cụ thể mà không ảnh hưởng tài khoản khác
+  Future<void> clearUserData(String userId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.execute(
+        'DELETE FROM transaction_details WHERE transactionId IN (SELECT id FROM transactions WHERE userId = ?)',
+        [userId],
+      );
+      await txn.delete('transactions', where: 'userId = ?', whereArgs: [userId]);
+      await txn.delete('monthly_budgets', where: 'userId = ?', whereArgs: [userId]);
+      await txn.delete('monthly_summaries', where: 'userId = ?', whereArgs: [userId]);
+      await txn.delete('monthly_category_summaries', where: 'userId = ?', whereArgs: [userId]);
+      await txn.delete('goals', where: 'userId = ?', whereArgs: [userId]);
+      await txn.delete('transfer_logs', where: 'userId = ?', whereArgs: [userId]);
+      await txn.delete('budgets_history', where: 'userId = ?', whereArgs: [userId]);
+      await txn.delete('categories', where: 'userId = ?', whereArgs: [userId]);
+      await txn.delete('category_types', where: 'userId = ?', whereArgs: [userId]);
+    });
   }
 
   Future<void> clearAllData() async {
@@ -465,6 +643,7 @@ class LocalDatabaseService extends LocalDatabaseBase
       await txn.delete('transactions');
       await txn.delete('monthly_budgets');
       await txn.delete('monthly_summaries');
+      await txn.delete('monthly_category_summaries');
       await txn.delete('goals');
       await txn.delete('transfer_logs');
       await txn.delete('budgets_history');

@@ -1,5 +1,6 @@
 class GoalModel {
   final String id;
+  final String? userId;
   final String name;
   final double targetAmount;
   final double? currentAmount;
@@ -10,6 +11,7 @@ class GoalModel {
 
   GoalModel({
     required this.id,
+    this.userId,
     required this.name,
     required this.targetAmount,
     this.currentAmount = 0.0,
@@ -22,6 +24,7 @@ class GoalModel {
   factory GoalModel.fromMap(Map<String, dynamic> map) {
     return GoalModel(
       id: map['\$id'] ?? map['id'] ?? '',
+      userId: map['userId'] ?? map['\$userId'],
       name: map['name'] ?? '',
       targetAmount: (map['targetAmount'] ?? 0.0).toDouble(),
       currentAmount: (map['currentAmount'] as num?)?.toDouble() ?? 0.0,
@@ -40,7 +43,7 @@ class GoalModel {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'id': id,
       'name': name,
       'targetAmount': targetAmount,
@@ -49,10 +52,15 @@ class GoalModel {
       'categoryId': categoryId,
       'status': status,
     };
+    if (userId != null && userId!.isNotEmpty) {
+      map['userId'] = userId;
+    }
+    return map;
   }
 
   GoalModel copyWith({
     String? id,
+    String? userId,
     String? name,
     double? targetAmount,
     double? currentAmount,
@@ -63,12 +71,11 @@ class GoalModel {
   }) {
     return GoalModel(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       name: name ?? this.name,
       targetAmount: targetAmount ?? this.targetAmount,
       currentAmount: currentAmount ?? this.currentAmount,
-      deadline:
-          deadline ??
-          this.deadline, // Giữ null nếu không truyền, hoặc giữ cũ nếu không truyền (cần handle null tường minh, nhưng để tạm thế này)
+      deadline: deadline ?? this.deadline,
       categoryId: categoryId ?? this.categoryId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,

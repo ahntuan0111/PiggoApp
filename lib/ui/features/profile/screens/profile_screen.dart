@@ -183,26 +183,6 @@ class ProfileScreen extends GetView<ProfileController> {
                     ),
                     onTap: () => Get.toNamed(Routes.BUDGET_SETTINGS),
                   ),
-                  // const Divider(),
-                  // ListTile(
-                  //   leading: const Icon(Icons.dark_mode_outlined),
-                  //   title: const Text("Giao diện"),
-                  //   trailing: DropdownButton<String>(
-                  //     value: controller.settingsService.themeMode.value,
-                  //     underline: const SizedBox(),
-                  //     icon: const Icon(
-                  //       Icons.keyboard_arrow_down,
-                  //       color: Colors.grey,
-                  //     ),
-                  //     items: const [
-                  //       DropdownMenuItem(value: 'light', child: Text("Sáng")),
-                  //       DropdownMenuItem(value: 'dark', child: Text("Tối")),
-                  //     ],
-                  //     onChanged: (val) {
-                  //       if (val != null) controller.changeThemeMode(val);
-                  //     },
-                  //   ),
-                  // ),
                   const Divider(),
                   Obx(
                     () => SwitchListTile(
@@ -277,6 +257,143 @@ class ProfileScreen extends GetView<ProfileController> {
                       onPressed: controller.forceSync,
                       child: const Text("Đồng bộ ngay"),
                     ),
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.cleaning_services_outlined,
+                      color: Color(0xFF369B56),
+                    ),
+                    title: const Text("Tối ưu dung lượng bộ nhớ"),
+                    subtitle: const Text(
+                      "Chỉ giữ lại giao dịch & ảnh của 2 tháng gần nhất",
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.grey,
+                    ),
+                    onTap: () {
+                      Get.dialog(
+                        FutureBuilder(
+                          future: controller.getRetentionPreview(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20.r),
+                                ),
+                                content: SizedBox(
+                                  height: 90.h,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final stats = snapshot.data;
+                            final hasDataToPrune = stats != null &&
+                                (stats.prunedTransactions > 0 ||
+                                    stats.prunedReceipts > 0);
+
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.r),
+                              ),
+                              title: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.cleaning_services_rounded,
+                                    color: Color(0xFF369B56),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  const Text("Tối ưu bộ nhớ"),
+                                ],
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "Chính sách lưu trữ: Giữ lại toàn bộ giao dịch chi tiết và ảnh hóa đơn của 2 tháng gần nhất (Tháng này & Tháng trước).\n\n"
+                                    "Các tháng cũ hơn sẽ được nén và chuyển vào kho dữ liệu Thống kê tổng hợp (biểu đồ và báo cáo vẫn hiển thị 100% đầy đủ). Ảnh hóa đơn vật lý của các tháng cũ sẽ được xóa để giải phóng dung lượng máy.",
+                                    style: TextStyle(height: 1.4, fontSize: 13),
+                                  ),
+                                  SizedBox(height: 16.h),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.all(12.r),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF2C2C2C)
+                                          : const Color(0xFFF5F5F5),
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: hasDataToPrune
+                                        ? Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "• Giao dịch cũ cần dọn: ${stats.prunedTransactions}",
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4.h),
+                                              Text(
+                                                "• Ảnh hóa đơn cần xóa: ${stats.prunedReceipts}",
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4.h),
+                                              Text(
+                                                "• Dung lượng ước tính giải phóng: ${stats.freedSizeFormatted}",
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF369B56),
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : const Text(
+                                            "✅ Bộ nhớ đang ở trạng thái tối ưu nhất! Không có giao dịch hoặc ảnh hóa đơn nào cũ hơn 2 tháng cần dọn dẹp.",
+                                            style: TextStyle(
+                                              color: Color(0xFF369B56),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Get.back(),
+                                  child: const Text(
+                                    "Đóng",
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ),
+                                if (hasDataToPrune)
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF369B56),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      Get.back();
+                                      controller.runDataRetention();
+                                    },
+                                    child: const Text("Bắt đầu tối ưu"),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      );
+                    },
                   ),
                   const Divider(),
                   ListTile(

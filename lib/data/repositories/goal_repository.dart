@@ -5,9 +5,12 @@ import 'package:get/get.dart';
 class GoalRepository {
   GoalRepository();
 
-  Future<List<GoalModel>> getGoals({List<String>? categoryIds}) async {
+  Future<List<GoalModel>> getGoals({
+    List<String>? categoryIds,
+    String? userId,
+  }) async {
     final localDb = Get.find<LocalDatabaseService>();
-    final rows = await localDb.getGoals();
+    final rows = await localDb.getGoals(userId: userId);
     var list = rows.map((e) => GoalModel.fromMap(e)).toList();
 
     if (categoryIds != null) {
@@ -20,22 +23,26 @@ class GoalRepository {
 
   Future<GoalModel> createGoal(GoalModel goal, [String? userId]) async {
     final localDb = Get.find<LocalDatabaseService>();
+    final uid = userId ?? goal.userId ?? localDb.currentUserId;
     final goalToInsert = goal.id.isEmpty
-        ? goal.copyWith(id: 'goal_${DateTime.now().millisecondsSinceEpoch}')
-        : goal;
+        ? goal.copyWith(
+            id: 'goal_${DateTime.now().millisecondsSinceEpoch}',
+            userId: uid,
+          )
+        : (goal.userId == null ? goal.copyWith(userId: uid) : goal);
 
-    await localDb.insertLocalGoal(goalToInsert.toMap());
+    await localDb.insertLocalGoal(goalToInsert.toMap(), userId: uid);
     return goalToInsert;
   }
 
-  Future<GoalModel> updateGoal(GoalModel goal) async {
+  Future<GoalModel> updateGoal(GoalModel goal, {String? userId}) async {
     final localDb = Get.find<LocalDatabaseService>();
-    await localDb.updateLocalGoal(goal.toMap());
+    await localDb.updateLocalGoal(goal.toMap(), userId: userId ?? goal.userId);
     return goal;
   }
 
-  Future<void> deleteGoal(String id) async {
+  Future<void> deleteGoal(String id, {String? userId}) async {
     final localDb = Get.find<LocalDatabaseService>();
-    await localDb.deleteLocalGoal(id);
+    await localDb.deleteLocalGoal(id, userId: userId);
   }
 }

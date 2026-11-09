@@ -200,8 +200,8 @@ class TransactionHistoryController extends BaseController with BudgetAware {
         'transaction': tx,
         'detail': detail,
         'walletName': walletName,
-        'categoryName': category?.name ?? 'Giao dịch',
-        'icon': category?.icon ?? 'icon_wallet.png',
+        'categoryName': category?.name ?? item['categoryName'] ?? 'Giao dịch',
+        'icon': category?.icon ?? item['categoryIcon'] ?? 'icon_wallet.png',
       });
     }
     return map;

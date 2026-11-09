@@ -24,7 +24,6 @@ class StatisticsController extends BaseController {
   final donutChartTimeframe = 'this_month'.obs;
   final trendChartTimeframe = 'this_month'.obs;
 
-
   final aiInsight = ''.obs;
 
   final barChartData = <String, dynamic>{}.obs;
@@ -118,7 +117,6 @@ class StatisticsController extends BaseController {
     trendChartData.value = data['trend'] ?? {};
   }
 
-
   // --- Online AI Insight Sync ---
   Future<void> _syncOnlineData() async {
     if (isOffline) return;
@@ -169,8 +167,9 @@ class StatisticsController extends BaseController {
     String iconPath,
   ) {
     if (selectedAnalysisCategoryId.value == categoryId &&
-        categoryAnalysisData.isNotEmpty)
+        categoryAnalysisData.isNotEmpty) {
       return;
+    }
 
     selectedAnalysisCategoryId.value = categoryId;
     selectedAnalysisCategoryName.value = categoryName;
@@ -219,12 +218,11 @@ class StatisticsController extends BaseController {
       );
     }, tag: 'CATEGORY_ANALYSIS');
 
-    result.fold(
-      (failure) {
-        // Fallback data if error
+    await result.fold(
+      (failure) async {
         categoryAnalysisData.value = {};
       },
-      (historyList) {
+      (historyList) async {
         final timeframe = categoryAnalysisTimeframe.value;
         final now = DateTime.now();
         List<String> labels = [];
@@ -240,6 +238,15 @@ class StatisticsController extends BaseController {
             labels.add(key);
             bucketValues[key] = 0.0;
           }
+
+          // Hỗ trợ hợp nhất cả dữ liệu giao dịch chi tiết và dữ liệu nén trong monthly_category_summaries
+          final trendMap = await _statisticRepository.getCategoryMonthlyTrend(
+            categoryId,
+            monthsCount,
+          );
+          for (var key in labels) {
+            bucketValues[key] = trendMap[key] ?? 0.0;
+          }
         } else {
           // Daily breakdown for 7 days or this month
           int daysCount = timeframe == 'last_7_days' ? 7 : now.day;
@@ -249,19 +256,14 @@ class StatisticsController extends BaseController {
             labels.add(key);
             bucketValues[key] = 0.0;
           }
-        }
 
-        for (var item in historyList) {
-          final TransactionModel tx = item['transaction'];
-          if (tx.type == 'EXPENSE') {
-            String key;
-            if (isMonthly) {
-              key = 'T${tx.transactionDate.month}';
-            } else {
-              key = '${tx.transactionDate.day}/${tx.transactionDate.month}';
-            }
-            if (bucketValues.containsKey(key)) {
-              bucketValues[key] = (bucketValues[key] ?? 0) + tx.amount;
+          for (var item in historyList) {
+            final TransactionModel tx = item['transaction'];
+            if (tx.type == 'EXPENSE') {
+              final key = '${tx.transactionDate.day}/${tx.transactionDate.month}';
+              if (bucketValues.containsKey(key)) {
+                bucketValues[key] = (bucketValues[key] ?? 0) + tx.amount;
+              }
             }
           }
         }

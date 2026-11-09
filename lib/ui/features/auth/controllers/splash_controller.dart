@@ -16,6 +16,7 @@ class SplashController extends BaseController {
   @override
   void onReady() {
     super.onReady();
+    FlutterNativeSplash.remove();
     _verifySessionAndFetchData();
   }
 

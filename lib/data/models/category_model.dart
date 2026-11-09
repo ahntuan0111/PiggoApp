@@ -1,5 +1,6 @@
 class CategoryModel {
   final String id;
+  final String? userId;
   final String categoryTypeId;
   final String name;
   final String color;
@@ -14,6 +15,7 @@ class CategoryModel {
 
   CategoryModel({
     required this.id,
+    this.userId,
     required this.categoryTypeId,
     required this.name,
     required this.color,
@@ -28,6 +30,7 @@ class CategoryModel {
   factory CategoryModel.fromMap(Map<String, dynamic> map) {
     return CategoryModel(
       id: map['\$id'] ?? map['id'] ?? '',
+      userId: map['userId'] ?? map['\$userId'],
       categoryTypeId: map['categoryTypeId'] ??
           (map['categoryTypes'] is Map
               ? map['categoryTypes']['\$id']
@@ -52,7 +55,7 @@ class CategoryModel {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'id': id,
       'categoryTypeId': categoryTypeId,
       'name': name,
@@ -61,7 +64,39 @@ class CategoryModel {
       'defaultBudget': defaultBudget,
       'targetAmount': targetAmount,
       'deadline': deadline?.toIso8601String(),
-      'isActive': isActive,
+      'isActive': isActive ? 1 : 0,
     };
+    if (userId != null && userId!.isNotEmpty) {
+      map['userId'] = userId;
+    }
+    return map;
+  }
+
+  CategoryModel copyWith({
+    String? id,
+    String? userId,
+    String? categoryTypeId,
+    String? name,
+    String? color,
+    String? iconName,
+    double? defaultBudget,
+    double? targetAmount,
+    DateTime? deadline,
+    bool? isActive,
+    double? spent,
+  }) {
+    return CategoryModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      categoryTypeId: categoryTypeId ?? this.categoryTypeId,
+      name: name ?? this.name,
+      color: color ?? this.color,
+      iconName: iconName ?? this.iconName,
+      defaultBudget: defaultBudget ?? this.defaultBudget,
+      targetAmount: targetAmount ?? this.targetAmount,
+      deadline: deadline ?? this.deadline,
+      isActive: isActive ?? this.isActive,
+      spent: spent ?? this.spent,
+    );
   }
 }

@@ -27,21 +27,23 @@ class CategoryController extends BaseController {
     isInitialLoading.value = true;
     showLoading();
     final result = await ErrorHandler.execute(() async {
-      final types = await categoryRepo.getCategoryTypes();
-      final cats = await categoryRepo.getCategories();
+      final storage = Get.find<StorageService>();
+      final userId = storage.read<String>(AppKeys.userId) ?? '';
+      final types = await categoryRepo.getCategoryTypes(userId);
+      final cats = await categoryRepo.getCategories(null, userId);
       return {'types': types, 'categories': cats};
     }, tag: "FETCH_CATEGORIES");
 
     hideLoading();
     isInitialLoading.value = false;
-    result.fold(
-      (failure) {
+    await result.fold(
+      (failure) async {
         showErrorMessage("Lỗi", failure.message);
       },
-      (data) {
+      (data) async {
         categoryTypes.assignAll(data['types'] as List<CategoryTypeModel>);
         categories.assignAll(data['categories'] as List<CategoryModel>);
-        Get.find<BudgetService>().refreshData();
+        await Get.find<BudgetService>().refreshData();
       },
     );
   }
@@ -90,9 +92,9 @@ class CategoryController extends BaseController {
         );
       },
       (_) async {
+        await fetchData();
         Get.back();
         showSuccessMessage("Thành công", "Đã tạo nhóm danh mục");
-        await fetchData();
       },
     );
   }
@@ -109,9 +111,17 @@ class CategoryController extends BaseController {
 
     showLoading();
     final color = '#FDEBB2';
+    final storage = Get.find<StorageService>();
+    final userId = storage.read<String>(AppKeys.userId) ?? '';
 
     final result = await ErrorHandler.execute(() async {
-      await categoryRepo.createCategory(typeId, name.trim(), iconName, color);
+      await categoryRepo.createCategory(
+        typeId,
+        name.trim(),
+        iconName,
+        color,
+        userId: userId,
+      );
     }, tag: "CREATE_CATEGORY");
 
     hideLoading();
@@ -120,9 +130,9 @@ class CategoryController extends BaseController {
         showErrorMessage("Lỗi", "Không thể tạo danh mục: ${failure.message}");
       },
       (_) async {
+        await fetchData();
         Get.back();
         showSuccessMessage('Thành công', 'Đã thêm danh mục mới');
-        await fetchData();
       },
     );
   }
@@ -131,9 +141,15 @@ class CategoryController extends BaseController {
     if (name.trim().isEmpty) return;
 
     showLoading();
+    final storage = Get.find<StorageService>();
+    final userId = storage.read<String>(AppKeys.userId) ?? '';
 
     final result = await ErrorHandler.execute(() async {
-      await categoryRepo.updateCategoryType(typeId, name.trim());
+      await categoryRepo.updateCategoryType(
+        typeId,
+        name.trim(),
+        userId: userId,
+      );
     }, tag: "UPDATE_CATEGORY_TYPE");
     hideLoading();
 
@@ -154,9 +170,11 @@ class CategoryController extends BaseController {
 
   Future<void> deleteCategoryType(String typeId) async {
     showLoading();
+    final storage = Get.find<StorageService>();
+    final userId = storage.read<String>(AppKeys.userId) ?? '';
 
     final result = await ErrorHandler.execute(() async {
-      await categoryRepo.deleteCategoryType(typeId);
+      await categoryRepo.deleteCategoryType(typeId, userId: userId);
     }, tag: "DELETE_CATEGORY_TYPE");
     hideLoading();
 
@@ -186,6 +204,8 @@ class CategoryController extends BaseController {
     }
 
     showLoading();
+    final storage = Get.find<StorageService>();
+    final userId = storage.read<String>(AppKeys.userId) ?? '';
 
     final result = await ErrorHandler.execute(() async {
       await categoryRepo.updateCategory(
@@ -193,6 +213,7 @@ class CategoryController extends BaseController {
         name.trim(),
         iconName,
         color,
+        userId: userId,
       );
     }, tag: "UPDATE_CATEGORY");
     hideLoading();
@@ -214,9 +235,11 @@ class CategoryController extends BaseController {
 
   Future<void> deleteCategory(String categoryId) async {
     showLoading();
+    final storage = Get.find<StorageService>();
+    final userId = storage.read<String>(AppKeys.userId) ?? '';
 
     final result = await ErrorHandler.execute(() async {
-      await categoryRepo.deleteCategory(categoryId);
+      await categoryRepo.deleteCategory(categoryId, userId: userId);
     }, tag: "DELETE_CATEGORY");
     hideLoading();
 

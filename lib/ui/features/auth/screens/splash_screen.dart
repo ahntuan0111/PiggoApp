@@ -11,8 +11,8 @@ class SplashScreen extends GetView<SplashController> {
       backgroundColor: const Color(0xFFFBF4EB),
       body: Center(
         child: Image.asset(
-          'assets/images/splash_logo.png',
-          width: 200,
+          'assets/images/app_icon.png',
+          width: 150,
         ),
       ),
     );

@@ -173,6 +173,9 @@ class MainScreen extends GetView<MainController> {
                 // Đợi hiệu ứng đóng FAB hoàn tất rồi mới Push Route
                 await Future.delayed(const Duration(milliseconds: 260));
 
+                if (!controller.budgetService.isDataLoaded.value) {
+                  await controller.budgetService.refreshData();
+                }
                 if (!context.mounted) return;
                 // Kiểm tra trước khi vào tạo giao dịch
                 if (!controller.canCreateTransaction()) {
@@ -196,6 +199,9 @@ class MainScreen extends GetView<MainController> {
                 // Đợi hiệu ứng đóng FAB hoàn tất rồi mới Push Route
                 await Future.delayed(const Duration(milliseconds: 260));
 
+                if (!controller.budgetService.isDataLoaded.value) {
+                  await controller.budgetService.refreshData();
+                }
                 if (!context.mounted) return;
                 // Kiểm tra trước khi vào nhập nhanh
                 if (!controller.canCreateTransaction()) {
@@ -224,6 +230,9 @@ class MainScreen extends GetView<MainController> {
                 controller.toggleFab();
                 await Future.delayed(const Duration(milliseconds: 260));
 
+                if (!controller.budgetService.isDataLoaded.value) {
+                  await controller.budgetService.refreshData();
+                }
                 if (!context.mounted) return;
                 // Kiểm tra trước khi vào nhập giọng nói
                 if (!controller.canCreateTransaction()) {
@@ -247,6 +256,9 @@ class MainScreen extends GetView<MainController> {
                 controller.toggleFab();
                 await Future.delayed(const Duration(milliseconds: 260));
 
+                if (!controller.budgetService.isDataLoaded.value) {
+                  await controller.budgetService.refreshData();
+                }
                 if (!context.mounted) return;
                 // Kiểm tra trước khi quét ảnh hóa đơn
                 if (!controller.canCreateTransaction()) {
@@ -254,7 +266,7 @@ class MainScreen extends GetView<MainController> {
                   return;
                 }
 
-                controller.openCameraReceiptScan();
+                await controller.openCameraReceiptScan();
               },
             ),
 

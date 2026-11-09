@@ -1,5 +1,6 @@
 class TransactionModel {
   final String id;
+  final String? userId;
   final String categoryId;
   final double amount;
   final String type; // 'EXPENSE' or 'INCOME'
@@ -10,6 +11,7 @@ class TransactionModel {
 
   TransactionModel({
     required this.id,
+    this.userId,
     required this.categoryId,
     required this.amount,
     required this.type,
@@ -22,6 +24,7 @@ class TransactionModel {
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
     return TransactionModel(
       id: map['\$id'] ?? map['id'] ?? '',
+      userId: map['userId'] ?? map['\$userId'],
       categoryId: map['categoryId'] ?? _extractId(map['categories']) ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
       type: map['type'] ?? 'EXPENSE',
@@ -48,6 +51,9 @@ class TransactionModel {
       'status': status,
       'note': note ?? '',
     };
+    if (userId != null && userId!.isNotEmpty) {
+      map['userId'] = userId;
+    }
     if (categoryId.isNotEmpty) {
       map['categoryId'] = categoryId;
     }
@@ -55,6 +61,30 @@ class TransactionModel {
       map['updatedAt'] = updatedAt!.toUtc().toIso8601String();
     }
     return map;
+  }
+
+  TransactionModel copyWith({
+    String? id,
+    String? userId,
+    String? categoryId,
+    double? amount,
+    String? type,
+    DateTime? transactionDate,
+    String? status,
+    String? note,
+    DateTime? updatedAt,
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      categoryId: categoryId ?? this.categoryId,
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      transactionDate: transactionDate ?? this.transactionDate,
+      status: status ?? this.status,
+      note: note ?? this.note,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 
   static String? _extractId(dynamic value) {

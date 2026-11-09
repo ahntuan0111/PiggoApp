@@ -10,59 +10,49 @@ mixin TransactionReadMixin on TransactionRepositoryBase {
     int limit = 5,
     DateTime? start,
     DateTime? end,
+    String? userId,
   }) async {
     final localDb = Get.find<LocalDatabaseService>();
-    List<TransactionModel> txs;
+    DateTime? effectiveStart = start;
+    DateTime? effectiveEnd = end;
 
-    if (start != null && end != null) {
-      txs = await localDb.getTransactionsByDateRange(start, end);
-    } else if (start != null) {
-      String monthYearStr =
-          "${start.month.toString().padLeft(2, '0')}-${start.year}";
-      txs = await localDb.getTransactionsByMonth(monthYearStr);
-    } else {
-      txs = await localDb.getAllTransactions();
+    if (start != null && end == null) {
+      effectiveStart = DateTime(start.year, start.month, 1);
+      effectiveEnd = DateTime(start.year, start.month + 1, 0, 23, 59, 59, 999);
     }
 
-    final filtered = txs.where((tx) => tx.categoryId == categoryId).toList();
-    filtered.sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
-    final limited = filtered.take(limit).toList();
-
-    final List<Map<String, dynamic>> results = [];
-    for (final tx in limited) {
-      final detail = await localDb.getTransactionDetail(tx.id);
-      results.add({'transaction': tx, 'detail': detail});
-    }
-    return results;
+    return await localDb.getTransactionsWithDetailsAndCategory(
+      userId: userId,
+      categoryId: categoryId,
+      start: effectiveStart,
+      end: effectiveEnd,
+      limit: limit,
+      ascending: false,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getRecentHistory({
     int limit = 10,
     DateTime? start,
     DateTime? end,
+    String? userId,
   }) async {
     final localDb = Get.find<LocalDatabaseService>();
-    List<TransactionModel> txs;
+    DateTime? effectiveStart = start;
+    DateTime? effectiveEnd = end;
 
-    if (start != null && end != null) {
-      txs = await localDb.getTransactionsByDateRange(start, end);
-    } else if (start != null) {
-      String monthYearStr =
-          "${start.month.toString().padLeft(2, '0')}-${start.year}";
-      txs = await localDb.getTransactionsByMonth(monthYearStr);
-    } else {
-      txs = await localDb.getAllTransactions();
+    if (start != null && end == null) {
+      effectiveStart = DateTime(start.year, start.month, 1);
+      effectiveEnd = DateTime(start.year, start.month + 1, 0, 23, 59, 59, 999);
     }
 
-    txs.sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
-    final limited = txs.take(limit).toList();
-
-    final List<Map<String, dynamic>> results = [];
-    for (final tx in limited) {
-      final detail = await localDb.getTransactionDetail(tx.id);
-      results.add({'transaction': tx, 'detail': detail});
-    }
-    return results;
+    return await localDb.getTransactionsWithDetailsAndCategory(
+      userId: userId,
+      start: effectiveStart,
+      end: effectiveEnd,
+      limit: limit,
+      ascending: false,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getTransactionsByFilters({
@@ -72,61 +62,40 @@ mixin TransactionReadMixin on TransactionRepositoryBase {
     String? type,
     String? searchQuery,
     int limit = 20,
+    int offset = 0,
     String? cursorAfter,
     bool ascending = false,
+    String? userId,
   }) async {
     final localDb = Get.find<LocalDatabaseService>();
-    List<TransactionModel> txs;
+    DateTime? effectiveStart = start;
+    DateTime? effectiveEnd = end;
 
-    if (start != null && end != null) {
-      txs = await localDb.getTransactionsByDateRange(start, end);
-    } else if (start != null) {
-      String monthYearStr =
-          "${start.month.toString().padLeft(2, '0')}-${start.year}";
-      txs = await localDb.getTransactionsByMonth(monthYearStr);
-    } else {
-      txs = await localDb.getAllTransactions();
+    if (start != null && end == null) {
+      effectiveStart = DateTime(start.year, start.month, 1);
+      effectiveEnd = DateTime(start.year, start.month + 1, 0, 23, 59, 59, 999);
     }
 
-    var filtered = txs;
-    if (categoryId != null && categoryId.isNotEmpty) {
-      filtered = filtered.where((tx) => tx.categoryId == categoryId).toList();
-    }
-    if (type != null && type.isNotEmpty) {
-      filtered = filtered.where((tx) => tx.type == type).toList();
-    }
-    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      final queryLower = searchQuery.trim().toLowerCase();
-      filtered = filtered
-          .where((tx) => (tx.note ?? '').toLowerCase().contains(queryLower))
-          .toList();
-    }
-
-    if (ascending) {
-      filtered.sort((a, b) => a.transactionDate.compareTo(b.transactionDate));
-    } else {
-      filtered.sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
-    }
-
-    if (cursorAfter != null && cursorAfter.isNotEmpty) {
-      final index = filtered.indexWhere((tx) => tx.id == cursorAfter);
-      if (index != -1) {
-        filtered = filtered.skip(index + 1).toList();
-      }
-    }
-
-    final limited = filtered.take(limit).toList();
-    final List<Map<String, dynamic>> results = [];
-    for (final tx in limited) {
-      final detail = await localDb.getTransactionDetail(tx.id);
-      results.add({'transaction': tx, 'detail': detail});
-    }
-    return results;
+    return await localDb.getTransactionsWithDetailsAndCategory(
+      userId: userId,
+      categoryId: categoryId,
+      type: type,
+      searchQuery: searchQuery,
+      start: effectiveStart,
+      end: effectiveEnd,
+      limit: limit,
+      offset: offset,
+      cursorAfter: cursorAfter,
+      ascending: ascending,
+    );
   }
 
-  Future<TransactionModel?> getTransactionById(String transactionId) async {
+  Future<TransactionModel?> getTransactionById(
+    String transactionId, {
+    String? userId,
+  }) async {
     final localDb = Get.find<LocalDatabaseService>();
-    return await localDb.getTransactionById(transactionId);
+    return await localDb.getTransactionById(transactionId, userId: userId);
   }
 
   Future<TransactionDetailModel?> getTransactionDetail(

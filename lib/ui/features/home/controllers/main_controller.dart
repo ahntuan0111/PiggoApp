@@ -39,8 +39,9 @@ class MainController extends BaseController
   }
 
   bool canCreateTransaction() {
-    // Kiem tra truc tiep tu BudgetService
-    return budgetService.activeCategories.isNotEmpty && !budgetService.isPastMonth;
+    // Kiem tra truc tiep tu BudgetService xem da co danh muc chua
+    return budgetService.activeCategories.isNotEmpty ||
+        budgetService.categories.isNotEmpty;
   }
 
   Future<void> openCameraReceiptScan() async {
@@ -50,8 +51,10 @@ class MainController extends BaseController
       }
       return;
     }
-    toggleFab();
-    await Future.delayed(const Duration(milliseconds: 260));
+    if (isFabOpen.value) {
+      toggleFab();
+      await Future.delayed(const Duration(milliseconds: 260));
+    }
     final smartInputController = Get.find<SmartInputController>();
     await smartInputController.pickAndProcessReceipt(ImageSource.camera);
   }
