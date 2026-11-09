@@ -54,8 +54,10 @@ class LocalAIServiceImpl extends GetxService
   /// Kiểm tra kết quả On-Device có đủ tốt không (có ít nhất 1 item với amount > 0)
   bool _isOnDeviceResultValid(List<Map<String, dynamic>> result) {
     return result.isNotEmpty &&
-        result.any((item) =>
-            (item['amount'] as num?) != null && (item['amount'] as num) > 0);
+        result.any(
+          (item) =>
+              (item['amount'] as num?) != null && (item['amount'] as num) > 0,
+        );
   }
 
   // ===========================================================================
@@ -93,16 +95,16 @@ class LocalAIServiceImpl extends GetxService
         'https://api.groq.com/openai/v1/audio/transcriptions',
         data: formData,
         options: dio.Options(
-          headers: {
-            'Authorization': 'Bearer ${apiKey.trim()}',
-          },
+          headers: {'Authorization': 'Bearer ${apiKey.trim()}'},
         ),
       );
 
       if (response.statusCode == 200 && response.data != null) {
         final text = response.data['text']?.toString().trim() ?? '';
         if (text.isEmpty) {
-          throw BaseException('Không nhận diện được giọng nói trong đoạn ghi âm.');
+          throw BaseException(
+            'Không nhận diện được giọng nói trong đoạn ghi âm.',
+          );
         }
         return text;
       } else {
@@ -130,7 +132,9 @@ class LocalAIServiceImpl extends GetxService
     // TẦNG 1: HYBRID ROUTER ON-DEVICE (Fast Path: Dart Engine | Smart Path: On-Device AI)
     // ═══════════════════════════════════════════════════════════════════
     final routeDecision = TransactionRouter.route(cleanInput);
-    dev.log('[LocalAIService] Router phân loại: ${routeDecision.routeType} (${routeDecision.reason})');
+    dev.log(
+      '[LocalAIService] Router phân loại: ${routeDecision.routeType} (${routeDecision.reason})',
+    );
 
     // 1a. Smart Path: Khi là câu phức tạp, kiểm tra điều kiện chạy AI On-Device
     if (routeDecision.isSmartPath) {
@@ -142,17 +146,24 @@ class LocalAIServiceImpl extends GetxService
           isModelReady = Get.find<ModelDownloadManager>().isModelReady;
         }
         if (Get.isRegistered<DeviceMemoryService>()) {
-          isMemorySafe = await Get.find<DeviceMemoryService>().isSafeToLoadAiModel();
+          isMemorySafe = await Get.find<DeviceMemoryService>()
+              .isSafeToLoadAiModel();
         } else {
           isMemorySafe = true;
         }
       } catch (_) {}
 
-      final engine = _aiEngine ?? (Get.isRegistered<IOnDeviceAiEngine>() ? Get.find<IOnDeviceAiEngine>() : null);
+      final engine =
+          _aiEngine ??
+          (Get.isRegistered<IOnDeviceAiEngine>()
+              ? Get.find<IOnDeviceAiEngine>()
+              : null);
 
       if (isModelReady && isMemorySafe && engine != null) {
         try {
-          dev.log('[LocalAIService] 🧠 Chạy Smart Path: On-Device AI (${engine.modelName})...');
+          dev.log(
+            '[LocalAIService] 🧠 Chạy Smart Path: On-Device AI (${engine.modelName})...',
+          );
           final rawAiItems = await engine
               .parse(cleanInput)
               .timeout(const Duration(milliseconds: 1200));
@@ -165,17 +176,23 @@ class LocalAIServiceImpl extends GetxService
           );
 
           if (_isOnDeviceResultValid(validated)) {
-            dev.log('[LocalAIService] ✅ Smart Path AI thành công và đã qua Dart Validation');
+            dev.log(
+              '[LocalAIService] ✅ Smart Path AI thành công và đã qua Dart Validation',
+            );
             return validated;
           }
         } catch (e) {
-          dev.log('[LocalAIService] ⚠️ Smart Path AI thất bại hoặc timeout, fallback về Dart Engine: $e');
+          dev.log(
+            '[LocalAIService] ⚠️ Smart Path AI thất bại hoặc timeout, fallback về Dart Engine: $e',
+          );
         }
       }
     }
 
     // 1b. Fast Path (hoặc Fallback an toàn về Dart Engine)
-    dev.log('[LocalAIService] ⚡ Chạy Dart Engine: LocalRuleBasedTransactionParser (< 1ms)');
+    dev.log(
+      '[LocalAIService] ⚡ Chạy Dart Engine: LocalRuleBasedTransactionParser (< 1ms)',
+    );
     final onDeviceResult = LocalRuleBasedTransactionParser.parse(
       text: cleanInput,
       availableCategories: availableCategories,
@@ -187,11 +204,15 @@ class LocalAIServiceImpl extends GetxService
       return onDeviceResult;
     }
 
-    dev.log('[LocalAIService] ⚠️ On-Device không bóc tách được amount > 0, thử Cloud...');
+    dev.log(
+      '[LocalAIService] ⚠️ On-Device không bóc tách được amount > 0, thử Cloud...',
+    );
 
     // Nếu đang offline, trả kết quả On-Device ngay (dù amount = 0)
     if (_isOffline) {
-      dev.log('[LocalAIService] 📡 Đang offline — trả kết quả On-Device mặc định');
+      dev.log(
+        '[LocalAIService] 📡 Đang offline — trả kết quả On-Device mặc định',
+      );
       return onDeviceResult;
     }
 
@@ -253,7 +274,8 @@ class LocalAIServiceImpl extends GetxService
   ) async {
     return handleDioError(() async {
       final categoriesStr = categories.join(', ');
-      final systemPrompt = '''
+      final systemPrompt =
+          '''
 Bạn là trợ lý tài chính thông minh của ứng dụng Pigo. Phân tích câu nói/văn bản tiếng Việt của người dùng thành danh sách các giao dịch tài chính.
 Quy tắc bắt buộc:
 1. Phân loại type: "outflow" (chi tiêu) hoặc "inflow" (thu nhập).
@@ -290,12 +312,16 @@ Ví dụ format: [{"amount": 45000, "type": "outflow", "categoryName": "Ăn uố
 
         if (response.statusCode == 200 && response.data != null) {
           final content =
-              response.data['choices']?[0]?['message']?['content']?.toString() ??
+              response.data['choices']?[0]?['message']?['content']
+                  ?.toString() ??
               '';
           return _cleanAndParseJson(content);
         }
       } catch (e) {
-        dev.log('[LocalAIService] Thử fallback sang llama-3.1-8b-instant...', error: e);
+        dev.log(
+          '[LocalAIService] Thử fallback sang llama-3.1-8b-instant...',
+          error: e,
+        );
         final response = await _dio.post(
           'https://api.groq.com/openai/v1/chat/completions',
           data: {
@@ -317,7 +343,8 @@ Ví dụ format: [{"amount": 45000, "type": "outflow", "categoryName": "Ăn uố
 
         if (response.statusCode == 200 && response.data != null) {
           final content =
-              response.data['choices']?[0]?['message']?['content']?.toString() ??
+              response.data['choices']?[0]?['message']?['content']
+                  ?.toString() ??
               '';
           return _cleanAndParseJson(content);
         }
@@ -335,7 +362,8 @@ Ví dụ format: [{"amount": 45000, "type": "outflow", "categoryName": "Ăn uố
   ) async {
     return handleDioError(() async {
       final categoriesStr = categories.join(', ');
-      final prompt = '''
+      final prompt =
+          '''
 Phân tích văn bản tiếng Việt sau thành danh sách giao dịch tài chính: "$text".
 Mốc thời gian hiện tại: $currentTime.
 Danh sách danh mục có sẵn: [$categoriesStr].
@@ -355,18 +383,16 @@ Không giải thích, không bọc markdown.
           'contents': [
             {
               'parts': [
-                {'text': prompt}
-              ]
-            }
+                {'text': prompt},
+              ],
+            },
           ],
           'generationConfig': {
             'temperature': 0.1,
             'responseMimeType': 'application/json',
-          }
+          },
         },
-        options: dio.Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
+        options: dio.Options(headers: {'Content-Type': 'application/json'}),
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -377,7 +403,10 @@ Không giải thích, không bọc markdown.
           return _cleanAndParseJson(textPart);
         }
       }
-      throw ServerException('Gemini 2.5 Flash response error: ${response.statusCode}', response.statusCode);
+      throw ServerException(
+        'Gemini 2.5 Flash response error: ${response.statusCode}',
+        response.statusCode,
+      );
     });
   }
 
@@ -412,7 +441,9 @@ Không giải thích, không bọc markdown.
         return onDeviceResult;
       }
 
-      dev.log('[LocalAIService] ⚠️ ML Kit OCR không trích xuất được amount > 0, thử Cloud...');
+      dev.log(
+        '[LocalAIService] ⚠️ ML Kit OCR không trích xuất được amount > 0, thử Cloud...',
+      );
     } catch (e) {
       dev.log('[LocalAIService] ML Kit OCR lỗi: $e, thử Cloud...');
     }
@@ -429,7 +460,7 @@ Không giải thích, không bọc markdown.
                 'categoryName': null,
                 'note': 'Hóa đơn',
                 'date': currentTime,
-              }
+              },
             ];
     }
 
@@ -487,9 +518,9 @@ Không giải thích, không bọc markdown.
               'amount': 0.0,
               'type': 'outflow',
               'categoryName': null,
-              'note': 'Hóa đơn: ${imageFile.path.split(Platform.pathSeparator).last}',
+              'note': 'Hóa đơn',
               'date': currentTime,
-            }
+            },
           ];
   }
 
@@ -504,7 +535,8 @@ Không giải thích, không bọc markdown.
       final base64String = base64Encode(bytes);
       final categoriesStr = categories.join(', ');
 
-      final promptText = '''
+      final promptText =
+          '''
 Phân tích hình ảnh hóa đơn/biên lai này và trích xuất thông tin giao dịch tài chính.
 Mốc thời gian hiện tại: $currentTime.
 Danh sách danh mục có sẵn: [$categoriesStr].
@@ -529,12 +561,10 @@ Tuyệt đối không giải thích, không kèm markdown.
                 {'type': 'text', 'text': promptText},
                 {
                   'type': 'image_url',
-                  'image_url': {
-                    'url': 'data:image/jpeg;base64,$base64String',
-                  },
+                  'image_url': {'url': 'data:image/jpeg;base64,$base64String'},
                 },
               ],
-            }
+            },
           ],
           'temperature': 0.1,
           'max_tokens': 1000,
@@ -553,7 +583,10 @@ Tuyệt đối không giải thích, không kèm markdown.
             '';
         return _cleanAndParseJson(content);
       }
-      throw ServerException('Groq Vision response error: ${response.statusCode}', response.statusCode);
+      throw ServerException(
+        'Groq Vision response error: ${response.statusCode}',
+        response.statusCode,
+      );
     });
   }
 
@@ -568,7 +601,8 @@ Tuyệt đối không giải thích, không kèm markdown.
       final base64String = base64Encode(bytes);
       final categoriesStr = categories.join(', ');
 
-      final promptText = '''
+      final promptText =
+          '''
 Đọc hóa đơn này và trích xuất thành mảng JSON giao dịch.
 Thời gian: $currentTime.
 Danh mục có sẵn: [$categoriesStr].
@@ -587,19 +621,17 @@ Chỉ trả về JSON, không giải thích.
                   'inlineData': {
                     'mimeType': 'image/jpeg',
                     'data': base64String,
-                  }
-                }
-              ]
-            }
+                  },
+                },
+              ],
+            },
           ],
           'generationConfig': {
             'temperature': 0.1,
             'responseMimeType': 'application/json',
-          }
+          },
         },
-        options: dio.Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
+        options: dio.Options(headers: {'Content-Type': 'application/json'}),
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -610,7 +642,10 @@ Chỉ trả về JSON, không giải thích.
           return _cleanAndParseJson(textPart);
         }
       }
-      throw ServerException('Gemini 2.5 Flash Vision response error: ${response.statusCode}', response.statusCode);
+      throw ServerException(
+        'Gemini 2.5 Flash Vision response error: ${response.statusCode}',
+        response.statusCode,
+      );
     });
   }
 
@@ -631,7 +666,9 @@ Chỉ trả về JSON, không giải thích.
       );
 
       final fullText = recognizedText.text;
-      dev.log('[MLKit OCR] Recognized text lines: ${recognizedText.blocks.length}');
+      dev.log(
+        '[MLKit OCR] Recognized text lines: ${recognizedText.blocks.length}',
+      );
 
       // 1. Trích xuất số tiền tổng cộng bằng Regex bóc tách hóa đơn tiếng Việt
       double totalAmount = 0.0;
@@ -648,7 +685,9 @@ Chỉ trả về JSON, không giải thích.
 
       // Nếu không khớp từ khóa tổng cộng, duyệt tất cả các số tiền lớn nhất trong ảnh
       if (totalAmount <= 0) {
-        final anyMoneyRegex = RegExp(r'\b(\d{1,3}(?:[\.,]\d{3})*(?:[\.,]\d+)?)\b');
+        final anyMoneyRegex = RegExp(
+          r'\b(\d{1,3}(?:[\.,]\d{3})*(?:[\.,]\d+)?)\b',
+        );
         for (final block in recognizedText.blocks) {
           for (final line in block.lines) {
             for (final m in anyMoneyRegex.allMatches(line.text)) {
@@ -673,7 +712,9 @@ Chỉ trả về JSON, không giải thích.
           lowerText.contains('trà sữa') ||
           lowerText.contains('restaurant')) {
         matchedCat = availableCategories.firstWhereOrNull(
-          (c) => c.toLowerCase().contains('ăn') || c.toLowerCase().contains('uống'),
+          (c) =>
+              c.toLowerCase().contains('ăn') ||
+              c.toLowerCase().contains('uống'),
         );
       } else if (lowerText.contains('siêu thị') ||
           lowerText.contains('mart') ||
@@ -682,11 +723,15 @@ Chỉ trả về JSON, không giải thích.
           lowerText.contains('winmart') ||
           lowerText.contains('bách hóa')) {
         matchedCat = availableCategories.firstWhereOrNull(
-          (c) => c.toLowerCase().contains('mua') || c.toLowerCase().contains('sắm'),
+          (c) =>
+              c.toLowerCase().contains('mua') ||
+              c.toLowerCase().contains('sắm'),
         );
       } else if (lowerText.contains('xăng') || lowerText.contains('petrol')) {
         matchedCat = availableCategories.firstWhereOrNull(
-          (c) => c.toLowerCase().contains('xe') || c.toLowerCase().contains('di chuyển'),
+          (c) =>
+              c.toLowerCase().contains('xe') ||
+              c.toLowerCase().contains('di chuyển'),
         );
       }
 
@@ -698,9 +743,9 @@ Chỉ trả về JSON, không giải thích.
           'amount': totalAmount,
           'type': 'outflow',
           'categoryName': matchedCat,
-          'note': 'Hóa đơn: $fileName',
+          'note': 'Hóa đơn',
           'date': currentTime,
-        }
+        },
       ];
     } finally {
       await textRecognizer.close();
